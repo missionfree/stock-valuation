@@ -27,23 +27,23 @@ function jsonpLoad(url, timeout) {
     script.onload = function() {
       if (done) return;
       done = true;
-      if (timer) clearTimeout(timer);
+      if (timer) Perf.clearTimeout(timer);
       // onload 触发后，全局变量应该已赋值
       // 具体数据由调用方从全局变量读取
       resolve(script);
-      // 清理
-      setTimeout(function() { if (script.parentNode) script.parentNode.removeChild(script); }, 100);
+      // 优化：直接同步删除script标签，无需延迟
+      if (script.parentNode) script.parentNode.removeChild(script);
     };
 
     script.onerror = function() {
       if (done) return;
       done = true;
-      if (timer) clearTimeout(timer);
+      if (timer) Perf.clearTimeout(timer);
       if (script.parentNode) script.parentNode.removeChild(script);
       reject(new Error('网络请求失败'));
     };
 
-    timer = setTimeout(function() {
+    timer = Perf.trackedSetTimeout(function() {
       if (done) return;
       done = true;
       if (script.parentNode) script.parentNode.removeChild(script);
@@ -75,7 +75,7 @@ function emJsonp(url, timeout) {
     };
 
     function cleanup() {
-      if (timer) clearTimeout(timer);
+      if (timer) Perf.clearTimeout(timer);
       delete window[cbName];
       if (script.parentNode) script.parentNode.removeChild(script);
     }
@@ -85,7 +85,7 @@ function emJsonp(url, timeout) {
       reject(new Error('东方财富接口请求失败'));
     };
 
-    timer = setTimeout(function() {
+    timer = Perf.trackedSetTimeout(function() {
       cleanup();
       reject(new Error('东方财富接口超时'));
     }, timeout);
@@ -209,7 +209,7 @@ function fetchWithTimeout(url, options, timeout) {
   return _globalReqAcquire().then(function() {
     return new Promise(function(resolve, reject) {
       var controller = null;
-      var timer = setTimeout(function() {
+      var timer = Perf.trackedSetTimeout(function() {
         if (controller) {
           try { controller.abort(); } catch(e) {}
         }
@@ -224,11 +224,11 @@ function fetchWithTimeout(url, options, timeout) {
       }
 
       fetch(url, options).then(function(res) {
-        clearTimeout(timer);
+        Perf.clearTimeout(timer);
         _globalReqRelease();
         resolve(res);
       }).catch(function(err) {
-        clearTimeout(timer);
+        Perf.clearTimeout(timer);
         _globalReqRelease();
         reject(err);
       });
@@ -346,13 +346,13 @@ function fetchEastmoneyBatch(tencentCodes) {
 
   return new Promise(function(resolve, reject) {
     var script = document.createElement('script');
-    var timer = setTimeout(function() {
+    var timer = Perf.trackedSetTimeout(function() {
       cleanup();
       reject(new Error('东方财富行情超时'));
     }, 4000);
 
     function cleanup() {
-      clearTimeout(timer);
+      Perf.clearTimeout(timer);
       delete window[cbName];
       if (script.parentNode) script.parentNode.removeChild(script);
     }
@@ -593,8 +593,8 @@ function animateOdometer(el, newText) {
   el.classList.add('odometer-rolling');
   // 清除上一个定时器，防止快速刷新时定时器堆积
   var prevTimer = _odometerTimers.get(el);
-  if (prevTimer) clearTimeout(prevTimer);
-  var t = setTimeout(function() {
+  if (prevTimer) Perf.clearTimeout(prevTimer);
+  var t = Perf.trackedSetTimeout(function() {
     el.classList.remove('odometer-rolling');
     _odometerTimers.delete(el);
   }, 600);

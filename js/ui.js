@@ -11,9 +11,9 @@ function scrollToSection(elementId) {
   if (tabContent && !tabContent.classList.contains('active')) {
     var tabName = tabContent.id.replace('tab-', '');
     switchTab(tabName);
-    setTimeout(function() {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 200);
+    Perf.trackedSetTimeout(function() {
+ el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}, 200);
   } else {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -40,17 +40,17 @@ function switchTab(tabName, direction) {
   });
   // 切换到行业全景时重绘热力图
   if (tabName === 'industry') {
-    setTimeout(function() { drawHeatmap(); }, 100);
+    Perf.trackedSetTimeout(function() { drawHeatmap(); }, 100);
   }
   // 切换到估值强度时重绘PE对比图
   if (tabName === 'valuation') {
-    setTimeout(function() { drawPEBar(_lastRealtimeData); }, 100);
+    Perf.trackedSetTimeout(function() { drawPEBar(_lastRealtimeData); }, 100);
   }
   // 切换到我的组合时自动刷新行情
   if (tabName === 'portfolio') {
     var hasStocks = _portfolios.some(function(p) { return p.items.length > 0; });
     if (hasStocks) {
-      setTimeout(function() { refreshPortfolioPrices(); }, 200);
+      Perf.trackedSetTimeout(function() { refreshPortfolioPrices(); }, 200);
     }
   }
   // 不再使用 scrollIntoView 滚动页面，改由穿透式特效完成视觉切换
@@ -139,16 +139,16 @@ function initSwipeNavigation() {
   // 首次显示滑动提示
   if (!_swipeHintShown) {
     _swipeHintShown = true;
-    setTimeout(function() {
-      var hint = document.getElementById('swipeHint');
-      if (hint) {
-        hint.classList.add('show');
-        if (_swipeHintTimer) clearTimeout(_swipeHintTimer);
-        _swipeHintTimer = setTimeout(function() {
-          hint.classList.remove('show');
-        }, 3500);
-      }
-    }, 2000);
+  Perf.trackedSetTimeout(function() {
+  var hint = document.getElementById('swipeHint');
+  if (hint) {
+  hint.classList.add('show');
+  if (_swipeHintTimer) Perf.clearTimeout(_swipeHintTimer);
+  _swipeHintTimer = Perf.trackedSetTimeout(function() {
+  hint.classList.remove('show');
+  }, 3500);
+  }
+  }, 2000);
   }
 }
 
@@ -161,10 +161,10 @@ function showToast(msg) {
   if (!el) return;
   el.textContent = msg;
   el.classList.add('show');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(function() {
-    el.classList.remove('show');
-  }, 2500);
+  if (toastTimer) Perf.clearTimeout(toastTimer);
+  toastTimer = Perf.trackedSetTimeout(function() {
+  el.classList.remove('show');
+}, 2500);
 }
 
 /* ============================================================
@@ -241,10 +241,10 @@ function toggleThemePicker() {
   var isOpen = picker.classList.toggle('show');
   btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   if (isOpen) {
-    setTimeout(function() {
-      var first = picker.querySelector('.theme-option');
-      if (first) first.focus();
-    }, 50);
+    Perf.trackedSetTimeout(function() {
+ var first = picker.querySelector('.theme-option');
+ if (first) first.focus();
+}, 50);
   }
 }
 
@@ -278,10 +278,10 @@ function setTheme(theme) {
   if (picker) picker.classList.remove('show');
 
   // 重绘Canvas（颜色需要更新）
-  setTimeout(function() {
-    drawHeatmap();
-    drawPEBar(_lastRealtimeData);
-  }, 50);
+  Perf.trackedSetTimeout(function() {
+ drawHeatmap();
+ drawPEBar(_lastRealtimeData);
+}, 50);
 }
 
 /**
@@ -360,17 +360,17 @@ function handleSearchInput(value) {
   // 搜索进行中时，不处理输入联想
   if (_searchInProgress) return;
   
-  if (_suggestTimer) clearTimeout(_suggestTimer);
+  if (_suggestTimer) Perf.clearTimeout(_suggestTimer);
   
   if (!value || value.trim().length < 1) {
     suggest.classList.remove('show');
     return;
   }
   
-  _suggestTimer = setTimeout(function() {
-    // 双重检查：定时器触发时搜索可能已开始
-    if (_searchInProgress) return;
-    emSuggest(value.trim()).then(function(data) {
+  _suggestTimer = Perf.trackedSetTimeout(function() {
+ // 双重检查：定时器触发时搜索可能已开始
+ if (_searchInProgress) return;
+ emSuggest(value.trim()).then(function(data) {
       // 异步回调返回时再次检查搜索状态
       if (_searchInProgress) return;
       if (!data || !data.QuotationCodeTable || !data.QuotationCodeTable.Data) {
@@ -431,7 +431,7 @@ function handleSearchInput(value) {
 
 function selectSuggestion(code, name, mktNum, secType, classify) {
   // 清除防抖定时器，防止选中后联想下拉框再次弹出
-  if (_suggestTimer) { clearTimeout(_suggestTimer); _suggestTimer = null; }
+  if (_suggestTimer) { Perf.clearTimeout(_suggestTimer); _suggestTimer = null; }
   var input = document.getElementById('searchInput');
   input.value = code;
   document.getElementById('searchSuggest').classList.remove('show');
@@ -753,15 +753,15 @@ function refreshPortfolioPrices() {
       if (btn) btn.textContent = '刷新中 ' + progress;
 
       // 批间延迟500ms，避免请求过于密集
-      setTimeout(function() {
-        processBatch(batchIdx + 1);
-      }, batches.length > 1 ? 500 : 0);
-    }).catch(function() {
-      // 单批失败不阻断整体流程
-      batchDone++;
-      setTimeout(function() {
-        processBatch(batchIdx + 1);
-      }, batches.length > 1 ? 500 : 0);
+      Perf.trackedSetTimeout(function() {
+ processBatch(batchIdx + 1);
+}, batches.length > 1 ? 500 : 0);
+}).catch(function() {
+ // 单批失败不阻断整体流程
+ batchDone++;
+ Perf.trackedSetTimeout(function() {
+ processBatch(batchIdx + 1);
+}, batches.length > 1 ? 500 : 0);
     });
   }
 
@@ -1139,10 +1139,10 @@ function analyzePortfolioSignals() {
   });
 
   // 安全超时：60秒后强制释放锁，防止死锁
-  _analyzeSafetyTimer = setTimeout(function() {
-    if (_analyzing) {
-      console.warn('[组合分析] 超时强制释放锁');
-      _analyzing = false;
+  _analyzeSafetyTimer = Perf.trackedSetTimeout(function() {
+ if (_analyzing) {
+ console.warn('[组合分析] 超时强制释放锁');
+ _analyzing = false;
       if (btn) { btn.disabled = false; btn.textContent = '分析信号'; }
       renderPortfolio();
       showToast('部分个股分析超时，已显示已获取的结果');
@@ -1154,7 +1154,7 @@ var _analyzeSafetyTimer = null;
 function checkAnalysisDone(completed, total, btn) {
   if (completed >= total) {
     _analyzing = false;
-    if (_analyzeSafetyTimer) { clearTimeout(_analyzeSafetyTimer); _analyzeSafetyTimer = null; }
+    if (_analyzeSafetyTimer) { Perf.clearTimeout(_analyzeSafetyTimer); _analyzeSafetyTimer = null; }
     if (btn) { btn.disabled = false; btn.textContent = '分析信号'; }
     renderPortfolio();
 

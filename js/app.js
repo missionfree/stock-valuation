@@ -4,10 +4,6 @@
    ============================================================ */
 window.addEventListener('error', function(e) {
   console.error('[Global Error]', e.message, e.filename + ':' + e.lineno);
-  // 防止错误导致页面白屏
-  if (typeof showToast === 'function') {
-    showToast('⚠️ 发生错误，已自动恢复');
-  }
 });
 
 window.addEventListener('unhandledrejection', function(e) {
@@ -902,10 +898,10 @@ function startCoinRain(duration) {
   animate();
 
   // 到时间后停止生成新金币，等待现有金币飞出屏幕
-  _coinRainStopTimer = setTimeout(function() {
-    if (_coinRainSpawnTimer) { clearInterval(_coinRainSpawnTimer); _coinRainSpawnTimer = null; }
+  _coinRainStopTimer = Perf.trackedSetTimeout(function() {
+    if (_coinRainSpawnTimer) { Perf.clearInterval(_coinRainSpawnTimer); _coinRainSpawnTimer = null; }
     // 再等300ms让剩余金币飞完
-    setTimeout(function() {
+    Perf.trackedSetTimeout(function() {
       stopCoinRain();
     }, 300);
   }, duration);
@@ -917,8 +913,8 @@ function startCoinRain(duration) {
 function stopCoinRain() {
   _coinRainActive = false;
   if (_coinRainRAF) { cancelAnimationFrame(_coinRainRAF); _coinRainRAF = null; }
-  if (_coinRainSpawnTimer) { clearInterval(_coinRainSpawnTimer); _coinRainSpawnTimer = null; }
-  if (_coinRainStopTimer) { clearTimeout(_coinRainStopTimer); _coinRainStopTimer = null; }
+  if (_coinRainSpawnTimer) { Perf.clearInterval(_coinRainSpawnTimer); _coinRainSpawnTimer = null; }
+  if (_coinRainStopTimer) { Perf.clearTimeout(_coinRainStopTimer); _coinRainStopTimer = null; }
   _coinRainCoins = [];
   if (_coinRainCtx) {
     _coinRainCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
@@ -1096,17 +1092,18 @@ function initPage() {
   });
 
   // === 第三层：非关键内容（浏览器空闲时执行） ===
-  var idleCb = window.requestIdleCallback || function(fn) { return setTimeout(fn, 50); };
+  // 优化：使用 Perf.trackedSetTimeout 跟踪定时器
+  var idleCb = window.requestIdleCallback || function(fn) { return Perf.trackedSetTimeout(fn, 50); };
   idleCb(function() {
     renderSpotlight(null);
     generateInsights(null);
     renderKlineFromCache();
   });
 
-  // === 第四层：网络请求（延迟600ms启动，确保首屏渲染完成后再发请求） ===
-  setTimeout(function() {
+  // === 第四层：网络请求（延迟300ms启动，优化响应速度） ===
+  Perf.trackedSetTimeout(function() {
     runAnalysis(false);
-  }, 600);
+  }, 300);
 
   // 启动自动刷新（5分钟间隔）
   startAutoRefresh();
@@ -1124,13 +1121,13 @@ function initPage() {
   }
 
   // 组合有个股时延迟刷新行情
-  setTimeout(function() {
+  Perf.trackedSetTimeout(function() {
     var hasStocks = _portfolios.some(function(p) { return p.items.length > 0; });
     if (hasStocks) refreshPortfolioPrices();
   }, 2500);
 
-  // 页面加载3秒后自动拉取K线数据（走势图+轮动+行业信号）
-  setTimeout(function() {
+  // 页面加载2秒后自动拉取K线数据（走势图+轮动+行业信号，优化后更快）
+  Perf.trackedSetTimeout(function() {
     if (!_klineAutoFetched) {
       _klineAutoFetched = true;
       var statusEl = document.getElementById('klineStatus');
@@ -1140,7 +1137,7 @@ function initPage() {
       }
       fetchKlineOnly();
     }
-  }, 3000);
+  }, 2000);
 
   // 键盘快捷键：按"/"聚焦搜索框（非输入框聚焦时生效）
   document.addEventListener('keydown', function(e) {
@@ -1207,7 +1204,7 @@ function initDashboardCardClicks() {
       card.classList.remove('wave-active');
       void card.offsetWidth; // 强制重排以重启动画
       card.classList.add('wave-active');
-      setTimeout(function() { card.classList.remove('wave-active'); }, 800);
+      Perf.trackedSetTimeout(function() { card.classList.remove('wave-active'); }, 800);
 
       // 自动获取数据并更新
       if (_dashRefreshLock) return;
@@ -1220,10 +1217,10 @@ function initDashboardCardClicks() {
       }
 
       // 解锁（给予冷却时间避免频繁请求）
-      setTimeout(function() {
-        card.classList.remove('refreshing');
-        _dashRefreshLock = false;
-      }, 3000);
+      Perf.trackedSetTimeout(function() {
+ card.classList.remove('refreshing');
+ _dashRefreshLock = false;
+}, 3000);
     });
   });
 }
@@ -1468,7 +1465,7 @@ Perf.onResize(function() {
     }
 
     // 延迟初始化确保布局完成
-    setTimeout(function() { fResize(); fCreate(); }, 300);
+    Perf.trackedSetTimeout(function() { fResize(); fCreate(); }, 300);
 
     // 使用 Perf.onResize 统一管理（内部已防抖）
     Perf.onResize(function() { fResize(); fCreate(); });
@@ -1486,9 +1483,9 @@ Perf.onResize(function() {
       entries.forEach(function(entry) {
         if (entry.isIntersecting) {
           entry.target.classList.add('scroll-highlight');
-          setTimeout(function() {
-            entry.target.classList.remove('scroll-highlight');
-          }, 600);
+          Perf.trackedSetTimeout(function() {
+ entry.target.classList.remove('scroll-highlight');
+}, 600);
           hlObs.unobserve(entry.target);
         }
       });
@@ -1503,10 +1500,10 @@ Perf.onResize(function() {
     var depthTimer = null;
     window.addEventListener('scroll', function() {
       if (depthTimer) return;
-      depthTimer = setTimeout(function() {
-        depthTimer = null;
-        var vh = window.innerHeight;
-        glassEls.forEach(function(card) {
+      depthTimer = Perf.trackedSetTimeout(function() {
+ depthTimer = null;
+ var vh = window.innerHeight;
+ glassEls.forEach(function(card) {
           var rect = card.getBoundingClientRect();
           if (rect.bottom < 0 || rect.top > vh) return;
           var centerDist = Math.abs((vh / 2) - (rect.top + rect.height / 2));
@@ -1532,9 +1529,9 @@ Perf.onResize(function() {
     // 尝试聚焦按钮（不滚动页面）
     try { btnKline.focus({ preventScroll: true }); } catch(e) {}
     // 3次动画后移除高亮类
-    setTimeout(function() {
-      btnKline.classList.remove('focus-highlight');
-    }, 7000);
+    Perf.trackedSetTimeout(function() {
+ btnKline.classList.remove('focus-highlight');
+}, 7000);
   }
 
   // 1b. 资金流向条目滚动放大动效
@@ -1545,9 +1542,9 @@ Perf.onResize(function() {
         if (entry.isIntersecting) {
           entry.target.classList.add('weight-active');
           // 2秒后恢复原始大小
-          setTimeout(function() {
-            entry.target.classList.remove('weight-active');
-          }, 2000);
+          Perf.trackedSetTimeout(function() {
+ entry.target.classList.remove('weight-active');
+}, 2000);
         }
       });
     }, { threshold: 0.6 });
@@ -1590,7 +1587,7 @@ Perf.onResize(function() {
 
       var tbody = document.getElementById('scaTableBody');
       if (!tbody || tbody.children.length === 0) {
-        setTimeout(tryFocus, 500);
+        Perf.trackedSetTimeout(tryFocus, 500);
         return;
       }
 
@@ -1623,7 +1620,7 @@ Perf.onResize(function() {
       }
     }
 
-    setTimeout(tryFocus, 1000);
+    Perf.trackedSetTimeout(tryFocus, 1000);
   }
 
   // 持仓标记系统
@@ -1678,19 +1675,19 @@ Perf.onResize(function() {
       if (tbody && tbody.children.length > 0) {
         addPositionTags();
       } else {
-        setTimeout(tryAddTags, 1000);
+        Perf.trackedSetTimeout(tryAddTags, 1000);
       }
     }
-    setTimeout(tryAddTags, 2000);
+    Perf.trackedSetTimeout(tryAddTags, 2000);
 
     // 监听表格重新渲染（防抖避免频繁触发）
     var _tagTimer = null;
     var observer = new MutationObserver(function() {
       if (_tagTimer) return;
-      _tagTimer = setTimeout(function() {
-        _tagTimer = null;
-        addPositionTags();
-      }, 200);
+      _tagTimer = Perf.trackedSetTimeout(function() {
+ _tagTimer = null;
+ addPositionTags();
+}, 200);
     });
     var tbody = document.getElementById('scaTableBody');
     if (tbody) {
@@ -1831,13 +1828,13 @@ Perf.onResize(function() {
   }
   function scheduleGlitchBorders() {
     if (_glitchTimer) return;
-    _glitchTimer = setTimeout(function() {
-      _glitchTimer = null;
-      addGlitchBorders();
-    }, 300);
+    _glitchTimer = Perf.trackedSetTimeout(function() {
+ _glitchTimer = null;
+ addGlitchBorders();
+}, 300);
   }
   // 初始添加 + DOM变化后防抖检查
-  setTimeout(addGlitchBorders, 500);
+  Perf.trackedSetTimeout(addGlitchBorders, 500);
   var glitchObserver = new MutationObserver(function() {
     scheduleGlitchBorders();
   });
@@ -1881,7 +1878,7 @@ Perf.onResize(function() {
           window.updateSysStatus('error');
         });
       } else {
-        setTimeout(function() { window.updateSysStatus('live'); }, 2000);
+        Perf.trackedSetTimeout(function() { window.updateSysStatus('live'); }, 2000);
       }
       return result;
     };

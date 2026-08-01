@@ -132,12 +132,12 @@ function renderIndexCards(realtimeData) {
         el.classList.add('odometer-rolling');
       });
       // 动画结束后清理
-      setTimeout(function() {
-        odometers.forEach(function(el) {
-          el.classList.remove('odometer-rolling');
-          el.style.transitionDelay = '';
-        });
-      }, 600 + odometers.length * 30);
+      Perf.trackedSetTimeout(function() {
+ odometers.forEach(function(el) {
+ el.classList.remove('odometer-rolling');
+ el.style.transitionDelay = '';
+ });
+ }, 600 + odometers.length * 30);
     });
   }
 }
@@ -719,7 +719,7 @@ function fetchLeaderStocksData(codes, realtimeData, retryCount) {
   }).catch(function(err) {
     console.warn('龙头股获取失败（第' + (retryCount + 1) + '次）:', err.message);
     if (retryCount < MAX_RETRIES) {
-      setTimeout(function() {
+      Perf.trackedSetTimeout(function() {
         fetchLeaderStocksData(codes, realtimeData, retryCount + 1);
       }, 1000 + retryCount * 500);
     } else {
@@ -745,7 +745,7 @@ function refreshLeaderStocks() {
   var baseData = _lastRealtimeData || {};
   fetchLeaderStocksData(leaderCodes, baseData, 0);
 
-  setTimeout(function() {
+  Perf.trackedSetTimeout(function() {
     if (btn) { btn.textContent = '⟳ 刷新龙头'; btn.disabled = false; }
   }, 3000);
 }

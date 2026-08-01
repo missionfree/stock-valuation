@@ -216,6 +216,7 @@
     $: $,
     clearCache: clearCache,
     setTimeout: trackedSetTimeout,
+    trackedSetTimeout: trackedSetTimeout,
     setInterval: trackedSetInterval,
     clearTimeout: trackedClearTimeout,
     clearInterval: trackedClearInterval,

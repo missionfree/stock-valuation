@@ -106,10 +106,10 @@ function getKlineLastUpdate() {
 /* --- 并发控制（分层顺序获取：2并发+请求间延迟，防封禁） --- */
 var _activeKline = 0;
 var _klineQueue = [];
-var MAX_CONCURRENT_KLINE = 2;         // 2并发：大幅降低并发，避免被封IP
-var _klineBatchDelay = 400;           // 每批之间延迟400ms，给服务器喘息空间
-var KLINE_REQ_TIMEOUT = 3500;         // 单个K线请求超时3.5秒（降低并发后适当放宽）
-var KLINE_TOTAL_TIMEOUT = 60000;      // 分层获取总超时60秒（顺序获取需要更长时间）
+var MAX_CONCURRENT_KLINE = 4;         // 4并发：提升速度，同时保持合理防封
+var _klineBatchDelay = 150;           // 每批之间延迟150ms（优化后更流畅）
+var KLINE_REQ_TIMEOUT = 2500;         // 单个K线请求超时2.5秒（优化后更及时）
+var KLINE_TOTAL_TIMEOUT = 45000;      // 分层获取总超时45秒（优化后更及时）
 
 /* --- 全局防封禁：请求频率限制 --- */
 var _lastFullFetchTime = 0;           // 上次完整获取的时间戳
@@ -157,7 +157,7 @@ function _drainKlineQueue() {
   if (_activeKline >= MAX_CONCURRENT_KLINE || _klineQueue.length === 0) return;
 
   _klineDrainScheduled = true;
-  setTimeout(function() {
+  Perf.trackedSetTimeout(function() {
     _klineDrainScheduled = false;
     while (_activeKline < MAX_CONCURRENT_KLINE && _klineQueue.length > 0) {
       var job = _klineQueue.shift();
@@ -271,7 +271,7 @@ function _tryTencentKline(job) {
     console.warn('K线源' + job.phase + '失败:', job.code, err.message);
     if (job.phase <= 2) {
       // 还有备用源可用，短暂延迟后重新入队
-      setTimeout(function() {
+      Perf.trackedSetTimeout(function() {
         _activeKline--;
         _activeKline = Math.max(0, _activeKline);
         _klineQueue.unshift(job);
@@ -2366,32 +2366,32 @@ function fetchKlineData(onProgress) {
   onProgress('正在获取K线数据（2并发·分层顺序）...');
 
   // 分层顺序获取：双线轮动 → 动量轮动 → 行业信号 → 趋势右侧
-  // 每层完成后立即渲染，层间间隔500ms给服务器喘息
-  var LAYER_DELAY = 500; // 层间延迟ms
+  // 每层完成后立即渲染，层间间隔200ms给服务器喘息（优化后更流畅）
+  var LAYER_DELAY = 200; // 层间延迟ms
 
   var workPromise = updateRotation()
     .then(function() {
       onProgress('双线轮动完成，正在获取动量轮动...');
       return new Promise(function(resolve) {
-        setTimeout(function() { resolve(updateMomentumRotation()); }, LAYER_DELAY);
+        Perf.trackedSetTimeout(function() { resolve(updateMomentumRotation()); }, LAYER_DELAY);
       });
     })
     .then(function() {
       onProgress('动量轮动完成，正在获取行业信号...');
       return new Promise(function(resolve) {
-        setTimeout(function() { resolve(updateIndustrySignals()); }, LAYER_DELAY);
+        Perf.trackedSetTimeout(function() { resolve(updateIndustrySignals()); }, LAYER_DELAY);
       });
     })
     .then(function() {
       onProgress('行业信号完成，正在扫描趋势右侧...');
       return new Promise(function(resolve) {
-        setTimeout(function() { resolve(updateTrendLeaders()); }, LAYER_DELAY);
+        Perf.trackedSetTimeout(function() { resolve(updateTrendLeaders()); }, LAYER_DELAY);
       });
     })
     .then(function() {
       onProgress('趋势右侧完成，正在扫描左侧抄底...');
       return new Promise(function(resolve) {
-        setTimeout(function() { resolve(updateBottomPick()); }, LAYER_DELAY);
+        Perf.trackedSetTimeout(function() { resolve(updateBottomPick()); }, LAYER_DELAY);
       });
     })
     .then(function() {
@@ -2400,7 +2400,7 @@ function fetchKlineData(onProgress) {
 
   // 60秒总超时：超时后不再阻塞主流程，后台请求完成后自动更新缓存和UI
   var timeoutPromise = new Promise(function(resolve) {
-    setTimeout(function() { resolve('timeout'); }, KLINE_TOTAL_TIMEOUT);
+    Perf.trackedSetTimeout(function() { resolve('timeout'); }, KLINE_TOTAL_TIMEOUT);
   });
 
   return Promise.race([workPromise, timeoutPromise]).then(function(result) {
@@ -2483,10 +2483,10 @@ function refreshSentimentData(forceRefresh) {
     renderSentimentPanel(data);
     renderEarlyWarnings(data);
     generateDailyReview(false);
-    // 首次获取失败时自动重试一次（延迟5秒，应对瞬时网络抖动）
+    // 首次获取失败时自动重试一次（延迟3秒，应对瞬时网络抖动）
     if (!data && !forceRefresh) {
-      if(__DEBUG__)console.warn('情绪数据获取失败，5秒后自动重试...');
-      setTimeout(function() {
+      if(__DEBUG__)console.warn('情绪数据获取失败，3秒后自动重试...');
+      Perf.trackedSetTimeout(function() {
         fetchMarketSentiment(true).then(function(retryData) {
           if (retryData) {
             _lastSentimentData = retryData;
@@ -2497,7 +2497,7 @@ function refreshSentimentData(forceRefresh) {
             generateDailyReview(false);
           }
         }).catch(function() {});
-      }, 5000);
+      }, 3000);
     }
   }).catch(function() {
     renderSentimentPanel(null);
@@ -2540,7 +2540,7 @@ function refreshSentimentManual() {
       });
     } else {
       // refreshSentimentData 未返回 Promise，使用超时兜底
-      setTimeout(function() {
+      Perf.trackedSetTimeout(function() {
         if (btn) btn.classList.remove('spinning');
         _sentRefreshLock = false;
       }, 5000);
@@ -2710,22 +2710,23 @@ function runAnalysis(forceRefresh) {
     }).catch(function() {
       renderMarketFlow(null);
       renderSectorCapitalAnalysis(null);
+    }).then(function() {
+      // 阶段3：市场情绪数据（最后获取，优先级最低，且自带缓存策略）
+      return refreshSentimentData(false);
+    }).then(function() {
+      _isFetching = false;
+    }).catch(function(err) {
+      console.warn('数据获取异常:', err);
+      showToast('⚠️ 数据加载异常，已展示基准数据');
+      renderIndexCards(null);
+      renderOverview();
+      renderDashboard(null);
+      renderIndustryLeaders(null);
+      drawHeatmap();
+      drawPEBar(null);
+      renderKlineFromCache();
+      _isFetching = false;
     });
-  }).then(function() {
-    // 阶段3：市场情绪数据（最后获取，优先级最低，且自带缓存策略）
-    refreshSentimentData(false);
-    _isFetching = false;
-  }).catch(function(err) {
-    console.warn('数据获取异常:', err);
-    showToast('⚠️ 数据加载异常，已展示基准数据');
-    renderIndexCards(null);
-    renderOverview();
-    renderDashboard(null);
-    renderIndustryLeaders(null);
-    drawHeatmap();
-    drawPEBar(null);
-    renderKlineFromCache();
-    _isFetching = false;
   });
 }
 

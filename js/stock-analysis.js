@@ -78,15 +78,15 @@ function triggerSearchTransition(callback) {
   });
 
   // 动画中途执行回调（在黑洞吞噬最强时切换内容）
-  setTimeout(function() {
-    if (typeof callback === 'function') callback();
-  }, 350);
+  Perf.trackedSetTimeout(function() {
+ if (typeof callback === 'function') callback();
+}, 350);
 
   // 动画结束后移除覆盖层
-  setTimeout(function() {
+  Perf.trackedSetTimeout(function() {
     overlay.classList.remove('active');
     overlay.classList.add('fadeout');
-    setTimeout(function() {
+    Perf.trackedSetTimeout(function() {
       if (overlay.parentNode) overlay.remove();
     }, 350);
   }, 900);
@@ -106,10 +106,10 @@ function backToSearch() {
   }
   // 聚焦并全选，方便直接输入新代码
   if (searchInput) {
-    setTimeout(function() {
-      searchInput.focus();
-      searchInput.select();
-    }, 400);
+    Perf.trackedSetTimeout(function() {
+ searchInput.focus();
+ searchInput.select();
+}, 400);
   }
 }
 
@@ -122,7 +122,7 @@ function searchStock() {
   _searchInProgress = true;
 
   // 清除搜索联想防抖定时器，防止结果已显示后联想下拉框弹出导致页面跳回搜索框
-  if (_suggestTimer) { clearTimeout(_suggestTimer); _suggestTimer = null; }
+  if (_suggestTimer) { Perf.clearTimeout(_suggestTimer); _suggestTimer = null; }
   var suggestEl = document.getElementById('searchSuggest');
   if (suggestEl) suggestEl.classList.remove('show');
 
@@ -778,7 +778,7 @@ function dcJsonp(url, timeout) {
     };
 
     function cleanup() {
-      if (timer) clearTimeout(timer);
+      if (timer) Perf.clearTimeout(timer);
       delete window[cbName];
       if (script.parentNode) script.parentNode.removeChild(script);
     }
@@ -788,10 +788,10 @@ function dcJsonp(url, timeout) {
       reject(new Error('数据中心接口请求失败'));
     };
 
-    timer = setTimeout(function() {
-      cleanup();
-      reject(new Error('数据中心接口超时'));
-    }, timeout);
+    timer = Perf.trackedSetTimeout(function() {
+ cleanup();
+ reject(new Error('数据中心接口超时'));
+}, timeout);
 
     var sep = url.indexOf('?') >= 0 ? '&' : '?';
     script.src = url + sep + 'callback=' + cbName;
@@ -2536,10 +2536,10 @@ function generateDailyReview(forceRefresh) {
     }
     fetchMarketSentiment(true).then(function(data) {
       _lastSentimentData = data;
-      setTimeout(function() {
-        renderDailyReviewContent(container, _lastRealtimeData || {}, data, _lastSectorFlowData);
-        if (btn) { btn.disabled = false; btn.textContent = '⟳ 刷新复盘'; }
-      }, 100);
+      Perf.trackedSetTimeout(function() {
+ renderDailyReviewContent(container, _lastRealtimeData || {}, data, _lastSectorFlowData);
+ if (btn) { btn.disabled = false; btn.textContent = '⟳ 刷新复盘'; }
+}, 100);
     }).catch(function() {
       renderDailyReviewContent(container, _lastRealtimeData || {}, null, _lastSectorFlowData);
       if (btn) { btn.disabled = false; btn.textContent = '⟳ 刷新复盘'; }
@@ -5594,12 +5594,12 @@ function renderStockResult(stockData, finData, flowData, loading) {
   // 穿透式特效已在 triggerSearchTransition 中完成视觉切换，无需额外滚动
   // 仅在首次渲染时静默定位到结果区域顶部（不使用 smooth 避免可见的向下滑动）
   if (loading) {
-    setTimeout(function() {
-      if (title) {
-        var top = title.getBoundingClientRect().top + window.pageYOffset - 10;
-        window.scrollTo({ top: top, behavior: 'auto' });
-      }
-    }, 350);
+    Perf.trackedSetTimeout(function() {
+ if (title) {
+ var top = title.getBoundingClientRect().top + window.pageYOffset - 10;
+ window.scrollTo({ top: top, behavior: 'auto' });
+ }
+ }, 350);
   }
 
   // === 自动收藏：评分≥75且财务数据已加载时，自动添加到「自动关注」组合 ===
@@ -6683,9 +6683,9 @@ function renderKlineChart(klData, stockName, realtimePrice) {
   else detailEl.appendChild(tempDiv.firstChild);
 
   // 延迟绘制，确保 canvas 已挂载到 DOM
-  setTimeout(function() {
-    drawStockKline(klData, realtimePrice);
-  }, 50);
+  Perf.trackedSetTimeout(function() {
+ drawStockKline(klData, realtimePrice);
+ }, 50);
 }
 
 /**
