@@ -2552,6 +2552,295 @@ function generateDailyReview(forceRefresh) {
 }
 
 /**
+ * 获取历史趋势数据
+ * 用于判断连续行情趋势
+ * @returns {Object} { scoreTrend, amountTrend, upDays3, upDays5, scoreChange3 }
+ */
+function getDaxiaoTrendData() {
+  var trend = {
+    scoreTrend: 'neutral',    // 'rising' | 'falling' | 'neutral'
+    amountTrend: 'neutral',   // 'rising' | 'falling' | 'neutral'
+    upDays3: 0,              // 近3天上涨天数
+    upDays5: 0,              // 近5天上涨天数
+    scoreChange3: 0,          // 近3次情绪变化
+    scoreChange5: 0,          // 近5次情绪变化
+    consecutiveRise: 0,       // 连续上涨天数
+    consecutiveFall: 0,       // 连续下跌天数
+    historyLength: 0
+  };
+
+  try {
+    var raw = localStorage.getItem(SENTIMENT_HISTORY_KEY);
+    if (!raw) return trend;
+    var history = JSON.parse(raw);
+    if (!history || history.length < 3) return trend;
+
+    trend.historyLength = history.length;
+
+    // 取最近5条记录
+    var recent = history.slice(Math.max(0, history.length - 5));
+    var n = recent.length;
+
+    // 计算情绪趋势
+    if (n >= 3) {
+      var first3 = recent[recent.length - 3];
+      var last3 = recent[recent.length - 1];
+      trend.scoreChange3 = last3.score - first3.score;
+
+      if (trend.scoreChange3 > 10) trend.scoreTrend = 'rising';
+      else if (trend.scoreChange3 < -10) trend.scoreTrend = 'falling';
+    }
+
+    if (n >= 5) {
+      var first5 = recent[recent.length - 5];
+      trend.scoreChange5 = last3.score - first5.score;
+    }
+
+    // 计算近3天/5天涨跌（基于情绪指数变化方向）
+    var dailyChanges = [];
+    for (var i = Math.max(0, n - 6); i < n - 1; i++) {
+      if (history[i] && history[i + 1]) {
+        dailyChanges.push(history[i + 1].score - history[i].score);
+      }
+    }
+
+    // 简化：统计近期变化方向
+    trend.upDays3 = dailyChanges.slice(-3).filter(function(d) { return d > 0; }).length;
+    trend.upDays5 = dailyChanges.slice(-5).filter(function(d) { return d > 0; }).length;
+
+    // 计算量能趋势
+    if (n >= 3) {
+      var amounts = recent.slice(-3).map(function(r) { return r.totalAmount || 0; });
+      if (amounts.length >= 3) {
+        if (amounts[2] > amounts[1] && amounts[1] > amounts[0]) {
+          trend.amountTrend = 'rising';
+        } else if (amounts[2] < amounts[1] && amounts[1] < amounts[0]) {
+          trend.amountTrend = 'falling';
+        }
+      }
+    }
+
+    // 计算连续涨跌（基于每日情绪变化）
+    var consecutiveRise = 0, consecutiveFall = 0;
+    for (var j = dailyChanges.length - 1; j >= 0; j--) {
+      if (dailyChanges[j] > 0) {
+        if (consecutiveFall === 0) consecutiveRise++;
+        else break;
+      } else if (dailyChanges[j] < 0) {
+        if (consecutiveRise === 0) consecutiveFall++;
+        else break;
+      }
+    }
+    trend.consecutiveRise = consecutiveRise;
+    trend.consecutiveFall = consecutiveFall;
+
+  } catch(e) {
+    if (__DEBUG__) console.warn('获取趋势数据失败:', e);
+  }
+
+  return trend;
+}
+
+/**
+ * 李大霄老师行情研判函数 v2
+ * 基于连续趋势 + 实时数据综合判断
+ * @param {number} aShareChg - A股平均涨跌幅
+ * @param {number} score - 情绪指数 0-100
+ * @param {number} volRatio - 量比（相对20日均量）
+ * @param {number} advDecline - 涨跌比
+ * @param {number} limitUp - 涨停家数
+ * @param {number} maxLbc - 最高连板数
+ * @param {Object} trendData - 历史趋势数据（可选）
+ * @returns {Object} { headline, reason, tags, cssClass }
+ */
+function getDaxiaoVerdict(aShareChg, score, volRatio, advDecline, limitUp, maxLbc, trendData) {
+  var result = { headline: '', reason: '', tags: [], cssClass: 'dv-neutral' };
+
+  // 获取趋势数据
+  if (!trendData) trendData = getDaxiaoTrendData();
+
+  var isRising = trendData.scoreTrend === 'rising';
+  var isFalling = trendData.scoreTrend === 'falling';
+  var hasVolume = trendData.amountTrend === 'rising';
+  var hasConsecutiveRise = trendData.consecutiveRise >= 2;
+  var hasConsecutiveFall = trendData.consecutiveFall >= 2;
+  var hasHistory = trendData.historyLength >= 3;
+
+  // ===== 顶部区域判断（基于历史）=====
+  if (hasHistory && score >= 80 && isRising && aShareChg >= 1.5) {
+    // 连续上涨后的狂热
+    if (trendData.consecutiveRise >= 3 || trendData.scoreChange3 >= 20) {
+      result.headline = '🔴【做好人】才能买好股！';
+      result.reason = '连续' + trendData.consecutiveRise + '天上涨，情绪指数飙升至' + score + '分！' + (score >= 90 ? '市场已极度狂热！现在！立刻！减仓！' : '风险在快速积累，请务必减仓锁定利润！');
+      result.tags = ['风险提示', '减仓时机', '冷静决策', '落袋为安'];
+      result.cssClass = 'dv-extreme-bull';
+      return result;
+    }
+    // 大国牛
+    else if (aShareChg >= 2.5 && hasVolume) {
+      result.headline = '🚨【大国牛】扑面而来！';
+      result.reason = '市场暴涨' + aShareChg.toFixed(1) + '%，情绪指数飙升至' + score + '分，量能持续放大，' + (maxLbc >= 5 ? '连板高度达' + maxLbc + '板！' : '涨停潮涌现！') + '这是久违的全面做多行情！';
+      result.tags = ['大国牛', '全面做多', '量价齐升', '涨停潮'];
+      result.cssClass = 'dv-extreme-bull';
+      return result;
+    }
+    // 疯牛
+    else if (aShareChg >= 1.5 || hasConsecutiveRise) {
+      result.headline = '🔥【疯牛】已经启动！';
+      result.reason = '市场强势' + (aShareChg >= 1.5 ? '上涨' : '连续走强') + '，情绪高涨至' + score + '分，' + (hasVolume ? '量能充沛，' : '') + '赚钱效应极佳！';
+      result.tags = ['疯牛', '强势做多', '赚钱效应', '优质标的'];
+      result.cssClass = 'dv-strong-bull';
+      return result;
+    }
+  }
+
+  // ===== 底部区域判断（基于历史）=====
+  if (hasHistory && score <= 35 && isFalling && aShareChg <= -1) {
+    // 连续下跌后的绝望
+    if (trendData.consecutiveFall >= 3 || Math.abs(trendData.scoreChange3) >= 20) {
+      result.headline = '💀【地球顶】远离毒品！';
+      result.reason = '连续' + trendData.consecutiveFall + '天下跌，情绪指数暴跌至' + score + '分！' + (score <= 20 ? '市场已极度恐慌，物极必反！' : '恐慌情绪蔓延，底部越来越近！') + '黎明前的黑暗最难熬，但曙光就在前方！';
+      result.tags = ['极度悲观', '黎明前的黑暗', '坚持住', '曙光在即'];
+      result.cssClass = 'dv-extreme-bear';
+      return result;
+    }
+    // 最后牛市
+    else if (score <= 25 && volRatio <= 0.8) {
+      result.headline = '😭【最后牛市】绝地反击！';
+      result.reason = '市场大跌' + Math.abs(aShareChg).toFixed(1) + '%，情绪降至' + score + '分，但量能萎缩说明抛压枯竭！物极必反，这可能是' + (score <= 15 ? '历史大底的绝佳机会！' : '最后的买入时机！');
+      result.tags = ['最后牛市', '绝地反击', '历史机遇', '逆向投资'];
+      result.cssClass = 'dv-last-bull';
+      return result;
+    }
+    // 青春底
+    else if (aShareChg <= -1.5) {
+      result.headline = '📉【青春底】无需恐慌！';
+      result.reason = '市场调整' + Math.abs(aShareChg).toFixed(1) + '%，但' + (hasHistory ? '这不过是上涨途中的正常回调' : '基本面依然稳健') + '，青春底是' + (score <= 25 ? '极度恐慌下的黄金坑' : '优质标的的低吸机会') + '！';
+      result.tags = ['青春底', '正常回调', '逢低吸纳', '逆向布局'];
+      result.cssClass = 'dv-teen-bottom';
+      return result;
+    }
+    // 散户离场
+    else if (advDecline <= 0.5 || limitUp <= 5) {
+      result.headline = '🚪【散户离场】底部将近！';
+      result.reason = '市场大跌' + Math.abs(aShareChg).toFixed(1) + '%，赚钱效应极差，' + (limitUp <= 5 ? '涨停寥寥无几' : '涨停仅' + limitUp + '家') + '，散户绝望离场！但历史告诉我们：底部总在绝望中诞生！';
+      result.tags = ['底部区域', '绝望中见底', '逆向思维', '机构进场'];
+      result.cssClass = 'dv-bear';
+      return result;
+    }
+  }
+
+  // ===== 震荡上行判断（基于连续趋势）=====
+  if (hasHistory && isRising && hasConsecutiveRise && aShareChg >= 0.5) {
+    if (aShareChg >= 1.5 && score >= 65) {
+      result.headline = '🐢【慢牛】稳步前行！';
+      result.reason = '已连续' + trendData.consecutiveRise + '天走强，市场稳步上涨' + aShareChg.toFixed(1) + '%，走势稳健、量能配合，这是健康的慢牛格局！坚定信心，做多中国！';
+      result.tags = ['慢牛', '稳扎稳打', '趋势向上', '耐心持有'];
+      result.cssClass = 'dv-slow-bull';
+      return result;
+    }
+    else if (aShareChg >= 0.5) {
+      result.headline = '🌱【扎扎实实】做多中国！';
+      result.reason = '连续' + trendData.consecutiveRise + '天上涨，市场稳步上行' + aShareChg.toFixed(1) + '%，情绪持续回暖，这是健康的多头格局！';
+      result.tags = ['多头格局', '健康上涨', '信心十足', '做多中国'];
+      result.cssClass = 'dv-slow-bull';
+      return result;
+    }
+  }
+
+  // ===== 震荡下行判断（基于连续趋势）=====
+  if (hasHistory && isFalling && hasConsecutiveFall && aShareChg <= -0.3) {
+    result.headline = '🌙【余钱】才能买好股！';
+    result.reason = '已连续' + trendData.consecutiveFall + '天下跌，市场回落' + Math.abs(aShareChg).toFixed(1) + '%，此刻是检视持仓、布局优质标的的好时机。记住：用余钱投资，不要杠杆！';
+    result.tags = ['正常调整', '检视持仓', '余钱投资', '去伪存真'];
+    result.cssClass = 'dv-neutral';
+    return result;
+  }
+
+  // ===== 底部试探判断（缩量见底）=====
+  if (aShareChg >= 0 && aShareChg < 1 && volRatio <= 0.8 && score >= 40 && score <= 60) {
+    if (hasHistory && isFalling && trendData.amountTrend === 'falling') {
+      result.headline = '💎【钻石底】若隐若现！';
+      result.reason = '市场小幅上扬但持续缩量，主力资金悄然吸筹！地量见地价，' + (trendData.scoreChange3 <= -10 ? '情绪已连降' + Math.abs(trendData.scoreChange3).toFixed(0) + '分' : '') + '，钻石底正在形成！';
+      result.tags = ['钻石底', '地量吸筹', '价值投资', '逆向思维'];
+      result.cssClass = 'dv-diamond-bottom';
+      return result;
+    }
+    else if (score >= 45 && score < 55) {
+      result.headline = '👶【婴儿底】悄然降临！';
+      result.reason = '市场微幅上涨' + aShareChg.toFixed(1) + '%，情绪处于相对低位' + (isFalling ? '但已企稳' : '') + '，婴儿底或已探明，布局时机渐显！';
+      result.tags = ['婴儿底', '底部区域', '布局时机', '耐心等待'];
+      result.cssClass = 'dv-baby-bottom';
+      return result;
+    }
+  }
+
+  // ===== 警示：黑五类炒作 =====
+  if (advDecline >= 2 && limitUp > 30 && volRatio >= 1.2 && aShareChg > 1) {
+    result.headline = '⚠️【黑五类】炒作疯狂！';
+    result.reason = '涨停暴增至' + limitUp + '家，小票满天飞！' + (hasConsecutiveRise ? '连续炒作' : '') + '这是典型的投机炒作！远离黑五类，拥抱核心资产！';
+    result.tags = ['黑五类', '投机炒作', '远离小票', '拥抱蓝筹'];
+    result.cssClass = 'dv-warning';
+    return result;
+  }
+
+  // ===== 警示：二八分化 =====
+  if ((aShareChg > 0 && aShareChg < 0.5 && advDecline < 0.7) || (aShareChg < -0.3 && aShareChg > -1 && advDecline >= 1.2)) {
+    result.headline = '⚖️【二八分化】精选赛道！';
+    result.reason = '市场呈现明显分化' + (isRising ? '，指数小涨但个股普跌' : isFalling ? '，指数小跌但个股分化' : '，涨跌互现') + '，选股难度加大，拥抱龙头、回避边缘！';
+    result.tags = ['分化行情', '精选龙头', '回避边缘', '结构机会'];
+    result.cssClass = 'dv-divide';
+    return result;
+  }
+
+  // ===== 震荡整理 =====
+  if (Math.abs(aShareChg) <= 0.5 && volRatio <= 0.9 && score >= 35 && score <= 65) {
+    result.headline = '🤷【横盘整理】静待时机！';
+    var advice = score >= 50 ? '保持半仓，静待突破' : '控制仓位，等待企稳';
+    if (hasHistory) {
+      advice = isRising ? '保持仓位，顺势而为' : isFalling ? '控制仓位，等待信号' : advice;
+    }
+    result.reason = '市场成交清淡，指数原地踏步' + (hasHistory ? '，' + (isRising ? '近期连续走强' : isFalling ? '近期有所回调' : '方向待定') : '') + '。建议：' + advice + '。';
+    result.tags = ['震荡市', '静观其变', '控制仓位', '等待信号'];
+    result.cssClass = 'dv-neutral';
+    return result;
+  }
+
+  // ===== 单日大幅上涨（无历史趋势）=====
+  if (aShareChg >= 2 && score >= 70 && !hasHistory) {
+    result.headline = '🔥【行情启动】顺势而为！';
+    result.reason = '市场强势上涨' + aShareChg.toFixed(1) + '%，情绪高涨至' + score + '分，量能充沛！顺势而为！但注意不要追高！';
+    result.tags = ['行情启动', '顺势而为', '控制仓位', '不要追高'];
+    result.cssClass = 'dv-strong-bull';
+    return result;
+  }
+
+  // ===== 单日大幅下跌（无历史趋势）=====
+  if (aShareChg <= -2 && score <= 35 && !hasHistory) {
+    result.headline = '📉【回调考验】耐心等待！';
+    result.reason = '市场大跌' + Math.abs(aShareChg).toFixed(1) + '%，情绪降至' + score + '分。此刻需耐心等待企稳信号，不宜盲目抄底。';
+    result.tags = ['回调考验', '耐心等待', '控制仓位', '等待信号'];
+    result.cssClass = 'dv-bear';
+    return result;
+  }
+
+  // ===== 兜底：其他情况 ======
+  if (aShareChg >= 0.3) {
+    result.headline = '📊【稳中向好】耐心等待！';
+    result.reason = '市场小幅上涨' + aShareChg.toFixed(1) + '%，情绪指数' + score + '分' + (hasHistory ? '，' + (isRising ? '近期连续走强' : '趋势待观察') : '') + '，继续保持关注。';
+    result.tags = ['静观其变', '耐心等待', '顺势而为', '控制仓位'];
+    result.cssClass = 'dv-neutral';
+  } else {
+    result.headline = '🔇【静观其变】控制仓位！';
+    result.reason = '市场小幅回落' + Math.abs(aShareChg).toFixed(1) + '%，情绪指数' + score + '分' + (hasHistory ? '，' + (isFalling ? '近期连续走弱' : '趋势待观察') : '') + '，建议控制仓位。';
+    result.tags = ['静观其变', '耐心等待', '控制仓位', '顺势而为'];
+    result.cssClass = 'dv-neutral';
+  }
+
+  return result;
+}
+
+/**
  * 渲染复盘内容（核心逻辑）
  */
 function renderDailyReviewContent(container, rt, sent, flow) {
@@ -2605,8 +2894,10 @@ function renderDailyReviewContent(container, rt, sent, flow) {
   var amountYi = totalAmount / 1e8;
   var prevYi = prevAmount / 1e8;
   var volChangePct = prevAmount > 0 ? ((totalAmount - prevAmount) / prevAmount) * 100 : 0;
+  var avg20Yi = sent && sent.avg20Amount ? sent.avg20Amount / 1e8 : 0;
+  var volRatio20 = avg20Yi > 0 ? amountYi / avg20Yi : 1;
 
-  // ===== 3. 判断市场整体走向 =====
+  // ===== 4. 判断市场整体走向 =====
   var avgChg = chgCount > 0 ? totalChg / chgCount : 0;
   var aShareChg = 0;
   if (shIdx && szIdx) {
@@ -2645,6 +2936,37 @@ function renderDailyReviewContent(container, rt, sent, flow) {
 
   // ===== 4. 生成HTML =====
   var html = '';
+
+  // --- 李大霄老师行情判断（传入历史趋势数据）---
+  var trendData = getDaxiaoTrendData();
+  var daxiaoVerdict = getDaxiaoVerdict(aShareChg, score, volRatio20, advDecline, limitUp, maxLbc, trendData);
+
+  // 趋势状态指示器
+  var trendIndicator = '';
+  if (trendData.historyLength >= 3) {
+    var trendIcon = trendData.scoreTrend === 'rising' ? '📈' : (trendData.scoreTrend === 'falling' ? '📉' : '➡️');
+    var trendText = trendData.scoreTrend === 'rising' ? '连升' : (trendData.scoreTrend === 'falling' ? '连降' : '平稳');
+    var consecutive = Math.max(trendData.consecutiveRise, trendData.consecutiveFall);
+    if (consecutive > 0) {
+      trendIndicator = '<span class="dv-trend-badge">' + trendIcon + ' ' + trendText + consecutive + '天</span>';
+    }
+  }
+
+  html += '<div class="daxiao-verdict ' + daxiaoVerdict.cssClass + '">';
+  html += '<div class="dv-header">';
+  html += '<span class="dv-avatar">🦁</span>';
+  html += '<span class="dv-title">李大霄老师行情研判</span>';
+  if (trendIndicator) html += trendIndicator;
+  html += '</div>';
+  html += '<div class="dv-content">';
+  html += '<div class="dv-headline">' + daxiaoVerdict.headline + '</div>';
+  html += '<div class="dv-reason">' + daxiaoVerdict.reason + '</div>';
+  html += '<div class="dv-tags">';
+  daxiaoVerdict.tags.forEach(function(tag) {
+    html += '<span class="dv-tag">' + tag + '</span>';
+  });
+  html += '</div>';
+  html += '</div></div>';
 
   // --- 摘要条 ---
   var sentLabel = level ? level.cnLabel : '中性';
