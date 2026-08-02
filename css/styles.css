@@ -389,7 +389,7 @@ body {
 .news-analysis {
   background: var(--bg2); border: 0.5px solid var(--rule);
   border-radius: 2px; padding: 0.5rem 0.6rem; margin-top: 0.4rem;
-  position: relative; overflow: hidden;
+  position: relative; overflow: visible; z-index: 1;
 }
 .news-analysis::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
@@ -488,6 +488,8 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   margin-left: auto;
+  position: relative;
+  z-index: 10;
 }
 .na-refresh-btn:hover {
   background: rgba(0, 200, 255, 0.25);
