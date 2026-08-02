@@ -1636,7 +1636,35 @@ function fetchTreasuryYield() {
     });
   }
 
-  // 方案5: 新浪财经
+  // 方案6: 中债收益率曲线API
+  function tryChinabond() {
+    // 中国债券信息网（中债估值中心）官方API
+    var today = new Date();
+    var dateStr = today.getFullYear() + '-' + 
+      String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(today.getDate()).padStart(2, '0');
+    var url = 'https://yield.chinabond.com.cn/cbweb-czb-web/czb/czbQueryXy?zblx=xy&workTime=' + dateStr + '&qxmc=1';
+    return fetchWithTimeout(url, { cache: 'no-store' }, 5000)
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(data) {
+        if (data && data.length > 0 && data[0].seriesData) {
+          // seriesData: [[期限, 收益率], ...] 找10年期
+          var seriesData = data[0].seriesData;
+          for (var i = 0; i < seriesData.length; i++) {
+            if (seriesData[i][0] === 10.0) {
+              var y = parseFloat(seriesData[i][1]);
+              if (y > 0 && y < 10) return y;
+            }
+          }
+        }
+        throw new Error('中债曲线数据解析失败');
+      });
+  }
+
+  // 方案7: 新浪财经
   function trySina() {
     var url = 'https://hq.sinajs.cn/list=sh010107';
     return fetchWithTimeout(url, { 
@@ -1679,7 +1707,11 @@ function fetchTreasuryYield() {
       return tryNetease();
     })
     .catch(function(err) {
-      console.warn('方案5东方财富数据中心失败:', err.message, '→ 尝试新浪');
+      console.warn('方案5东方财富数据中心失败:', err.message, '→ 尝试中债曲线API');
+      return tryChinabond();
+    })
+    .catch(function(err) {
+      console.warn('方案6中债曲线API失败:', err.message, '→ 尝试新浪');
       return trySina();
     })
     .then(function(y) {
