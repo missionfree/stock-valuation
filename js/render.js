@@ -2143,13 +2143,17 @@ function updateHeaderTime(success) {
    七、消息面分析
    ============================================================ */
 
+// 消息面分析筛选状态
+var _naFilter = 'all';
+// 全局存储分析因素，供筛选使用
+var _naFactors = [];
+
 /**
  * 消息面分析主函数 - 每日更新
  * 分析当前市场消息面，判定利好/利空/中性因素
  */
 function renderNewsAnalysis() {
   var container = document.getElementById('naList');
-  var timeEl = document.getElementById('naTime');
   var overallEl = document.getElementById('nasValue');
   var bullCountEl = document.getElementById('nasBullCount');
   var bearCountEl = document.getElementById('nasBearCount');
@@ -2162,18 +2166,13 @@ function renderNewsAnalysis() {
     String(now.getMonth() + 1).padStart(2, '0') + '-' +
     String(now.getDate()).padStart(2, '0');
   
-  // 更新时间
-  if (timeEl) {
-    timeEl.textContent = '更新: ' + dateStr;
-  }
-  
   // 获取市场数据用于判断
-  var factors = analyzeMarketFactors();
+  _naFactors = analyzeMarketFactors();
   
   // 统计因素数量
-  var bullCount = factors.filter(function(f) { return f.type === 'bull'; }).length;
-  var bearCount = factors.filter(function(f) { return f.type === 'bear'; }).length;
-  var neutralCount = factors.filter(function(f) { return f.type === 'neutral'; }).length;
+  var bullCount = _naFactors.filter(function(f) { return f.type === 'bull'; }).length;
+  var bearCount = _naFactors.filter(function(f) { return f.type === 'bear'; }).length;
+  var neutralCount = _naFactors.filter(function(f) { return f.type === 'neutral'; }).length;
   
   // 更新统计
   if (bullCountEl) bullCountEl.textContent = bullCount;
@@ -2203,36 +2202,122 @@ function renderNewsAnalysis() {
     overallEl.className = 'nas-value nas-overall-' + overallClass;
   }
   
+  // 根据筛选条件过滤因素
+  var filtered = _naFactors;
+  if (_naFilter !== 'all') {
+    filtered = _naFactors.filter(function(f) { return f.type === _naFilter; });
+  }
+  
   // 渲染消息卡片
   var html = '';
-  factors.forEach(function(factor) {
-    var iconMap = {
-      'bull': '📈',
-      'bear': '📉',
-      'neutral': '➖'
-    };
-    var tagClass = {
-      'bull': 'tag-bull',
-      'bear': 'tag-bear',
-      'neutral': 'tag-neutral'
-    };
-    var tagText = {
-      'bull': '利好',
-      'bear': '利空',
-      'neutral': '中性'
-    };
-    
-    html += '<div class="na-card na-card-' + factor.type + '">' +
-      '<div class="na-card-header">' +
-        '<span class="na-card-icon">' + iconMap[factor.type] + '</span>' +
-        '<span class="na-card-title">' + factor.title + '</span>' +
-        '<span class="na-card-tag ' + tagClass[factor.type] + '">' + tagText[factor.type] + '</span>' +
-      '</div>' +
-      '<div class="na-card-desc">' + factor.desc + '</div>' +
-    '</div>';
-  });
+  if (filtered.length === 0) {
+    html = '<div class="na-empty">暂无相关因素</div>';
+  } else {
+    filtered.forEach(function(factor) {
+      var tagClass = {
+        'bull': 'bull',
+        'bear': 'bear',
+        'neutral': 'neutral'
+      };
+      var tagText = {
+        'bull': '利好',
+        'bear': '利空',
+        'neutral': '中性'
+      };
+      
+      // 影响力圆点
+      var dotsHtml = '';
+      for (var d = 0; d < 3; d++) {
+        dotsHtml += '<span class="na-impact-dot' + (d < (factor.impact || 1) ? ' on' : '') + '"></span>';
+      }
+      
+      // 格式化时间
+      var timeStr = factor.time || (now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0'));
+      
+      html += '<div class="na-card na-' + factor.type + '">' +
+        '<div class="na-card-row">' +
+          '<span class="na-tag ' + tagClass[factor.type] + '">' + tagText[factor.type] + '</span>' +
+          '<span class="na-card-title">' + factor.title + '</span>' +
+          '<span class="na-impact">' + dotsHtml + '</span>' +
+          '<span class="na-card-time">' + timeStr + '</span>' +
+        '</div>' +
+        '<div class="na-card-desc">' + factor.desc + '</div>' +
+      '</div>';
+    });
+  }
   
   container.innerHTML = html;
+  
+  // 绑定筛选按钮事件
+  bindNaFilters();
+}
+
+/**
+ * 绑定消息面分析筛选按钮
+ */
+function bindNaFilters() {
+  var filters = document.querySelectorAll('.na-filter');
+  filters.forEach(function(btn) {
+    // 移除旧事件，避免重复绑定
+    var newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.addEventListener('click', function() {
+      var filter = newBtn.getAttribute('data-na-filter');
+      _naFilter = filter;
+      
+      // 更新按钮状态
+      document.querySelectorAll('.na-filter').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      newBtn.classList.add('active');
+      
+      // 重新渲染卡片
+      var container = document.getElementById('naList');
+      if (!container) return;
+      
+      var filtered = _naFactors;
+      if (_naFilter !== 'all') {
+        filtered = _naFactors.filter(function(f) { return f.type === _naFilter; });
+      }
+      
+      var html = '';
+      if (filtered.length === 0) {
+        html = '<div class="na-empty">暂无相关因素</div>';
+      } else {
+        var now = new Date();
+        filtered.forEach(function(factor) {
+          var tagClass = {
+            'bull': 'bull',
+            'bear': 'bear',
+            'neutral': 'neutral'
+          };
+          var tagText = {
+            'bull': '利好',
+            'bear': '利空',
+            'neutral': '中性'
+          };
+          
+          var dotsHtml = '';
+          for (var d = 0; d < 3; d++) {
+            dotsHtml += '<span class="na-impact-dot' + (d < (factor.impact || 1) ? ' on' : '') + '"></span>';
+          }
+          
+          var timeStr = factor.time || (now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0'));
+          
+          html += '<div class="na-card na-' + factor.type + '">' +
+            '<div class="na-card-row">' +
+              '<span class="na-tag ' + tagClass[factor.type] + '">' + tagText[factor.type] + '</span>' +
+              '<span class="na-card-title">' + factor.title + '</span>' +
+              '<span class="na-impact">' + dotsHtml + '</span>' +
+              '<span class="na-card-time">' + timeStr + '</span>' +
+            '</div>' +
+            '<div class="na-card-desc">' + factor.desc + '</div>' +
+          '</div>';
+        });
+      }
+      container.innerHTML = html;
+    });
+  });
 }
 
 /**

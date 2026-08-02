@@ -248,8 +248,13 @@
   <div class="news-analysis" id="newsAnalysis">
     <div class="na-header">
       <span class="na-title"><span class="na-icon">📰</span>消息面分析</span>
-      <span class="na-subtitle" id="naSubtitle">综合研判·每日更新</span>
-      <span class="na-time" id="naTime"></span>
+      <span class="na-subtitle" id="naSubtitle">市场消息驱动</span>
+      <div class="na-filters">
+        <button class="na-filter active" data-na-filter="all">全部</button>
+        <button class="na-filter" data-na-filter="bull">利好</button>
+        <button class="na-filter" data-na-filter="bear">利空</button>
+        <button class="na-filter" data-na-filter="neutral">中性</button>
+      </div>
       <button class="na-refresh-btn" onclick="refreshNewsAnalysis()" title="刷新分析">🔄</button>
     </div>
     <div class="na-summary-bar" id="naSummaryBar">
