@@ -1636,31 +1636,49 @@ function fetchTreasuryYield() {
     });
   }
 
-  // 方案6: 中债收益率曲线API
+  // 方案1: 中债收益率曲线API（直接调用或从GitHub缓存获取）
   function tryChinabond() {
-    // 中国债券信息网（中债估值中心）官方API
-    var today = new Date();
-    var dateStr = today.getFullYear() + '-' + 
-      String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-      String(today.getDate()).padStart(2, '0');
-    var url = 'https://yield.chinabond.com.cn/cbweb-czb-web/czb/czbQueryXy?zblx=xy&workTime=' + dateStr + '&qxmc=1';
-    return fetchWithTimeout(url, { cache: 'no-store' }, 5000)
+    // 优先尝试从GitHub data文件获取（CORS友好）
+    var cacheUrl = 'data/treasury.json?t=' + Date.now();
+    return fetchWithTimeout(cacheUrl, { cache: 'no-store' }, 3000)
       .then(function(res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       })
       .then(function(data) {
-        if (data && data.length > 0 && data[0].seriesData) {
-          // seriesData: [[期限, 收益率], ...] 找10年期
-          var seriesData = data[0].seriesData;
-          for (var i = 0; i < seriesData.length; i++) {
-            if (seriesData[i][0] === 10.0) {
-              var y = parseFloat(seriesData[i][1]);
-              if (y > 0 && y < 10) return y;
-            }
-          }
+        if (data && data.yield_10y) {
+          console.log('从GitHub缓存获取国债收益率:', data.yield_10y + '%');
+          return data.yield_10y;
         }
-        throw new Error('中债曲线数据解析失败');
+        throw new Error('GitHub缓存无数据');
+      })
+      .catch(function() {
+        // 备选：直接调用中债API（可能CORS受限）
+        var today = new Date();
+        var dateStr = today.getFullYear() + '-' + 
+          String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(today.getDate()).padStart(2, '0');
+        var url = 'https://yield.chinabond.com.cn/cbweb-czb-web/czb/czbQueryXy?zblx=xy&workTime=' + dateStr + '&qxmc=1';
+        return fetchWithTimeout(url, { 
+          cache: 'no-store',
+          headers: { 'Referer': 'https://yield.chinabond.com.cn/' }
+        }, 5000)
+          .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function(data) {
+            if (data && data.length > 0 && data[0].seriesData) {
+              var seriesData = data[0].seriesData;
+              for (var i = 0; i < seriesData.length; i++) {
+                if (seriesData[i][0] === 10.0) {
+                  var y = parseFloat(seriesData[i][1]);
+                  if (y > 0 && y < 10) return y;
+                }
+              }
+            }
+            throw new Error('中债曲线数据解析失败');
+          });
       });
   }
 
