@@ -2329,41 +2329,43 @@ function analyzeMarketFactors() {
   var now = new Date();
   var hour = now.getHours();
   var day = now.getDay();
+  var isWeekend = (day === 0 || day === 6);
   
-  // 周末判断
-  if (day === 0 || day === 6) {
+  // 交易时段判断
+  if (isWeekend) {
     factors.push({
       type: 'neutral',
       title: '周末休市',
-      desc: 'A股、港股休市，下周一正常开市'
+      desc: 'A股、港股休市，下周一正常开市',
+      impact: 1
     });
-    return factors;
-  }
-  
-  // 1. 交易时段判断
-  if (hour >= 9 && hour < 12) {
+  } else if (hour >= 9 && hour < 12) {
     factors.push({
       type: 'neutral',
       title: '早盘交易中',
-      desc: '沪深两市早盘时段，盘中波动正常'
+      desc: '沪深两市早盘时段，盘中波动正常',
+      impact: 1
     });
   } else if (hour >= 13 && hour < 15) {
     factors.push({
       type: 'neutral',
       title: '午盘进行中',
-      desc: '沪深两市午盘时段，关注尾盘动向'
+      desc: '沪深两市午盘时段，关注尾盘动向',
+      impact: 1
     });
   } else if (hour >= 15) {
     factors.push({
       type: 'neutral',
       title: '收盘完成',
-      desc: '今日交易已结束，明日继续'
+      desc: '今日交易已结束，明日继续',
+      impact: 1
     });
   } else {
     factors.push({
       type: 'neutral',
       title: '盘前观察',
-      desc: '开盘前准备阶段'
+      desc: '开盘前准备阶段',
+      impact: 1
     });
   }
   
