@@ -1085,8 +1085,8 @@ function initPage() {
   });
 
   // === 第二层：Canvas 绘制（下一帧执行，不阻塞首屏渲染） ===
+  // 注：renderDashboard 已在 runAnalysis 的阶段1完成时调用（见 rotation.js）
   requestAnimationFrame(function() {
-    renderDashboard(null);
     drawHeatmap();
     drawPEBar(null);
   });

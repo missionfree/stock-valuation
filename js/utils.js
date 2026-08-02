@@ -584,8 +584,7 @@ function getChangeColor(val) {
 var _odometerTimers = new WeakMap();
 function animateOdometer(el, newText) {
   if (!el) return;
-  var oldText = el.textContent;
-  if (oldText === newText) return; // 值未变化，不触发动画
+  // 删除文本比较保护：始终更新数值，保证市场吸引力指数能随国债收益率变化
   el.classList.remove('odometer-rolling');
   // 强制重排以重启动画
   void el.offsetWidth;
