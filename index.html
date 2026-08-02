@@ -244,6 +244,42 @@
     <div class="pv-list" id="pvList"></div>
   </div>
 
+  <!-- ==================== 消息面分析 ==================== -->
+  <div class="news-analysis" id="newsAnalysis">
+    <div class="na-header">
+      <span class="na-title"><span class="na-icon">📰</span>消息面分析</span>
+      <span class="na-subtitle" id="naSubtitle">综合研判·每日更新</span>
+      <span class="na-time" id="naTime"></span>
+    </div>
+    <div class="na-summary-bar" id="naSummaryBar">
+      <div class="nas-overall" id="nasOverall">
+        <span class="nas-label">综合判断</span>
+        <span class="nas-value" id="nasValue">加载中...</span>
+      </div>
+      <div class="nas-details" id="nasDetails">
+        <div class="nas-item nas-bull">
+          <span class="nas-item-icon">📈</span>
+          <span class="nas-item-label">利好因素</span>
+          <span class="nas-item-count" id="nasBullCount">0</span>
+        </div>
+        <div class="nas-item nas-bear">
+          <span class="nas-item-icon">📉</span>
+          <span class="nas-item-label">利空因素</span>
+          <span class="nas-item-count" id="nasBearCount">0</span>
+        </div>
+        <div class="nas-item nas-neutral">
+          <span class="nas-item-icon">➖</span>
+          <span class="nas-item-label">中性因素</span>
+          <span class="nas-item-count" id="nasNeutralCount">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="na-list" id="naList">
+      <div class="na-loading">📡 正在分析消息面...</div>
+    </div>
+    <div class="na-disclaimer">⚠️ 本分析基于公开数据统计，非投资建议</div>
+  </div>
+
   <!-- ==================== 第二层：Tab切换 ==================== -->
   <div class="tab-nav" role="tablist" aria-label="主要功能">
     <button class="tab-nav-btn active" role="tab" aria-selected="true" data-tab="valuation" onclick="switchTab('valuation')">📊 估值强度</button>

@@ -381,7 +381,100 @@ body {
   --highlight-gold-border: rgba(255, 238, 0, 0.3);
   --highlight-gold-glow: 0 0 4px rgba(255, 238, 0, 0.4);
   --policy-vane-top: linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.2), transparent);
+  --news-analysis-top: linear-gradient(90deg, transparent, rgba(251,191,36,0.3), rgba(56,189,248,0.2), transparent);
   --header-gradient: linear-gradient(135deg, #D946EF, #00FFFF, #CCFF00);
+}
+
+/* ==================== 消息面分析板块 ==================== */
+.news-analysis {
+  background: var(--bg2); border: 0.5px solid var(--rule);
+  border-radius: 2px; padding: 0.5rem 0.6rem; margin-top: 0.4rem;
+  position: relative; overflow: hidden;
+}
+.news-analysis::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: var(--news-analysis-top);
+}
+.na-header {
+  display: flex; align-items: center; gap: 0.4rem;
+  margin-bottom: 0.4rem; flex-wrap: wrap;
+}
+.na-title {
+  font-size: 0.66rem; font-weight: 700; color: var(--ink);
+  letter-spacing: 0.03em; white-space: nowrap;
+}
+.na-title .na-icon { margin-right: 0.15rem; }
+.na-subtitle {
+  font-size: 0.52rem; color: var(--muted); flex: 1; min-width: 0;
+}
+.na-time { font-size: 0.48rem; color: var(--muted); opacity: 0.85; white-space: nowrap; }
+.na-summary-bar {
+  background: linear-gradient(135deg, var(--bg3), var(--bg2));
+  border: 0.5px solid var(--glass-border);
+  border-radius: 2px; padding: 0.4rem; margin-bottom: 0.4rem;
+}
+.nas-overall {
+  display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;
+}
+.nas-label {
+  font-size: 0.56rem; font-weight: 600; color: var(--muted);
+}
+.nas-value {
+  font-size: 0.72rem; font-weight: 700; padding: 2px 10px;
+  border-radius: 3px; letter-spacing: 0.02em;
+}
+.nas-value.bull { background: var(--neon-red-bg); color: var(--neon-red); }
+.nas-value.bear { background: var(--neon-green-bg); color: var(--neon-green); }
+.nas-value.neutral { background: var(--neon-yellow-bg); color: var(--neon-yellow); }
+.nas-details {
+  display: flex; gap: 0.4rem; flex-wrap: wrap;
+}
+.nas-item {
+  display: flex; align-items: center; gap: 0.2rem;
+  font-size: 0.52rem; padding: 2px 8px;
+  border-radius: 2px; background: var(--bg3);
+}
+.nas-item.nas-bull { color: var(--neon-red); border: 0.5px solid rgba(244,63,94,0.3); }
+.nas-item.nas-bear { color: var(--neon-green); border: 0.5px solid rgba(16,185,129,0.3); }
+.nas-item.nas-neutral { color: var(--neon-yellow); border: 0.5px solid rgba(251,191,36,0.3); }
+.nas-item-count { font-weight: 700; font-family: var(--font-mono); }
+.na-list {
+  display: flex; flex-direction: column; gap: 0.3rem;
+}
+.na-card {
+  background: linear-gradient(135deg, var(--bg3), var(--bg2));
+  border: 0.5px solid var(--glass-border);
+  border-radius: 2px; padding: 0.35rem 0.45rem;
+  display: flex; align-items: flex-start; gap: 0.35rem;
+}
+.na-card.bull { border-left: 2.5px solid rgba(244,63,94,0.5); }
+.na-card.bear { border-left: 2.5px solid rgba(16,185,129,0.5); }
+.na-card.neutral { border-left: 2.5px solid rgba(251,191,36,0.5); }
+.na-card-icon {
+  font-size: 0.9rem; flex-shrink: 0; width: 1.2rem; text-align: center;
+}
+.na-card-content { flex: 1; min-width: 0; }
+.na-card-title {
+  font-size: 0.58rem; font-weight: 600; color: var(--ink);
+  margin-bottom: 0.15rem; line-height: 1.3;
+}
+.na-card-desc {
+  font-size: 0.52rem; color: var(--muted); line-height: 1.4;
+}
+.na-card-impact {
+  font-size: 0.5rem; font-weight: 600; padding: 1px 6px;
+  border-radius: 2px; flex-shrink: 0; align-self: center;
+}
+.na-card-impact.bull { background: var(--neon-red-bg); color: var(--neon-red); }
+.na-card-impact.bear { background: var(--neon-green-bg); color: var(--neon-green); }
+.na-card-impact.neutral { background: var(--neon-yellow-bg); color: var(--neon-yellow); }
+.na-loading {
+  font-size: 0.56rem; color: var(--muted); text-align: center;
+  padding: 0.8rem 0; opacity: 0.7;
+}
+.na-disclaimer {
+  font-size: 0.48rem; color: var(--muted); text-align: center;
+  margin-top: 0.4rem; opacity: 0.6;
 }
 
 /* ==================== 主题：深海蓝 ==================== */

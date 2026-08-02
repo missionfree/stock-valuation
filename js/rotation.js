@@ -2711,9 +2711,14 @@ function runAnalysis(forceRefresh) {
       renderMarketFlow(null);
       renderSectorCapitalAnalysis(null);
     }).then(function() {
+      // 阶段2.5：消息面分析（基于已有数据快速渲染）
+      renderNewsAnalysis();
+    }).then(function() {
       // 阶段3：市场情绪数据（最后获取，优先级最低，且自带缓存策略）
       return refreshSentimentData(false);
     }).then(function() {
+      // 阶段3.5：刷新消息面分析（纳入情绪数据后更新）
+      renderNewsAnalysis();
       _isFetching = false;
     }).catch(function(err) {
       console.warn('数据获取异常:', err);
@@ -2725,6 +2730,7 @@ function runAnalysis(forceRefresh) {
       drawHeatmap();
       drawPEBar(null);
       renderKlineFromCache();
+      renderNewsAnalysis();
       _isFetching = false;
     });
   });

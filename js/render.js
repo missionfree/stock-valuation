@@ -2139,3 +2139,282 @@ function updateHeaderTime(success) {
   }
 }
 
+/* ============================================================
+   七、消息面分析
+   ============================================================ */
+
+/**
+ * 消息面分析主函数 - 每日更新
+ * 分析当前市场消息面，判定利好/利空/中性因素
+ */
+function renderNewsAnalysis() {
+  var container = document.getElementById('naList');
+  var timeEl = document.getElementById('naTime');
+  var overallEl = document.getElementById('nasValue');
+  var bullCountEl = document.getElementById('nasBullCount');
+  var bearCountEl = document.getElementById('nasBearCount');
+  var neutralCountEl = document.getElementById('nasNeutralCount');
+  
+  if (!container) return;
+  
+  var now = new Date();
+  var dateStr = now.getFullYear() + '-' + 
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+  
+  // 更新时间
+  if (timeEl) {
+    timeEl.textContent = '更新: ' + dateStr;
+  }
+  
+  // 获取市场数据用于判断
+  var factors = analyzeMarketFactors();
+  
+  // 统计因素数量
+  var bullCount = factors.filter(function(f) { return f.type === 'bull'; }).length;
+  var bearCount = factors.filter(function(f) { return f.type === 'bear'; }).length;
+  var neutralCount = factors.filter(function(f) { return f.type === 'neutral'; }).length;
+  
+  // 更新统计
+  if (bullCountEl) bullCountEl.textContent = bullCount;
+  if (bearCountEl) bearCountEl.textContent = bearCount;
+  if (neutralCountEl) neutralCountEl.textContent = neutralCount;
+  
+  // 综合判断
+  var overall = '震荡整理';
+  var overallClass = 'neutral';
+  var score = bullCount - bearCount;
+  if (score >= 3) {
+    overall = '整体偏多';
+    overallClass = 'bull';
+  } else if (score >= 1) {
+    overall = '略微偏多';
+    overallClass = 'bull';
+  } else if (score <= -3) {
+    overall = '整体偏空';
+    overallClass = 'bear';
+  } else if (score <= -1) {
+    overall = '略微偏空';
+    overallClass = 'bear';
+  }
+  
+  if (overallEl) {
+    overallEl.textContent = overall;
+    overallEl.className = 'nas-value nas-overall-' + overallClass;
+  }
+  
+  // 渲染消息卡片
+  var html = '';
+  factors.forEach(function(factor) {
+    var iconMap = {
+      'bull': '📈',
+      'bear': '📉',
+      'neutral': '➖'
+    };
+    var tagClass = {
+      'bull': 'tag-bull',
+      'bear': 'tag-bear',
+      'neutral': 'tag-neutral'
+    };
+    var tagText = {
+      'bull': '利好',
+      'bear': '利空',
+      'neutral': '中性'
+    };
+    
+    html += '<div class="na-card na-card-' + factor.type + '">' +
+      '<div class="na-card-header">' +
+        '<span class="na-card-icon">' + iconMap[factor.type] + '</span>' +
+        '<span class="na-card-title">' + factor.title + '</span>' +
+        '<span class="na-card-tag ' + tagClass[factor.type] + '">' + tagText[factor.type] + '</span>' +
+      '</div>' +
+      '<div class="na-card-desc">' + factor.desc + '</div>' +
+    '</div>';
+  });
+  
+  container.innerHTML = html;
+}
+
+/**
+ * 分析市场因素 - 基于当前数据和宏观经济判断
+ * @returns {Array} 因素列表
+ */
+function analyzeMarketFactors() {
+  var factors = [];
+  var now = new Date();
+  var hour = now.getHours();
+  var day = now.getDay();
+  
+  // 周末判断
+  if (day === 0 || day === 6) {
+    factors.push({
+      type: 'neutral',
+      title: '周末休市',
+      desc: 'A股、港股休市，下周一正常开市'
+    });
+    return factors;
+  }
+  
+  // 1. 交易时段判断
+  if (hour >= 9 && hour < 12) {
+    factors.push({
+      type: 'neutral',
+      title: '早盘交易中',
+      desc: '沪深两市早盘时段，盘中波动正常'
+    });
+  } else if (hour >= 13 && hour < 15) {
+    factors.push({
+      type: 'neutral',
+      title: '午盘进行中',
+      desc: '沪深两市午盘时段，关注尾盘动向'
+    });
+  } else if (hour >= 15) {
+    factors.push({
+      type: 'neutral',
+      title: '收盘完成',
+      desc: '今日交易已结束，明日继续'
+    });
+  } else {
+    factors.push({
+      type: 'neutral',
+      title: '盘前观察',
+      desc: '开盘前准备阶段'
+    });
+  }
+  
+  // 2. 获取格雷厄姆指数判断
+  var grahamScore = getGrahamScore();
+  if (grahamScore >= 2) {
+    factors.push({
+      type: 'bull',
+      title: '估值低位',
+      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，市场整体低估，性价比突出'
+    });
+  } else if (grahamScore >= 1.5) {
+    factors.push({
+      type: 'bull',
+      title: '估值偏低',
+      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，估值处于历史低位区域'
+    });
+  } else if (grahamScore >= 0.5) {
+    factors.push({
+      type: 'neutral',
+      title: '估值适中',
+      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，市场估值处于合理区间'
+    });
+  } else {
+    factors.push({
+      type: 'bear',
+      title: '估值偏高',
+      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，市场估值偏高，注意风险'
+    });
+  }
+  
+  // 3. 国债收益率影响
+  var treasuryYield = parseFloat(localStorage.getItem('treasury_yield')) || 2.0;
+  if (treasuryYield < 2.0) {
+    factors.push({
+      type: 'bull',
+      title: '无风险利率低位',
+      desc: '10年期国债收益率 ' + treasuryYield.toFixed(2) + '%，资金成本低，利于股市'
+    });
+  } else if (treasuryYield > 3.5) {
+    factors.push({
+      type: 'bear',
+      title: '无风险利率偏高',
+      desc: '10年期国债收益率 ' + treasuryYield.toFixed(2) + '%，资金回流债市压力大'
+    });
+  } else {
+    factors.push({
+      type: 'neutral',
+      title: '利率环境平稳',
+      desc: '10年期国债收益率 ' + treasuryYield.toFixed(2) + '%，利率环境整体平稳'
+    });
+  }
+  
+  // 4. 股债利差判断
+  var stockYield = grahamScore > 0 ? 100 / (14.3 + grahamScore) * 100 : 7;
+  var spread = stockYield - treasuryYield;
+  if (spread > 3) {
+    factors.push({
+      type: 'bull',
+      title: '股债利差扩大',
+      desc: '当前利差 ' + spread.toFixed(2) + '%，股票相对债券吸引力增强'
+    });
+  } else if (spread < 1) {
+    factors.push({
+      type: 'bear',
+      title: '股债利差收窄',
+      desc: '当前利差 ' + spread.toFixed(2) + '%，股票相对债券吸引力减弱'
+    });
+  }
+  
+  // 5. 流动性判断（基于市场情绪数据）
+  var sentiment = _lastSentimentData || {};
+  var northFlow = sentiment.northFlow || 0;
+  if (northFlow > 50) {
+    factors.push({
+      type: 'bull',
+      title: '北向资金净流入',
+      desc: '北向资金净流入约 ' + Math.abs(northFlow).toFixed(0) + '亿，外资持续买入'
+    });
+  } else if (northFlow < -50) {
+    factors.push({
+      type: 'bear',
+      title: '北向资金净流出',
+      desc: '北向资金净流出约 ' + Math.abs(northFlow).toFixed(0) + '亿，外资短期撤离'
+    });
+  }
+  
+  // 6. 市场情绪判断
+  var fearIndex = sentiment.fearIndex || 50;
+  if (fearIndex < 30) {
+    factors.push({
+      type: 'bull',
+      title: '市场情绪贪婪',
+      desc: '恐慌指数 ' + fearIndex.toFixed(0) + '，市场情绪偏乐观'
+    });
+  } else if (fearIndex > 70) {
+    factors.push({
+      type: 'bear',
+      title: '市场情绪恐慌',
+      desc: '恐慌指数 ' + fearIndex.toFixed(0) + '，市场情绪偏谨慎'
+    });
+  }
+  
+  // 7. 政策环境（静态分析）
+  var month = now.getMonth() + 1;
+  if (month >= 3 && month <= 4) {
+    factors.push({
+      type: 'neutral',
+      title: '两会效应',
+      desc: '政策预期升温，市场关注政策导向'
+    });
+  } else if (month === 12) {
+    factors.push({
+      type: 'neutral',
+      title: '年底效应',
+      desc: '机构调仓换股，市场波动加大'
+    });
+  } else if (month === 1) {
+    factors.push({
+      type: 'neutral',
+      title: '年初布局期',
+      desc: '新年行情预期，资金面相对宽松'
+    });
+  }
+  
+  return factors;
+}
+
+/**
+ * 获取格雷厄姆指数（简化版）
+ */
+function getGrahamScore() {
+  var hs300 = BASE_DATA.indices.filter(function(i) { return i.code === 'sh000300'; })[0];
+  var pe = hs300 ? hs300.pe : 14.3;
+  var treasuryYield = parseFloat(localStorage.getItem('treasury_yield')) || 2.0;
+  var earningsYield = 100 / pe;
+  return earningsYield - treasuryYield;
+}
+
