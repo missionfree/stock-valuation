@@ -477,6 +477,33 @@ body {
   margin-top: 0.4rem; opacity: 0.6;
 }
 
+/* 消息面分析刷新按钮 */
+.na-refresh-btn {
+  background: rgba(0, 200, 255, 0.15);
+  border: 1px solid rgba(0, 200, 255, 0.3);
+  color: var(--accent);
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+.na-refresh-btn:hover {
+  background: rgba(0, 200, 255, 0.25);
+  border-color: rgba(0, 200, 255, 0.5);
+}
+.na-refresh-btn:active {
+  transform: scale(0.95);
+}
+.na-refresh-btn.spinning {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* ==================== 主题：深海蓝 ==================== */
 [data-theme="ocean"] {
   --bg: #001428;

@@ -2418,3 +2418,29 @@ function getGrahamScore() {
   return earningsYield - treasuryYield;
 }
 
+/**
+ * 刷新消息面分析
+ */
+function refreshNewsAnalysis() {
+  var btn = document.querySelector('.na-refresh-btn');
+  var listEl = document.getElementById('naList');
+  
+  if (btn) {
+    btn.classList.add('spinning');
+    btn.textContent = '⏳';
+  }
+  
+  if (listEl) {
+    listEl.innerHTML = '<div class="na-loading">📡 正在重新分析...</div>';
+  }
+  
+  // 模拟短暂延迟效果
+  setTimeout(function() {
+    renderNewsAnalysis();
+    if (btn) {
+      btn.classList.remove('spinning');
+      btn.textContent = '🔄';
+    }
+  }, 500);
+}
+
