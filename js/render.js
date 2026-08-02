@@ -1549,7 +1549,23 @@ function fetchTreasuryYield() {
     }
   } catch(e) {}
 
-  // 方案1: 东方财富push2 JSONP — 全球国债收益率（中国10Y）
+  // 方案1: Yahoo Finance 中国10年期国债收益率（CN10Y）
+  function tryYahoo() {
+    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/CN10Y%3DX?interval=1d&range=1d';
+    return fetchWithTimeout(url, { cache: 'no-store' }, 5000).then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function(data) {
+      if (data && data.chart && data.chart.result && data.chart.result[0]) {
+        var meta = data.chart.result[0].meta;
+        var y = parseFloat(meta.regularMarketPrice);
+        if (y > 0 && y < 15) return y / 100; // Yahoo返回的是小数形式如0.0172
+      }
+      throw new Error('Yahoo国债数据为空');
+    });
+  }
+
+  // 方案2: 东方财富push2 JSONP — 全球国债收益率（中国10Y）
   var emUrl = 'https://push2.eastmoney.com/api/qt/stock/get' +
     '?fltt=2&fields=f43,f57,f58,f170&secid=100.GCNY10Y';
 
@@ -1567,7 +1583,7 @@ function fetchTreasuryYield() {
     });
   }
 
-  // 方案2: 东方财富fetch直接请求
+  // 方案3: 东方财富fetch直接请求
   function tryEmFetch() {
     return fetchWithTimeout(emUrl + '&cb=', { cache: 'no-store' }, 3000).then(function(res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1645,21 +1661,25 @@ function fetchTreasuryYield() {
   }
 
   // 链式尝试所有方案
-  return tryEmJsonp()
+  return tryYahoo()
     .catch(function(err) {
-      console.warn('方案1东方财富JSONP失败:', err.message, '→ 尝试fetch');
+      console.warn('方案1 Yahoo失败:', err.message, '→ 尝试东方财富JSONP');
+      return tryEmJsonp();
+    })
+    .catch(function(err) {
+      console.warn('方案2东方财富JSONP失败:', err.message, '→ 尝试东方财富fetch');
       return tryEmFetch();
     })
     .catch(function(err) {
-      console.warn('方案2东方财富fetch失败:', err.message, '→ 尝试腾讯');
+      console.warn('方案3东方财富fetch失败:', err.message, '→ 尝试腾讯');
       return tryTencent();
     })
     .catch(function(err) {
-      console.warn('方案3腾讯失败:', err.message, '→ 尝试东方财富数据中心');
+      console.warn('方案4腾讯失败:', err.message, '→ 尝试东方财富数据中心');
       return tryNetease();
     })
     .catch(function(err) {
-      console.warn('方案4东方财富数据中心失败:', err.message, '→ 尝试新浪');
+      console.warn('方案5东方财富数据中心失败:', err.message, '→ 尝试新浪');
       return trySina();
     })
     .then(function(y) {
