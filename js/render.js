@@ -1530,7 +1530,7 @@ var TREASURY_CACHE_TTL = 5 * 60 * 1000; // 5分钟
 
 /**
  * 尝试获取10年期国债收益率（带5分钟缓存）
- * 多源尝试：东方财富push2 JSONP（全球国债收益率）→ 默认值
+ * 多源尝试：东方财富push2 → 腾讯财经 → 网易财经 → 东方财富数据中心 → 默认值
  * 数据源：push2.eastmoney.com 全球国债收益率接口（JSONP，浏览器内可用）
  * 默认值参考：2026-07-29 中国货币网 10Y国债最优报卖出收益率1.7205%
  * @returns {Promise}
@@ -1550,19 +1550,16 @@ function fetchTreasuryYield() {
   } catch(e) {}
 
   // 方案1: 东方财富push2 JSONP — 全球国债收益率（中国10Y）
-  // secid格式尝试：100.GCNY10Y（东方财富全球行情代码）
   var emUrl = 'https://push2.eastmoney.com/api/qt/stock/get' +
     '?fltt=2&fields=f43,f57,f58,f170&secid=100.GCNY10Y';
 
   function tryEmJsonp() {
     return emJsonp(emUrl, 4000).then(function(data) {
       if (data && data.data) {
-        // f43 = 最新价（即收益率%），fltt=2时已除以100
         var y = parseFloat(data.data.f43);
         if (data.data.f43 !== undefined && data.data.f43 !== null) {
           y = parseFloat(data.data.f43);
-          // fltt=2时，push2返回的f43可能需要/100（视返回值范围判断）
-          if (y > 10) y = y / 100; // 如果返回值>10，说明未除以100
+          if (y > 10) y = y / 100;
         }
         if (y > 0 && y < 10) return y;
       }
@@ -1570,7 +1567,7 @@ function fetchTreasuryYield() {
     });
   }
 
-  // 方案2: fetch直接请求（部分浏览器CORS可用）
+  // 方案2: 东方财富fetch直接请求
   function tryEmFetch() {
     return fetchWithTimeout(emUrl + '&cb=', { cache: 'no-store' }, 3000).then(function(res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1585,17 +1582,96 @@ function fetchTreasuryYield() {
     });
   }
 
-  return tryEmJsonp().catch(function(err) {
-    console.warn('东方财富JSONP国债API失败:', err.message, '→ 尝试fetch');
-    return tryEmFetch();
-  }).then(function(y) {
-    TREASURY_10Y = y;
-    if(__DEBUG__)console.log('国债收益率已更新:', y + '%');
-    try { localStorage.setItem(TREASURY_CACHE_KEY, JSON.stringify({ ts: Date.now(), value: y })); } catch(e) {}
-  }).catch(function(err) {
-    // 所有API均失败，使用默认值（不缓存，下次仍尝试获取）
-    console.warn('国债收益率API暂不可用:', err.message, '→ 使用默认值:', TREASURY_10Y + '%');
-  });
+  // 方案3: 腾讯财经 - 国债010107
+  function tryTencent() {
+    var url = 'https://qt.gtimg.cn/q=hz010107';
+    return fetchWithTimeout(url, { cache: 'no-store' }, 3000).then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    }).then(function(text) {
+      // 格式: var hq_str_hz010107="...";
+      var match = text.match(/="([^"]+)"/);
+      if (match) {
+        var parts = match[1].split('~');
+        // 腾讯格式: 0=名称, 1=今开, 2=昨收, 3=现价, ... 
+        var y = parseFloat(parts[3]);
+        if (y > 0 && y < 15) {
+          if (y > 10) y = y / 100; // 如果是百分数形式
+          return y;
+        }
+      }
+      throw new Error('腾讯国债数据解析失败');
+    });
+  }
+
+  // 方案4: 网易财经 - 国债收益率
+  function tryNetease() {
+    // 使用东方财富数据中心接口获取国债数据
+    var url = 'https://datacenter.eastmoney.com/securities/api/data/v1/get?reportName=RPT_BOND_CB_LIST&columns=SECURITY_CODE,SECURITY_NAME_ABBR,CONVERT_STANDARD_BOND_RATE&filter=(SECURITY_CODE%3D%22010107%22)&pageSize=1&sortTypes=-1&sortColumns=REPORT_DATE';
+    return fetchWithTimeout(url, { cache: 'no-store' }, 4000).then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function(json) {
+      if (json && json.result && json.result.data && json.result.data.length > 0) {
+        var y = parseFloat(json.result.data[0].CONVERT_STANDARD_BOND_RATE);
+        if (y > 0 && y < 10) return y;
+      }
+      throw new Error('东方财富数据中心国债数据为空');
+    });
+  }
+
+  // 方案5: 新浪财经
+  function trySina() {
+    var url = 'https://hq.sinajs.cn/list=sh010107';
+    return fetchWithTimeout(url, { 
+      headers: { 'Referer': 'https://finance.sina.com.cn' },
+      cache: 'no-store' 
+    }, 3000).then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    }).then(function(text) {
+      var match = text.match(/="([^"]+)"/);
+      if (match) {
+        var parts = match[1].split(',');
+        // 新浪格式: 0=名称, 3=现价, ...
+        var y = parseFloat(parts[3]);
+        if (y > 0 && y < 15) {
+          if (y > 10) y = y / 100;
+          return y;
+        }
+      }
+      throw new Error('新浪国债数据解析失败');
+    });
+  }
+
+  // 链式尝试所有方案
+  return tryEmJsonp()
+    .catch(function(err) {
+      console.warn('方案1东方财富JSONP失败:', err.message, '→ 尝试fetch');
+      return tryEmFetch();
+    })
+    .catch(function(err) {
+      console.warn('方案2东方财富fetch失败:', err.message, '→ 尝试腾讯');
+      return tryTencent();
+    })
+    .catch(function(err) {
+      console.warn('方案3腾讯失败:', err.message, '→ 尝试东方财富数据中心');
+      return tryNetease();
+    })
+    .catch(function(err) {
+      console.warn('方案4东方财富数据中心失败:', err.message, '→ 尝试新浪');
+      return trySina();
+    })
+    .then(function(y) {
+      TREASURY_10Y = y;
+      if(__DEBUG__)console.log('国债收益率已更新:', y + '%');
+      try { localStorage.setItem(TREASURY_CACHE_KEY, JSON.stringify({ ts: Date.now(), value: y })); } catch(e) {}
+    })
+    .catch(function(err) {
+      // 所有API均失败，强制刷新缓存（下次仍尝试）
+      console.warn('国债收益率所有API失败:', err.message, '→ 清除缓存等待下次重试');
+      try { localStorage.removeItem(TREASURY_CACHE_KEY); } catch(e) {}
+    });
 }
 
 /**
