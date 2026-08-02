@@ -1688,14 +1688,13 @@ function fetchTreasuryYield() {
       try { localStorage.setItem(TREASURY_CACHE_KEY, JSON.stringify({ ts: Date.now(), value: y })); } catch(e) {}
     })
     .catch(function(err) {
-      // 所有API均失败，推测国债收益率（基于市场PE反推）
+      // 所有API均失败，保守推测国债收益率（基于市场估值区间）
+      // 当前中国10Y国债收益率范围约1.5%-2.8%
       var hs300 = BASE_DATA.indices.filter(function(i) { return i.code === 'sh000300'; })[0];
       var pe = hs300 ? hs300.pe : 18;
-      // 格雷厄姆公式反推：无风险收益率 ≈ 盈利收益率 / 格雷厄姆系数
-      // 格雷厄姆系数通常在1.5~2.5之间，市场低迷时取低值
-      var grahamCoef = pe < 15 ? 2.0 : pe < 20 ? 1.8 : pe < 30 ? 1.5 : 1.3;
-      var estimated = (100 / pe) / grahamCoef;
-      TREASURY_10Y = Math.round(estimated * 100) / 100;
+      // 根据PE分位数推测（保守区间）
+      var estimated = pe < 12 ? 1.7 : pe < 15 ? 1.9 : pe < 20 ? 2.1 : pe < 25 ? 2.4 : 2.8;
+      TREASURY_10Y = estimated;
       console.warn('国债收益率所有API失败:', err.message, '→ 推测值', TREASURY_10Y + '%');
       try { localStorage.removeItem(TREASURY_CACHE_KEY); } catch(e) {}
     });
