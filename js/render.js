@@ -1688,30 +1688,30 @@ function fetchTreasuryYield() {
     });
   }
 
-  // 链式尝试所有方案
-  return tryYahoo()
+  // 链式尝试所有方案（优先级：1.中债 2.Yahoo 3.东方财富JSONP 4.东方财富fetch 5.腾讯 6.东方财富数据中心 7.新浪 8.PE推测）
+  return tryChinabond()
     .catch(function(err) {
-      console.warn('方案1 Yahoo失败:', err.message, '→ 尝试东方财富JSONP');
+      console.warn('方案1中债曲线API失败:', err.message, '→ 尝试Yahoo');
+      return tryYahoo();
+    })
+    .catch(function(err) {
+      console.warn('方案2 Yahoo失败:', err.message, '→ 尝试东方财富JSONP');
       return tryEmJsonp();
     })
     .catch(function(err) {
-      console.warn('方案2东方财富JSONP失败:', err.message, '→ 尝试东方财富fetch');
+      console.warn('方案3东方财富JSONP失败:', err.message, '→ 尝试东方财富fetch');
       return tryEmFetch();
     })
     .catch(function(err) {
-      console.warn('方案3东方财富fetch失败:', err.message, '→ 尝试腾讯');
+      console.warn('方案4东方财富fetch失败:', err.message, '→ 尝试腾讯');
       return tryTencent();
     })
     .catch(function(err) {
-      console.warn('方案4腾讯失败:', err.message, '→ 尝试东方财富数据中心');
+      console.warn('方案5腾讯失败:', err.message, '→ 尝试东方财富数据中心');
       return tryNetease();
     })
     .catch(function(err) {
-      console.warn('方案5东方财富数据中心失败:', err.message, '→ 尝试中债曲线API');
-      return tryChinabond();
-    })
-    .catch(function(err) {
-      console.warn('方案6中债曲线API失败:', err.message, '→ 尝试新浪');
+      console.warn('方案6东方财富数据中心失败:', err.message, '→ 尝试新浪');
       return trySina();
     })
     .then(function(y) {
