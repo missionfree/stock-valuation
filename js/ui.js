@@ -216,8 +216,8 @@ function exportIndexCSV() {
       }
     }
     rows.push([
-      idx.name, idx.code, pe, pb, dy,
-      pct, pbPct, dyPct, idx.peMin, idx.peMax
+      idx.name || '', idx.code || '', pe || '', pb || '', dy || '',
+      pct || '', pbPct || '', dyPct || '', idx.peMin || '', idx.peMax || ''
     ]);
   });
   var csv = '\uFEFF' + rows.map(function(r) { return r.join(','); }).join('\n');
@@ -403,7 +403,7 @@ function handleSearchInput(value) {
           typeLabel = '股票';
           typeClass = 'stk';
         }
-        return '<div class="suggest-item" data-sg-code="' + escHTML(s.Code) + '" data-sg-name="' + escHTML(s.Name||'') + '" data-sg-mkt="' + escHTML(s.MktNum) + '" data-sg-type="' + escHTML(s.SecurityType||'') + '" data-sg-class="' + escHTML(s.Classify||'') + '">' +
+        return '<div class="suggest-item" role="option" data-sg-code="' + escHTML(s.Code) + '" data-sg-name="' + escHTML(s.Name||'') + '" data-sg-mkt="' + escHTML(s.MktNum) + '" data-sg-type="' + escHTML(s.SecurityType||'') + '" data-sg-class="' + escHTML(s.Classify||'') + '">' +
           '<span class="suggest-type ' + typeClass + '">' + typeLabel + '</span>' +
           '<span>' + escHTML(s.Name || '') + '</span>' +
           '<span class="s-code">' + s.Code + '</span>' +

@@ -1060,12 +1060,17 @@ function initPage() {
   var tpPicker = document.getElementById('themePicker');
   if (tpPicker) {
     tpPicker.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.key === 'Enter') {
         e.preventDefault();
         if (e.target.classList && e.target.classList.contains('theme-option')) {
           var theme = e.target.getAttribute('data-theme');
           if (theme) setTheme(theme);
         }
+      }
+      if (e.key === ' ' && e.target.classList && e.target.classList.contains('theme-option')) {
+        e.preventDefault();
+        var theme = e.target.getAttribute('data-theme');
+        if (theme) setTheme(theme);
       }
       if (e.key === 'Escape') {
         tpPicker.classList.remove('show');

@@ -175,13 +175,12 @@ function searchStock() {
     _currentMAData = null;
     _currentKlineData = null;
     renderStockResult(stockData, null, null, true);
-    // 初始渲染完成，清除搜索标志，恢复联想功能
-    _searchInProgress = false;
     showToast(isETF ? 'ETF查询成功，加载资金和K线数据...' : '查询成功，正在加载财务和资金数据...');
     _suggestMeta = null;
 
     // 2. 并行加载财务数据 + 主力资金数据 + 公司概况
     var secCode = stock._secCode || stockData.code;
+    var _asyncPromises = [];
 
     if (isETF) {
       // ETF基金：跳过财务报表/龙虎榜/公司概况/国家队（这些API不适用ETF）
@@ -194,7 +193,7 @@ function searchStock() {
       if (pureEtfCode.charAt(0) === '5' || pureEtfCode.charAt(0) === '6' || pureEtfCode.charAt(0) === '9') etfTencentCode = 'sh' + pureEtfCode;
       else etfTencentCode = 'sz' + pureEtfCode;
 
-      Promise.allSettled([
+      _asyncPromises.push(Promise.allSettled([
         fetchKline(etfTencentCode, 250),   // K线数据（复用缓存）
         fetchETFDetail(secCode),             // 基金详情
         fetchETFNav(pureEtfCode)             // 最新净值
@@ -206,57 +205,57 @@ function searchStock() {
         var scoreData = assessETF(stockData, klData, etfDetail, navData);
         renderETFScore(scoreData);
         if (scoreData) showToast('ETF评分: ' + scoreData.score + '分 ' + scoreData.level);
-      });
+      }));
     } else {
       // 股票：加载全部数据
       // 财务数据
-      fetchStockFinancials(secCode).then(function(finData) {
+      _asyncPromises.push(fetchStockFinancials(secCode).then(function(finData) {
         _currentFinData = finData;
         renderStockResult(stockData, finData, _currentFlowData, false);
         if (finData) showToast('财务数据已加载');
       }).catch(function() {
         _currentFinData = null;
-      });
+      }));
 
       // 龙虎榜数据
-      fetchDragonTiger(secCode).then(function(dtData) {
+      _asyncPromises.push(fetchDragonTiger(secCode).then(function(dtData) {
         _currentDragonTigerData = dtData;
         renderDragonTiger(dtData);
       }).catch(function(err) {
         console.warn('龙虎榜获取失败:', err.message);
-      });
+      }));
 
       // 公司概况与行业分析
-      fetchCompanyProfile(secCode).then(function(profileData) {
+      _asyncPromises.push(fetchCompanyProfile(secCode).then(function(profileData) {
         _currentProfileData = profileData;
         renderCompanyProfile(profileData, _currentFinData, stockData);
         if (profileData) showToast('公司概况已加载');
       }).catch(function(err) {
         console.warn('公司概况获取失败:', err.message);
-      });
+      }));
 
       // 国家队持股数据
-      fetchNationalTeam(secCode).then(function(ntData) {
+      _asyncPromises.push(fetchNationalTeam(secCode).then(function(ntData) {
         _currentNationalTeamData = ntData;
         renderNationalTeam(ntData);
         if (ntData && ntData.hasData) showToast('国家队持股数据已加载');
       }).catch(function(err) {
-        console.warn('国家队持股获取失败:', err.message);
-      });
+        console.warn('国家队获取失败:', err.message);
+      }));
     }
 
     // 主力资金流向（ETF和股票都加载）
-    fetchCapitalFlow(secCode, 20).then(function(flowData) {
+    _asyncPromises.push(fetchCapitalFlow(secCode, 20).then(function(flowData) {
       _currentFlowData = flowData;
       renderStockResult(stockData, _currentFinData, flowData, false);
       if (flowData) showToast('主力资金数据已加载');
     }).catch(function(err) {
       console.warn('主力资金获取失败:', err.message);
       _currentFlowData = null;
-    });
+    }));
 
     // 大盘共振分析（ETF和股票都加载，使用K线数据+实时价格）
-    fetchResonance(secCode, stockData.name, stockData.price).then(function(resData) {
+    _asyncPromises.push(fetchResonance(secCode, stockData.name, stockData.price).then(function(resData) {
       _currentResonanceData = resData;
       renderResonance(resData);
       // 共振分析同时计算了MA20数据，一并渲染
@@ -265,10 +264,15 @@ function searchStock() {
       if (resData) showToast('共振分析已加载');
     }).catch(function(err) {
       console.warn('共振分析获取失败:', err.message);
-    });
+    }));
 
     // K线图（ETF和股票都加载，传入实时价格使MA20更准）
-    fetchAndRenderKlineChart(secCode, stockData.name, stockData.price);
+    _asyncPromises.push(fetchAndRenderKlineChart(secCode, stockData.name, stockData.price));
+
+    // 所有异步加载完成后，清除搜索标志，恢复联想功能
+    Promise.allSettled(_asyncPromises).then(function() {
+      _searchInProgress = false;
+    });
 
   }).catch(function(err) {
     console.warn('查询失败:', err.message);
@@ -289,31 +293,30 @@ function searchStock() {
         _currentMAData = null;
         _currentKlineData = null;
         renderStockResult(stockData, null, null, true);
-        // 初始渲染完成，清除搜索标志，恢复联想功能
-        _searchInProgress = false;
         showToast(isETF ? 'ETF查询成功，加载资金和K线数据...' : '查询成功，正在加载财务和资金数据...');
         var secCode = stock._secCode || stockData.code;
+        var _asyncPromises = [];
 
         if (!isETF) {
-          fetchStockFinancials(secCode).then(function(finData) {
+          _asyncPromises.push(fetchStockFinancials(secCode).then(function(finData) {
             _currentFinData = finData;
             renderStockResult(stockData, finData, _currentFlowData, false);
-          }).catch(function() { _currentFinData = null; });
+          }).catch(function() { _currentFinData = null; }));
 
-          fetchDragonTiger(secCode).then(function(dtData) {
+          _asyncPromises.push(fetchDragonTiger(secCode).then(function(dtData) {
             _currentDragonTigerData = dtData;
             renderDragonTiger(dtData);
-          }).catch(function(err2) { console.warn('龙虎榜获取失败:', err2.message); });
+          }).catch(function(err2) { console.warn('龙虎榜获取失败:', err2.message); }));
 
-          fetchCompanyProfile(secCode).then(function(profileData) {
+          _asyncPromises.push(fetchCompanyProfile(secCode).then(function(profileData) {
             _currentProfileData = profileData;
             renderCompanyProfile(profileData, _currentFinData, stockData);
-          }).catch(function(err2) { console.warn('公司概况获取失败:', err2.message); });
+          }).catch(function(err2) { console.warn('公司概况获取失败:', err2.message); }));
 
-          fetchNationalTeam(secCode).then(function(ntData) {
+          _asyncPromises.push(fetchNationalTeam(secCode).then(function(ntData) {
             _currentNationalTeamData = ntData;
             renderNationalTeam(ntData);
-          }).catch(function(err2) { console.warn('国家队持股获取失败:', err2.message); });
+          }).catch(function(err2) { console.warn('国家队持股获取失败:', err2.message); }));
         } else {
           // ETF回退路径：同样加载评分系统
           var fbPureCode = secCode.replace(/^(sh|sz|hk)/i, '');
@@ -321,7 +324,7 @@ function searchStock() {
           if (fbPureCode.charAt(0) === '5' || fbPureCode.charAt(0) === '6' || fbPureCode.charAt(0) === '9') fbTencentCode = 'sh' + fbPureCode;
           else fbTencentCode = 'sz' + fbPureCode;
 
-          Promise.allSettled([
+          _asyncPromises.push(Promise.allSettled([
             fetchKline(fbTencentCode, 250),
             fetchETFDetail(secCode),
             fetchETFNav(fbPureCode)
@@ -332,24 +335,29 @@ function searchStock() {
             var scoreData = assessETF(stockData, klData, etfDetail, navData);
             renderETFScore(scoreData);
             if (scoreData) showToast('ETF评分: ' + scoreData.score + '分 ' + scoreData.level);
-          });
+          }));
         }
 
         // 主力资金和共振分析（ETF和股票都加载）
-        fetchCapitalFlow(secCode, 20).then(function(flowData) {
+        _asyncPromises.push(fetchCapitalFlow(secCode, 20).then(function(flowData) {
           _currentFlowData = flowData;
           renderStockResult(stockData, _currentFinData, flowData, false);
-        }).catch(function(err2) { console.warn('主力资金获取失败:', err2.message); });
+        }).catch(function(err2) { console.warn('主力资金获取失败:', err2.message); }));
 
-        fetchResonance(secCode, stockData.name, stockData.price).then(function(resData) {
+        _asyncPromises.push(fetchResonance(secCode, stockData.name, stockData.price).then(function(resData) {
           _currentResonanceData = resData;
           renderResonance(resData);
           _currentMAData = resData ? resData.maData : null;
           renderMAAnalysis(_currentMAData);
-        }).catch(function(err2) { console.warn('共振分析获取失败:', err2.message); });
+        }).catch(function(err2) { console.warn('共振分析获取失败:', err2.message); }));
 
         // K线图（ETF和股票都加载，传入实时价格使MA20更准）
-        fetchAndRenderKlineChart(secCode, stockData.name, stockData.price);
+        _asyncPromises.push(fetchAndRenderKlineChart(secCode, stockData.name, stockData.price));
+
+        // 所有异步加载完成后，清除搜索标志，恢复联想功能
+        Promise.allSettled(_asyncPromises).then(function() {
+          _searchInProgress = false;
+        });
 
       } else {
         _searchInProgress = false;
@@ -466,7 +474,11 @@ function extractStockInfo(stock) {
     info.amplitude = d.amplitude;
     info.pe = d.pe;
     info.pb = d.pb;
-    info.marketCap = d.marketCap ? d.marketCap * 1e8 : 0;
+    if (d.source === 'eastmoney') {
+      info.marketCap = d.marketCap || 0;  // f116 already in 元
+    } else {
+      info.marketCap = d.marketCap ? d.marketCap * 1e8 : 0;  // 亿→元
+    }
   } else if (stock) {
     info.name = stock.f14 || stock.name || '';
     info.code = stock.f12 || stock.code || '';
@@ -474,7 +486,7 @@ function extractStockInfo(stock) {
     info.changePct = stock.f3 || 0;
     info.pe = stock.f9 || 0;
     info.pb = stock.f23 || 0;
-    info.marketCap = stock.f20 || 0;
+    info.marketCap = stock.f20 || stock.marketCap || 0;
     info.turnover = stock.f6 ? stock.f6 / 10000 : 0;
   }
 
@@ -6950,7 +6962,7 @@ function fetchAndRenderKlineChart(secCode, stockName, realtimePrice) {
   else if (secCode.indexOf('hk') === 0 || pureCode.length <= 5) tencentCode = 'hk' + pureCode;
   else tencentCode = 'sh' + pureCode;
 
-  fetchKline(tencentCode, 250).then(function(klData) {
+  return fetchKline(tencentCode, 250).then(function(klData) {
     _currentKlineData = { klData: klData, stockName: stockName, realtimePrice: realtimePrice };
     renderKlineChart(klData, stockName, realtimePrice);
   }).catch(function(err) {

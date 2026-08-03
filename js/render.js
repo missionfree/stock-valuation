@@ -8,15 +8,7 @@ function formatDate(date) {
   return y + '-' + m + '-' + d;
 }
 
-// 调试：确保NEWS_DATA初始化
-console.log('[DEBUG] render.js loaded');
-
-// 立即检查NEWS_DATA是否存在
-if (typeof NEWS_DATA !== 'undefined') {
-  console.log('[DEBUG] NEWS_DATA already exists with', NEWS_DATA.length, 'items');
-} else {
-  console.log('[DEBUG] NEWS_DATA not yet defined (expected - loaded later)');
-}
+// NEWS_DATA 在本文件后续定义（约第2175行），无需提前检查
 
 /* ============================================================
    六、渲染指数卡片
@@ -278,6 +270,7 @@ function drawHeatmap() {
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
   var ctx = canvas.getContext('2d');
+  if (!ctx) return;
   ctx.scale(dpr, dpr);
 
   if (sectors.length === 0) {
@@ -380,6 +373,7 @@ function drawPEBar(realtimeData) {
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
   var ctx = canvas.getContext('2d');
+  if (!ctx) return;
   ctx.scale(dpr, dpr);
 
   // 预计算每个指数的动态PE和分位（优先使用实时数据）
@@ -1286,9 +1280,9 @@ function formatLiDaxiaoQuote(quoteObj) {
   if (!quoteObj) return '';
   return '<div class="daxiao-quote">' +
     '<span class="daxiao-mark">"</span>' +
-    '<span class="daxiao-text">' + quoteObj.q + '</span>' +
+    '<span class="daxiao-text">' + escHTML(quoteObj.q) + '</span>' +
     '<span class="daxiao-mark">"</span>' +
-    '<span class="daxiao-sub">— ' + quoteObj.sub + '</span>' +
+    '<span class="daxiao-sub">— ' + escHTML(quoteObj.sub) + '</span>' +
     '<span class="daxiao-author">李大霄</span>' +
     '</div>';
 }
@@ -1302,9 +1296,9 @@ function formatZhangYangQuote(quoteObj) {
   if (!quoteObj) return '';
   return '<div class="zy-quote">' +
     '<span class="zy-mark">"</span>' +
-    '<span class="zy-text">' + quoteObj.q + '</span>' +
+    '<span class="zy-text">' + escHTML(quoteObj.q) + '</span>' +
     '<span class="zy-mark">"</span>' +
-    '<span class="zy-sub">— ' + quoteObj.sub + '</span>' +
+    '<span class="zy-sub">— ' + escHTML(quoteObj.sub) + '</span>' +
     '<span class="zy-author">奇迹</span>' +
     '</div>';
 }
@@ -1515,9 +1509,9 @@ function generateInsights(realtimeData) {
   if (dzEl && bestQuote) {
     dzEl.innerHTML =
       '<div class="daxao-zone-title">李大霄专栏 · 今日行情点评</div>' +
-      '<div class="daxao-zone-context">' + bestQuote.context + '</div>' +
-      '<div class="daxao-zone-quote">"' + bestQuote.q + '"</div>' +
-      '<div class="daxao-zone-sub">' + bestQuote.sub + '</div>' +
+      '<div class="daxao-zone-context">' + escHTML(bestQuote.context) + '</div>' +
+      '<div class="daxao-zone-quote">"' + escHTML(bestQuote.q) + '"</div>' +
+      '<div class="daxao-zone-sub">' + escHTML(bestQuote.sub) + '</div>' +
       '<div class="daxao-zone-author">李大霄</div>';
   }
 
@@ -1527,9 +1521,9 @@ function generateInsights(realtimeData) {
     var zyQuote = getZhangYangQuote(marketChange, sexy);
     zyEl.innerHTML =
       '<div class="zy-zone-title">奇迹狂言 · 股市猎场法则</div>' +
-      '<div class="zy-zone-context">' + zyQuote.context + '</div>' +
-      '<div class="zy-zone-quote">"' + zyQuote.q + '"</div>' +
-      '<div class="zy-zone-sub">' + zyQuote.sub + '</div>' +
+      '<div class="zy-zone-context">' + escHTML(zyQuote.context) + '</div>' +
+      '<div class="zy-zone-quote">"' + escHTML(zyQuote.q) + '"</div>' +
+      '<div class="zy-zone-sub">' + escHTML(zyQuote.sub) + '</div>' +
       '<div class="zy-zone-author">胜天资本 · 奇迹</div>';
   }
 }
@@ -1577,7 +1571,7 @@ function fetchTreasuryYield() {
       if (data && data.chart && data.chart.result && data.chart.result[0]) {
         var meta = data.chart.result[0].meta;
         var y = parseFloat(meta.regularMarketPrice);
-        if (y > 0 && y < 15) return y / 100; // Yahoo返回的是小数形式如0.0172
+        if (y > 0 && y < 15) return y; // Yahoo返回百分比值如1.72
       }
       throw new Error('Yahoo国债数据为空');
     });
@@ -1598,21 +1592,6 @@ function fetchTreasuryYield() {
         if (y > 0 && y < 10) return y;
       }
       throw new Error('东方财富国债数据为空');
-    });
-  }
-
-  // 方案3: 东方财富fetch直接请求
-  function tryEmFetch() {
-    return fetchWithTimeout(emUrl + '&cb=', { cache: 'no-store' }, 3000).then(function(res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    }).then(function(data) {
-      if (data && data.data) {
-        var y = parseFloat(data.data.f43);
-        if (y > 10) y = y / 100;
-        if (y > 0 && y < 10) return y;
-      }
-      throw new Error('fetch国债数据为空');
     });
   }
 
@@ -1638,8 +1617,8 @@ function fetchTreasuryYield() {
     });
   }
 
-  // 方案4: 网易财经 - 国债收益率
-  function tryNetease() {
+  // 方案5: 东方财富数据中心 - 国债收益率
+  function tryEmDataCenter() {
     // 使用东方财富数据中心接口获取国债数据
     var url = 'https://datacenter.eastmoney.com/securities/api/data/v1/get?reportName=RPT_BOND_CB_LIST&columns=SECURITY_CODE,SECURITY_NAME_ABBR,CONVERT_STANDARD_BOND_RATE&filter=(SECURITY_CODE%3D%22010107%22)&pageSize=1&sortTypes=-1&sortColumns=REPORT_DATE';
     return fetchWithTimeout(url, { cache: 'no-store' }, 4000).then(function(res) {
@@ -1665,7 +1644,7 @@ function fetchTreasuryYield() {
       })
       .then(function(data) {
         if (data && data.yield_10y) {
-          console.log('从GitHub缓存获取国债收益率:', data.yield_10y + '%');
+          if(__DEBUG__)console.log('从本地缓存获取国债收益率:', data.yield_10y + '%');
           return data.yield_10y;
         }
         throw new Error('GitHub缓存无数据');
@@ -1724,7 +1703,7 @@ function fetchTreasuryYield() {
     });
   }
 
-  // 链式尝试所有方案（优先级：1.中债 2.Yahoo 3.东方财富JSONP 4.东方财富fetch 5.腾讯 6.东方财富数据中心 7.新浪 8.PE推测）
+  // 链式尝试所有方案（优先级：1.中债 2.Yahoo 3.东方财富JSONP 4.腾讯 5.东方财富数据中心 6.新浪 7.PE推测）
   return tryChinabond()
     .catch(function(err) {
       console.warn('方案1中债曲线API失败:', err.message, '→ 尝试Yahoo');
@@ -1735,19 +1714,15 @@ function fetchTreasuryYield() {
       return tryEmJsonp();
     })
     .catch(function(err) {
-      console.warn('方案3东方财富JSONP失败:', err.message, '→ 尝试东方财富fetch');
-      return tryEmFetch();
-    })
-    .catch(function(err) {
-      console.warn('方案4东方财富fetch失败:', err.message, '→ 尝试腾讯');
+      console.warn('方案3东方财富JSONP失败:', err.message, '→ 尝试腾讯');
       return tryTencent();
     })
     .catch(function(err) {
-      console.warn('方案5腾讯失败:', err.message, '→ 尝试东方财富数据中心');
-      return tryNetease();
+      console.warn('方案4腾讯失败:', err.message, '→ 尝试东方财富数据中心');
+      return tryEmDataCenter();
     })
     .catch(function(err) {
-      console.warn('方案6东方财富数据中心失败:', err.message, '→ 尝试新浪');
+      console.warn('方案5东方财富数据中心失败:', err.message, '→ 尝试新浪');
       return trySina();
     })
     .then(function(y) {
@@ -1779,20 +1754,29 @@ function fetchTreasuryYield() {
  * @param {object|null} realtimeData - 实时行情数据 {code: {price, pe, ...}}
  */
 function renderDashboard(realtimeData) {
+  // === 数据有效性校验 ===
+  var hasRealtime = realtimeData && Object.keys(realtimeData).length > 0;
+
   // === 格雷厄姆指数：用沪深300 PE（大盘股标准参考口径） ===
   var hs300 = BASE_DATA.indices.filter(function(i) { return i.code === 'sh000300'; })[0];
   var peHS300 = hs300 ? hs300.pe : 14.3;
-  if (realtimeData && realtimeData['sh000300']) {
+  if (hasRealtime && realtimeData['sh000300']) {
     var rt300 = realtimeData['sh000300'];
-    if (rt300.pe && rt300.pe > 0) peHS300 = rt300.pe;
+    if (rt300.pe && rt300.pe > 0 && rt300.pe < 100) peHS300 = rt300.pe;
   }
 
   // === 性感指数 & 股债利差：用全市场PE（含全部A股） ===
   var csiAll = BASE_DATA.indices.filter(function(i) { return i.code === 'sh000985'; })[0];
   var peAllA = csiAll ? csiAll.pe : 18.5;
-  if (realtimeData && realtimeData['sh000985']) {
+  if (hasRealtime && realtimeData['sh000985']) {
     var rtAll = realtimeData['sh000985'];
-    if (rtAll.pe && rtAll.pe > 0) peAllA = rtAll.pe;
+    if (rtAll.pe && rtAll.pe > 0 && rtAll.pe < 100) peAllA = rtAll.pe;
+  }
+
+  // 国债收益率有效性校验
+  var treasuryDecimal = TREASURY_10Y / 100;
+  if (isNaN(treasuryDecimal) || treasuryDecimal <= 0 || treasuryDecimal >= 0.1) {
+    treasuryDecimal = 0.0172; // 兜底：1.72%
   }
 
   // 全市场等权PE估算：基于行业板块PE的简单平均（等权）计算
@@ -1807,14 +1791,17 @@ function renderDashboard(realtimeData) {
     : peAllA * 1.85; // 兜底：行业数据缺失时用1.85倍近似（基于近年A股实际比值）
   var peAllA_eq = Math.max(20, Math.min(60, equalWeightPE));
 
-  // 核心计算
-  var earningsYieldHS300 = 1 / peHS300;              // 沪深300盈利收益率
-  var graham = earningsYieldHS300 / (TREASURY_10Y / 100);  // 格雷厄姆指数（沪深300口径）
+  // 核心计算（带NaN/Infinity防护）
+  var earningsYieldHS300 = 1 / Math.max(1, peHS300);         // 沪深300盈利收益率
+  var graham = earningsYieldHS300 / treasuryDecimal;          // 格雷厄姆指数（沪深300口径）
+  if (!isFinite(graham)) graham = 0;
 
-  var earningsYieldAllA_eq = 1 / peAllA_eq;            // 全市场等权盈利收益率
-  var sexy = earningsYieldAllA_eq / (TREASURY_10Y / 100) - 1;  // 性感指数（等权口径，超额收益率）
-  var earningsYieldAllA = 1 / peAllA;                  // 市值加权盈利收益率（用于股债利差）
-  var spread = earningsYieldAllA * 100 - TREASURY_10Y;  // 股债利差(百分点，市值加权口径)
+  var earningsYieldAllA_eq = 1 / Math.max(1, peAllA_eq);      // 全市场等权盈利收益率
+  var sexy = earningsYieldAllA_eq / treasuryDecimal - 1;      // 性感指数（等权口径，超额收益率）
+  if (!isFinite(sexy)) sexy = 0;
+  var earningsYieldAllA = 1 / Math.max(1, peAllA);            // 市值加权盈利收益率（用于股债利差）
+  var spread = earningsYieldAllA * 100 - TREASURY_10Y;        // 股债利差(百分点，市值加权口径)
+  if (isNaN(spread)) spread = 0;
 
   // 显示国债收益率
   var trEl = document.getElementById('dashTreasury');
@@ -2169,8 +2156,9 @@ var _naFactors = [];
 var _naNewsData = [];
 
 /* ============================================================
-   消息面新闻数据：市场动态新闻库
-   数据来源：公开新闻整理 + 东方财富快讯
+   消息面新闻数据：市场动态新闻库（模拟数据，后续接入实时API替换）
+   注意：以下为静态模板数据，非实时抓取。fetchLatestNews() 会尝试
+   从东方财富快讯API获取实时新闻并合并到此数组头部。
    ============================================================ */
 var NEWS_DATA = [
   {
@@ -2339,10 +2327,12 @@ function fetchLatestNews(forceRefresh) {
       });
     }
     // 更新缓存
-    localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({
-      ts: Date.now(),
-      news: news
-    }));
+    try {
+      localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({
+        ts: Date.now(),
+        news: news
+      }));
+    } catch(e) {}
     return news;
   })
   .catch(function(e) {
@@ -2706,7 +2696,7 @@ function analyzeMarketFactors() {
   }
   
   // 3. 国债收益率影响
-  var treasuryYield = parseFloat(localStorage.getItem('treasury_yield')) || 2.0;
+  var treasuryYield = TREASURY_10Y || 2.0;
   if (treasuryYield < 2.0) {
     factors.push({
       type: 'bull',
@@ -2808,7 +2798,7 @@ function analyzeMarketFactors() {
 function getGrahamScore() {
   var hs300 = BASE_DATA.indices.filter(function(i) { return i.code === 'sh000300'; })[0];
   var pe = hs300 ? hs300.pe : 14.3;
-  var treasuryYield = parseFloat(localStorage.getItem('treasury_yield')) || 2.0;
+  var treasuryYield = TREASURY_10Y || 2.0;
   var earningsYield = 100 / pe;
   return earningsYield - treasuryYield;
 }
