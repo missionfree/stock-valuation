@@ -8,6 +8,16 @@ function formatDate(date) {
   return y + '-' + m + '-' + d;
 }
 
+// 调试：确保NEWS_DATA初始化
+console.log('[DEBUG] render.js loaded');
+
+// 立即检查NEWS_DATA是否存在
+if (typeof NEWS_DATA !== 'undefined') {
+  console.log('[DEBUG] NEWS_DATA already exists with', NEWS_DATA.length, 'items');
+} else {
+  console.log('[DEBUG] NEWS_DATA not yet defined (expected - loaded later)');
+}
+
 /* ============================================================
    六、渲染指数卡片
    ============================================================ */
