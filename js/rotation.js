@@ -2710,7 +2710,7 @@ function runAnalysis(forceRefresh) {
     }).catch(function() {
       renderMarketFlow(null);
       renderSectorCapitalAnalysis(null);
-}).then(function() {
+    }).then(function() {
       // 阶段2.5：消息面分析（基于已有数据快速渲染，同时获取动态新闻）
       renderNewsAnalysis();
       // 并行获取动态新闻（不阻塞主流程）

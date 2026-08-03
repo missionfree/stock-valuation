@@ -2556,9 +2556,11 @@ function bindNaFilters() {
       var container = document.getElementById('naList');
       if (!container) return;
       
-      var filtered = _naFactors;
+      // 合并新闻数据与分析因素
+      var allItems = (_naNewsData || []).concat(_naFactors || []);
+      var filtered = allItems;
       if (_naFilter !== 'all') {
-        filtered = _naFactors.filter(function(f) { return f.type === _naFilter; });
+        filtered = allItems.filter(function(f) { return f.type === _naFilter; });
       }
       
       var html = '';
