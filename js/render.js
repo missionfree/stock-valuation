@@ -2435,33 +2435,40 @@ function stopNewsAutoRefresh() {
   * 消息面分析主函数 - 每日更新
   * 分析当前市场消息面，判定利好/利空/中性因素
   */
- function renderNewsAnalysis() {
-   var container = document.getElementById('naList');
-   var overallEl = document.getElementById('nasValue');
-   var bullCountEl = document.getElementById('nasBullCount');
-   var bearCountEl = document.getElementById('nasBearCount');
-   var neutralCountEl = document.getElementById('nasNeutralCount');
-   
-   if (!container) return;
-   
-   var now = new Date();
-   var dateStr = now.getFullYear() + '-' + 
-     String(now.getMonth() + 1).padStart(2, '0') + '-' +
-     String(now.getDate()).padStart(2, '0');
-   
-   // 获取市场数据用于判断
-   _naFactors = analyzeMarketFactors();
-   
-   // 更新全局新闻数据
-   _naNewsData = NEWS_DATA.slice();
-   
-   // 合并新闻数据与分析因素（新闻在前，分析在后）
-   var allItems = _naNewsData.concat(_naFactors);
-   
-   // 统计因素数量（包含新闻和分析）
-   var bullCount = allItems.filter(function(f) { return f.type === 'bull'; }).length;
-   var bearCount = allItems.filter(function(f) { return f.type === 'bear'; }).length;
-   var neutralCount = allItems.filter(function(f) { return f.type === 'neutral'; }).length;
+function renderNewsAnalysis() {
+    var container = document.getElementById('naList');
+    var overallEl = document.getElementById('nasValue');
+    var bullCountEl = document.getElementById('nasBullCount');
+    var bearCountEl = document.getElementById('nasBearCount');
+    var neutralCountEl = document.getElementById('nasNeutralCount');
+    
+    // 调试日志
+    if (typeof NEWS_DATA !== 'undefined') {
+      console.log('[DEBUG] NEWS_DATA length:', NEWS_DATA.length);
+    } else {
+      console.error('[DEBUG] NEWS_DATA is undefined!');
+    }
+    
+    if (!container) return;
+    
+    var now = new Date();
+    var dateStr = now.getFullYear() + '-' + 
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+    
+    // 获取市场数据用于判断
+    _naFactors = analyzeMarketFactors();
+    
+    // 更新全局新闻数据
+    _naNewsData = NEWS_DATA.slice();
+    
+    // 合并新闻数据与分析因素（新闻在前，分析在后）
+    var allItems = _naNewsData.concat(_naFactors);
+    
+    // 统计因素数量（包含新闻和分析）
+    var bullCount = allItems.filter(function(f) { return f.type === 'bull'; }).length;
+    var bearCount = allItems.filter(function(f) { return f.type === 'bear'; }).length;
+    var neutralCount = allItems.filter(function(f) { return f.type === 'neutral'; }).length;
    
    // 更新统计
    if (bullCountEl) bullCountEl.textContent = bullCount;
