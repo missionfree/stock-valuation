@@ -1532,110 +1532,122 @@ function generateInsights(realtimeData) {
    十三、辅助渲染
    ============================================================ */
 
-/* 10年期国债收益率（%）：尝试动态获取，失败则用默认值 */
-/* 默认值参考：2026-07-29 中国货币网/东方财富 10Y国债收益率约1.72% */
-var TREASURY_10Y = 1.72;
+/* 10年期国债收益率（%）：动态获取，多源冗余，失败则用默认值 */
+/* 默认值参考：2026-08-03 东方财富datacenter/中债登 10Y国债收益率 1.7169% */
+var TREASURY_10Y = 1.7169;
+var TREASURY_DATE = ''; // 数据日期（由API返回）
 
-/* 国债收益率5分钟缓存 */
-var TREASURY_CACHE_KEY = 'treasury_10y_cache';
-var TREASURY_CACHE_TTL = 5 * 60 * 1000; // 5分钟
+/* 多期限国债收益率（供扩展使用） */
+var TREASURY_2Y = 0;
+var TREASURY_5Y = 0;
+var TREASURY_30Y = 0;
+
+/* 国债收益率30分钟缓存（日内波动小，延长缓存减少请求） */
+var TREASURY_CACHE_KEY = 'treasury_10y_cache_v3';
+var TREASURY_CACHE_TTL = 30 * 60 * 1000; // 30分钟
 
 /**
- * 尝试获取10年期国债收益率（带5分钟缓存）
- * 多源尝试：东方财富push2 → 腾讯财经 → 网易财经 → 东方财富数据中心 → 默认值
- * 数据源：push2.eastmoney.com 全球国债收益率接口（JSONP，浏览器内可用）
- * 默认值参考：2026-07-29 中国货币网 10Y国债最优报卖出收益率1.7205%
+ * 获取10年期国债收益率（带30分钟缓存）
+ *
+ * 多源优先级（经CORS实测验证 2026-08-03）：
+ *   1. 东方财富 datacenter-web API（CORS支持，返回国债收益率曲线，字段EMM00166466）
+ *      - 实测返回 1.7169%，与中债登官方数据一致
+ *      - 同时获取2Y/5Y/30Y多期限数据
+ *   2. 东方财富 push2 JSONP（全球国债 secid=100.GCNY10Y，JSONP无CORS限制）
+ *   3. 本地 treasury.json 兜底文件（定期手动更新）
+ *   4. 代码默认值 1.7169%（参考2026-08-03 datacenter API）
+ *
+ * 已移除的数据源及原因：
+ *   - 腾讯 hz010107：经查证为21国债(7)个券代码（20年期），非10年期国债收益率，数据语义错误
+ *   - Yahoo Finance CN10Y=X：2021年起不服务中国大陆，返回429
+ *   - 中债登 yield.chinabond.com.cn：无公开API，CORS不可靠
+ *   - 新浪财经 hq.sinajs.cn：需Referer头，浏览器无法自定义Referer
+ *
  * @returns {Promise}
  */
 function fetchTreasuryYield() {
-  // 方案0：先查5分钟缓存
+  // 方案0：先查30分钟缓存
   try {
     var raw = localStorage.getItem(TREASURY_CACHE_KEY);
     if (raw) {
       var obj = JSON.parse(raw);
-      if (Date.now() - obj.ts < TREASURY_CACHE_TTL && obj.value > 0) {
+      if (Date.now() - obj.ts < TREASURY_CACHE_TTL && obj.value > 0 && obj.value < 10) {
         TREASURY_10Y = obj.value;
-        if(__DEBUG__)console.log('国债收益率命中5分钟缓存:', obj.value + '%');
+        TREASURY_DATE = obj.date || '';
+        if (obj.y2) TREASURY_2Y = obj.y2;
+        if (obj.y5) TREASURY_5Y = obj.y5;
+        if (obj.y30) TREASURY_30Y = obj.y30;
+        if(__DEBUG__)console.log('国债收益率命中30分钟缓存:', obj.value + '%', '日期:', obj.date);
+        updateTreasuryDisplay(false);
         return Promise.resolve();
       }
     }
   } catch(e) {}
 
-  // 方案1: Yahoo Finance 中国10年期国债收益率（CN10Y）
-  function tryYahoo() {
-    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/CN10Y%3DX?interval=1d&range=1d';
-    return fetchWithTimeout(url, { cache: 'no-store' }, 5000).then(function(res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    }).then(function(data) {
-      if (data && data.chart && data.chart.result && data.chart.result[0]) {
-        var meta = data.chart.result[0].meta;
-        var y = parseFloat(meta.regularMarketPrice);
-        if (y > 0 && y < 15) return y; // Yahoo返回百分比值如1.72
-      }
-      throw new Error('Yahoo国债数据为空');
-    });
+  /**
+   * 验证国债收益率数值有效性
+   * 中国10Y国债历史范围约1.5%~5.0%，合理区间0.5%~10%
+   */
+  function isValidYield(y) {
+    return !isNaN(y) && isFinite(y) && y > 0.5 && y < 10;
   }
 
-  // 方案2: 东方财富push2 JSONP — 全球国债收益率（中国10Y）
-  var emUrl = 'https://push2.eastmoney.com/api/qt/stock/get' +
-    '?fltt=2&fields=f43,f57,f58,f170&secid=100.GCNY10Y';
-
-  function tryEmJsonp() {
-    return emJsonp(emUrl, 4000).then(function(data) {
-      if (data && data.data) {
-        var y = parseFloat(data.data.f43);
-        if (data.data.f43 !== undefined && data.data.f43 !== null) {
-          y = parseFloat(data.data.f43);
-          if (y > 10) y = y / 100;
-        }
-        if (y > 0 && y < 10) return y;
-      }
-      throw new Error('东方财富国债数据为空');
-    });
-  }
-
-  // 方案3: 腾讯财经 - 国债010107
-  function tryTencent() {
-    var url = 'https://qt.gtimg.cn/q=hz010107';
-    return fetchWithTimeout(url, { cache: 'no-store' }, 3000).then(function(res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.text();
-    }).then(function(text) {
-      // 格式: var hq_str_hz010107="...";
-      var match = text.match(/="([^"]+)"/);
-      if (match) {
-        var parts = match[1].split('~');
-        // 腾讯格式: 0=名称, 1=今开, 2=昨收, 3=现价, ... 
-        var y = parseFloat(parts[3]);
-        if (y > 0 && y < 15) {
-          if (y > 10) y = y / 100; // 如果是百分数形式
-          return y;
-        }
-      }
-      throw new Error('腾讯国债数据解析失败');
-    });
-  }
-
-  // 方案5: 东方财富数据中心 - 国债收益率
-  function tryEmDataCenter() {
-    // 使用东方财富数据中心接口获取国债数据
-    var url = 'https://datacenter.eastmoney.com/securities/api/data/v1/get?reportName=RPT_BOND_CB_LIST&columns=SECURITY_CODE,SECURITY_NAME_ABBR,CONVERT_STANDARD_BOND_RATE&filter=(SECURITY_CODE%3D%22010107%22)&pageSize=1&sortTypes=-1&sortColumns=REPORT_DATE';
-    return fetchWithTimeout(url, { cache: 'no-store' }, 4000).then(function(res) {
+  // 方案1: 东方财富 datacenter-web API（CORS支持，首选数据源）
+  // 接口返回中国国债收益率曲线（中债登委托发布），数据与官方一致
+  // 字段映射：EMM00166466=10Y, EMM00166462=5Y, EMM00166469=30Y, EMM00588704=2Y
+  function tryDataCenterWeb() {
+    var url = 'https://datacenter-web.eastmoney.com/api/data/v1/get' +
+      '?reportName=RPTA_WEB_TREASURYYIELD' +
+      '&columns=EMM00166466,EMM00166462,EMM00166469,EMM00588704,SOLAR_DATE' +
+      '&sortColumns=SOLAR_DATE' +
+      '&sortTypes=-1' +
+      '&pageSize=1' +
+      '&pageNumber=1';
+    return fetchWithTimeout(url, { cache: 'no-store' }, 6000).then(function(res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
     }).then(function(json) {
       if (json && json.result && json.result.data && json.result.data.length > 0) {
-        var y = parseFloat(json.result.data[0].CONVERT_STANDARD_BOND_RATE);
-        if (y > 0 && y < 10) return y;
+        var row = json.result.data[0];
+        var y = parseFloat(row['EMM00166466']);
+        if (isValidYield(y)) {
+          // 同时提取多期限数据
+          var y2 = parseFloat(row['EMM00588704']);
+          var y5 = parseFloat(row['EMM00166462']);
+          var y30 = parseFloat(row['EMM00166469']);
+          var dateStr = (row['SOLAR_DATE'] || '').substring(0, 10);
+          if(__DEBUG__)console.log('[国债] datacenter-web获取成功: 10Y=' + y + '% 2Y=' + y2 + '% 5Y=' + y5 + '% 30Y=' + y30 + '% 日期=' + dateStr);
+          return { value: y, date: dateStr, y2: y2, y5: y5, y30: y30 };
+        }
       }
-      throw new Error('东方财富数据中心国债数据为空');
+      throw new Error('datacenter-web国债数据为空或字段无效');
     });
   }
 
-  // 方案1: 中债收益率曲线API（直接调用或从GitHub缓存获取）
-  function tryChinabond() {
-    // 优先尝试从GitHub data文件获取（CORS友好）
+  // 方案2: 东方财富 push2 JSONP — 全球国债收益率（中国10Y）
+  // secid=100.GCNY10Y 为中国10年期国债，JSONP方式无CORS限制
+  // 注意：此接口可能因网络原因不稳定，仅作为datacenter-web的补充
+  function tryEmJsonp() {
+    var emUrl = 'https://push2.eastmoney.com/api/qt/stock/get' +
+      '?fltt=2&fields=f43,f57,f58,f170&secid=100.GCNY10Y';
+    return emJsonp(emUrl, 5000).then(function(data) {
+      if (data && data.data) {
+        var y = parseFloat(data.data.f43);
+        if (!isNaN(y)) {
+          // f43 可能是百分数形式(如1.72)或小数形式(如0.0172)
+          if (y > 10) y = y / 100; // 小数形式转百分数
+          if (isValidYield(y)) {
+            if(__DEBUG__)console.log('[国债] push2 JSONP获取成功:', y + '%');
+            return { value: y, date: '', y2: 0, y5: 0, y30: 0 };
+          }
+        }
+      }
+      throw new Error('东方财富push2国债数据为空');
+    });
+  }
+
+  // 方案3: 本地 treasury.json 兜底文件（定期手动更新）
+  function tryLocalCache() {
     var cacheUrl = 'data/treasury.json?t=' + Date.now();
     return fetchWithTimeout(cacheUrl, { cache: 'no-store' }, 3000)
       .then(function(res) {
@@ -1644,102 +1656,66 @@ function fetchTreasuryYield() {
       })
       .then(function(data) {
         if (data && data.yield_10y) {
-          if(__DEBUG__)console.log('从本地缓存获取国债收益率:', data.yield_10y + '%');
-          return data.yield_10y;
+          var y = parseFloat(data.yield_10y);
+          if (isValidYield(y)) {
+            if(__DEBUG__)console.log('[国债] 从本地treasury.json获取:', y + '%', '日期:', data.date);
+            return {
+              value: y,
+              date: data.date || '',
+              y2: parseFloat(data.yield_2y) || 0,
+              y5: parseFloat(data.yield_5y) || 0,
+              y30: parseFloat(data.yield_30y) || 0
+            };
+          }
         }
-        throw new Error('GitHub缓存无数据');
-      })
-      .catch(function() {
-        // 备选：直接调用中债API（可能CORS受限）
-        var today = new Date();
-        var dateStr = today.getFullYear() + '-' + 
-          String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-          String(today.getDate()).padStart(2, '0');
-        var url = 'https://yield.chinabond.com.cn/cbweb-czb-web/czb/czbQueryXy?zblx=xy&workTime=' + dateStr + '&qxmc=1';
-        return fetchWithTimeout(url, { 
-          cache: 'no-store',
-          headers: { 'Referer': 'https://yield.chinabond.com.cn/' }
-        }, 5000)
-          .then(function(res) {
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.json();
-          })
-          .then(function(data) {
-            if (data && data.length > 0 && data[0].seriesData) {
-              var seriesData = data[0].seriesData;
-              for (var i = 0; i < seriesData.length; i++) {
-                if (seriesData[i][0] === 10.0) {
-                  var y = parseFloat(seriesData[i][1]);
-                  if (y > 0 && y < 10) return y;
-                }
-              }
-            }
-            throw new Error('中债曲线数据解析失败');
-          });
+        throw new Error('本地treasury.json无有效数据');
       });
   }
 
-  // 方案7: 新浪财经
-  function trySina() {
-    var url = 'https://hq.sinajs.cn/list=sh010107';
-    return fetchWithTimeout(url, { 
-      headers: { 'Referer': 'https://finance.sina.com.cn' },
-      cache: 'no-store' 
-    }, 3000).then(function(res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.text();
-    }).then(function(text) {
-      var match = text.match(/="([^"]+)"/);
-      if (match) {
-        var parts = match[1].split(',');
-        // 新浪格式: 0=名称, 3=现价, ...
-        var y = parseFloat(parts[3]);
-        if (y > 0 && y < 15) {
-          if (y > 10) y = y / 100;
-          return y;
-        }
-      }
-      throw new Error('新浪国债数据解析失败');
-    });
+  // 统一更新显示的辅助函数
+  function updateTreasuryDisplay(isDefault) {
+    var trEl = document.getElementById('dashTreasury');
+    if (trEl) {
+      var suffix = isDefault ? ' (默认)' : '';
+      trEl.textContent = '国债 ' + TREASURY_10Y.toFixed(2) + '%' + suffix;
+    }
   }
 
-  // 链式尝试所有方案（优先级：1.中债 2.Yahoo 3.东方财富JSONP 4.腾讯 5.东方财富数据中心 6.新浪 7.PE推测）
-  return tryChinabond()
+  // 链式尝试所有方案（优先级：1.datacenter-web 2.push2 JSONP 3.本地文件 4.默认值）
+  return tryDataCenterWeb()
     .catch(function(err) {
-      console.warn('方案1中债曲线API失败:', err.message, '→ 尝试Yahoo');
-      return tryYahoo();
-    })
-    .catch(function(err) {
-      console.warn('方案2 Yahoo失败:', err.message, '→ 尝试东方财富JSONP');
+      console.warn('[国债] datacenter-web失败:', err.message, '→ 尝试push2 JSONP');
       return tryEmJsonp();
     })
     .catch(function(err) {
-      console.warn('方案3东方财富JSONP失败:', err.message, '→ 尝试腾讯');
-      return tryTencent();
+      console.warn('[国债] push2 JSONP失败:', err.message, '→ 尝试本地文件');
+      return tryLocalCache();
+    })
+    .then(function(result) {
+      TREASURY_10Y = result.value;
+      TREASURY_DATE = result.date || '';
+      if (result.y2 > 0) TREASURY_2Y = result.y2;
+      if (result.y5 > 0) TREASURY_5Y = result.y5;
+      if (result.y30 > 0) TREASURY_30Y = result.y30;
+      if(__DEBUG__)console.log('[国债] 收益率已更新:', result.value.toFixed(4) + '%', '日期:', result.date || '未知');
+      // 写入缓存（包含多期限数据和日期）
+      try {
+        localStorage.setItem(TREASURY_CACHE_KEY, JSON.stringify({
+          ts: Date.now(),
+          value: result.value,
+          date: result.date,
+          y2: result.y2,
+          y5: result.y5,
+          y30: result.y30
+        }));
+      } catch(e) {}
+      updateTreasuryDisplay(false);
     })
     .catch(function(err) {
-      console.warn('方案4腾讯失败:', err.message, '→ 尝试东方财富数据中心');
-      return tryEmDataCenter();
-    })
-    .catch(function(err) {
-      console.warn('方案5东方财富数据中心失败:', err.message, '→ 尝试新浪');
-      return trySina();
-    })
-    .then(function(y) {
-      TREASURY_10Y = y;
-      if(__DEBUG__)console.log('国债收益率已更新:', y + '%');
-      try { localStorage.setItem(TREASURY_CACHE_KEY, JSON.stringify({ ts: Date.now(), value: y })); } catch(e) {}
-    })
-    .catch(function(err) {
-      // 所有API均失败，保守推测国债收益率（基于市场估值区间）
-      // 当前中国10Y国债收益率范围约1.5%-2.8%
-      var hs300 = BASE_DATA.indices.filter(function(i) { return i.code === 'sh000300'; })[0];
-      var pe = hs300 ? hs300.pe : 18;
-      // 根据PE分位数推测（保守区间）
-      var estimated = pe < 12 ? 1.7 : pe < 15 ? 1.9 : pe < 20 ? 2.1 : pe < 25 ? 2.4 : 2.8;
-      TREASURY_10Y = estimated;
-      console.warn('国债收益率所有API失败:', err.message, '→ 推测值', TREASURY_10Y + '%');
+      // 所有API均失败，使用默认值
+      console.warn('[国债] 所有数据源失败:', err.message, '→ 使用默认值:', TREASURY_10Y + '%');
       try { localStorage.removeItem(TREASURY_CACHE_KEY); } catch(e) {}
+      updateTreasuryDisplay(true);
     });
 }
 
@@ -1776,7 +1752,7 @@ function renderDashboard(realtimeData) {
   // 国债收益率有效性校验
   var treasuryDecimal = TREASURY_10Y / 100;
   if (isNaN(treasuryDecimal) || treasuryDecimal <= 0 || treasuryDecimal >= 0.1) {
-    treasuryDecimal = 0.0172; // 兜底：1.72%
+    treasuryDecimal = 0.017169; // 兜底：1.7169%（2026-08-03 datacenter API确认值）
   }
 
   // 全市场等权PE估算：基于行业板块PE的简单平均（等权）计算
@@ -2156,93 +2132,60 @@ var _naFactors = [];
 var _naNewsData = [];
 
 /* ============================================================
-   消息面新闻数据：市场动态新闻库（模拟数据，后续接入实时API替换）
-   注意：以下为静态模板数据，非实时抓取。fetchLatestNews() 会尝试
-   从东方财富快讯API获取实时新闻并合并到此数组头部。
+   消息面新闻数据：实时从东方财富7x24快讯API获取
+   初始为空数组，由 fetchLatestNews() 异步填充
    ============================================================ */
-var NEWS_DATA = [
-  {
-    date: formatDate(new Date()),
-    type: 'bull',
-    title: 'A股市场流动性充裕',
-    desc: '央行逆回购操作维持资金面平稳，市场流动性保持合理充裕',
-    impact: 2
-  },
-  {
-    date: formatDate(new Date()),
-    type: 'bull',
-    title: '北向资金持续净流入',
-    desc: '外资保持对中国资产的配置意愿，沪深港通北向资金维持净买入',
-    impact: 2
-  },
-  {
-    date: formatDate(new Date(Date.now() - 86400000)),
-    type: 'bull',
-    title: '政策支持力度不减',
-    desc: '相关部门表态将继续支持资本市场健康发展，政策面保持友好',
-    impact: 3
-  },
-  {
-    date: formatDate(new Date(Date.now() - 86400000)),
-    type: 'neutral',
-    title: '市场情绪谨慎观望',
-    desc: '投资者情绪偏向谨慎，等待更多宏观数据指引方向',
-    impact: 1
-  },
-  {
-    date: formatDate(new Date(Date.now() - 2 * 86400000)),
-    type: 'bull',
-    title: '上市公司回购活跃',
-    desc: '多家上市公司发布回购计划，产业资本积极增持自家股票',
-    impact: 2
-  },
-  {
-    date: formatDate(new Date(Date.now() - 2 * 86400000)),
-    type: 'neutral',
-    title: '外围市场震荡',
-    desc: '美股周中波动加大，但整体维持高位震荡格局',
-    impact: 1
-  },
-  {
-    date: formatDate(new Date(Date.now() - 3 * 86400000)),
-    type: 'bull',
-    title: 'ETF净申购规模扩大',
-    desc: '股票型ETF持续获得净申购，机构资金借道布局A股',
-    impact: 2
-  },
-  {
-    date: formatDate(new Date(Date.now() - 3 * 86400000)),
-    type: 'bear',
-    title: '部分题材股回调',
-    desc: '前期涨幅较大的小市值题材股出现获利回吐，波动加大',
-    impact: 1
-  }
-];
+var NEWS_DATA = [];
+var _newsDataSource = ''; // 数据来源标记（实时快讯/缓存/空）
 
 /* ============================================================
-   消息面新闻动态获取：从东方财富快讯API获取最新市场新闻
+   消息面新闻动态获取：多源JSONP获取最新市场快讯
+   数据源优先级：
+     1. 东方财富 newsapi 7x24快讯（JSONP，var回调格式）
+     2. 东方财富 np-weblist 快讯列表（JSONP，cb回调格式）
+     3. 本地缓存（localStorage 15分钟TTL）
    ============================================================ */
-var NEWS_CACHE_KEY = 'na_news_cache_v1';
+var NEWS_CACHE_KEY = 'na_news_cache_v2';
 var NEWS_CACHE_TTL = 15 * 60 * 1000; // 15分钟
 
-// 市场新闻关键词
+/* ---- 市场相关性关键词（用于过滤无关快讯） ---- */
 var MARKET_NEWS_KEYWORDS = [
-  'A股', '股市', '大盘', '指数', '沪指', '深成', '创业板', '科创板',
-  '央行', '证监会', '银保监', '财政部', '发改委',
-  '降息', '降准', 'LPR', 'MLF', '逆回购', '流动性',
-  '外资', '北向', '北向资金', '净流入', '净流出',
-  '回购', '增持', '减持', '分红',
-  '美股', '港股', '亚太', '欧洲', '华尔街',
-  '政策', '利好', '利空', '改革', '开放',
-  '经济', 'CPI', 'PPI', 'GDP', 'PMI',
-  '半导体', '新能源', '人工智能', '芯片', '医药'
+  'A股', '股市', '大盘', '指数', '沪指', '深成', '创业板', '科创板', '北证',
+  '央行', '证监会', '银保监', '金管局', '财政部', '发改委', '国务院', '工信部',
+  '降息', '降准', 'LPR', 'MLF', '逆回购', '流动性', '社融', 'M2',
+  '外资', '北向', '北向资金', '净流入', '净流出', '沪深港通',
+  '回购', '增持', '减持', '分红', '融资融券',
+  '美股', '港股', '亚太', '欧洲', '华尔街', '美联储', '鲍威尔', '纳斯达克',
+  '政策', '利好', '利空', '改革', '开放', '规划', '纲要',
+  '经济', 'CPI', 'PPI', 'GDP', 'PMI', '进出口', '贸易',
+  '半导体', '新能源', '人工智能', '芯片', '医药', '军工', '机器人',
+  '房地产', '楼市', '住房', '保障房',
+  '注册制', '并购', '重组', '退市', 'ST',
+  'ETF', '基金', '险资', '社保',
+  '国债', '收益率', '汇率', '人民币'
 ];
 
-// 利空关键词
-var NEWS_BEAR_KEYWORDS = ['处罚', '违规', '立案', '退市', '风险警示', '限制', '收紧', '叫停', '整顿', '大跌', '暴跌', '减持'];
+/* ---- 利好关键词及权重（正分） ---- */
+var NEWS_BULL_KEYWORDS = {
+  '降准': 3, '降息': 3, '万亿': 3, '一揽子': 3, '组合拳': 3, '重大利好': 3,
+  '国务院': 2, '利好': 2, '支持': 2, '促进': 2, '推动': 2, '加码': 2,
+  '释放': 2, '改革': 2, '开放': 2, '扶持': 2, '补贴': 2, '减税': 2,
+  '净流入': 2, '回购': 1, '增持': 1, '大涨': 2, '上涨': 1, '暴涨': 3,
+  '牛市': 2, '反弹': 1, '回暖': 1, '复苏': 2, '超预期': 2,
+  '纳入': 1, '扩容': 1, '批准': 1, '通过': 1, '落地': 1, '实施': 1
+};
 
-// 利好关键词
-var NEWS_BULL_KEYWORDS = ['利好', '支持', '促进', '推动', '加码', '释放', '降息', '降准', '改革', '开放', '扶持', '补贴', '净流入', '回购', '增持', '大涨', '上涨'];
+/* ---- 利空关键词及权重（负分） ---- */
+var NEWS_BEAR_KEYWORDS = {
+  '暴跌': 3, '熔断': 3, '崩盘': 3, '重大利空': 3, '黑天鹅': 3,
+  '处罚': 2, '违规': 2, '立案': 2, '退市': 2, '风险警示': 2,
+  '限制': 2, '收紧': 2, '叫停': 2, '整顿': 2, '问责': 2,
+  '大跌': 2, '暴跌': 3, '跳水': 2, '重挫': 2, '大跌': 2,
+  '减持': 1, '净流出': 2, '熊市': 2, '恶化': 2,
+  '违约': 2, '爆雷': 2, '质押': 1, '强平': 2,
+  '不及预期': 2, '下滑': 1, '萎缩': 2, '衰退': 3,
+  '制裁': 2, '贸易战': 2, '关税': 1, '加息': 2
+};
 
 /**
  * 判断是否为市场相关新闻
@@ -2253,176 +2196,266 @@ function isMarketNews(title, desc) {
 }
 
 /**
- * 判断新闻方向（利好/利空/中性）
+ * 智能分类新闻方向（利好/利空/中性）— 加权评分算法
+ * 统计利好和利空关键词的加权得分，取净值得出方向
  */
 function classifyNews(title, desc) {
   var text = (title || '') + (desc || '');
-  var isBear = NEWS_BEAR_KEYWORDS.some(function(kw) { return text.indexOf(kw) >= 0; });
-  if (isBear) return 'bear';
-  
-  var isBull = NEWS_BULL_KEYWORDS.some(function(kw) { return text.indexOf(kw) >= 0; });
-  if (isBull) return 'bull';
-  
+  var bullScore = 0;
+  var bearScore = 0;
+
+  // 统计利好得分
+  Object.keys(NEWS_BULL_KEYWORDS).forEach(function(kw) {
+    if (text.indexOf(kw) >= 0) bullScore += NEWS_BULL_KEYWORDS[kw];
+  });
+
+  // 统计利空得分
+  Object.keys(NEWS_BEAR_KEYWORDS).forEach(function(kw) {
+    if (text.indexOf(kw) >= 0) bearScore += NEWS_BEAR_KEYWORDS[kw];
+  });
+
+  // 净值判断（阈值2，避免轻微偏向导致误判）
+  var netScore = bullScore - bearScore;
+  if (netScore >= 2) return 'bull';
+  if (netScore <= -2) return 'bear';
   return 'neutral';
 }
 
 /**
- * 评估新闻影响力（1-3）
+ * 评估新闻影响力（1-3）— 基于权威来源和关键词强度
  */
 function assessNewsImpact(title, desc) {
   var text = (title || '') + (desc || '');
-  var highWords = ['降准', '降息', '国务院', '重大', '万亿', '改革', '大涨', '暴跌', '净流入'];
-  var midWords = ['央行', '证监会', '财政部', '回购', '增持', '外资'];
-  
-  if (highWords.some(function(kw) { return text.indexOf(kw) >= 0; })) return 3;
-  if (midWords.some(function(kw) { return text.indexOf(kw) >= 0; })) return 2;
+
+  // 权威来源（3级影响）
+  var authorityWords = ['国务院', '央行', '证监会', '财政部', '发改委', '降准', '降息', '万亿', '一揽子', '组合拳'];
+  // 重要内容（2级影响）
+  var importantWords = ['美联储', '鲍威尔', '美股', '暴跌', '暴涨', '熔断', '退市', '违约', '制裁', '贸易战',
+    '注册制', '并购', '重组', '回购', '增持', '减持', '外资', '北向', '净流入', '净流出',
+    'LPR', 'MLF', '社融', 'GDP', 'CPI', 'PMI'];
+  // 一般内容（1级影响）
+  var normalWords = ['A股', '股市', '大盘', '指数', '沪指', '创业板', '港股', '亚太', 'ETF', '基金'];
+
+  if (authorityWords.some(function(kw) { return text.indexOf(kw) >= 0; })) return 3;
+  if (importantWords.some(function(kw) { return text.indexOf(kw) >= 0; })) return 2;
+  if (normalWords.some(function(kw) { return text.indexOf(kw) >= 0; })) return 1;
   return 1;
 }
 
 /**
- * 从东方财富公告API获取最新市场新闻
+ * 从东方财富7x24快讯API获取最新市场新闻
+ * 接口返回 var {callback}={...}; 格式的JSONP
+ *
+ * @param {boolean} forceRefresh - 强制刷新（忽略缓存）
+ * @returns {Promise<Array>} 新闻数组
  */
 function fetchLatestNews(forceRefresh) {
-  // 检查缓存
+  // 检查缓存（非强制刷新时）
   if (!forceRefresh) {
     try {
       var cached = localStorage.getItem(NEWS_CACHE_KEY);
       if (cached) {
-        var data = JSON.parse(cached);
-        if (Date.now() - data.ts < NEWS_CACHE_TTL) {
-          return Promise.resolve(data.news);
+        var cacheData = JSON.parse(cached);
+        if (Date.now() - cacheData.ts < NEWS_CACHE_TTL && cacheData.news && cacheData.news.length > 0) {
+          _newsDataSource = '缓存快讯';
+          if(__DEBUG__)console.log('[新闻] 命中15分钟缓存:', cacheData.news.length + '条');
+          return Promise.resolve(cacheData.news);
         }
       }
     } catch(e) {}
   }
-  
-  // 东方财富公告接口
-  var apiUrl = 'https://np-anotice-stock.eastmoney.com/api/security/ann';
-  var params = 'sr=-1&page_size=15&page_index=1&ann_type=SHA,CYB,SZA,SME,BJA&client_source=web';
-  
-  return fetchWithTimeout(apiUrl + '?' + params, {
-    headers: {
-      'Referer': 'https://www.eastmoney.com',
-      'Accept': 'application/json'
-    }
-  }, 10000)
-  .then(function(res) { return res.json(); })
-  .then(function(result) {
-    var news = [];
-    var list = result && result.data && result.data.list;
-    if (list && list.length > 0) {
-      list.forEach(function(item) {
-        var title = item.title || item.title_ch || '';
-        var date = item.notice_date || item.sort_date || '';
-        if (title) {
-          news.push({
-            title: title,
-            desc: date.substring(0, 16).replace('T', ' '),
-            date: date.substring(0, 10),
-            type: 'neutral',
-            impact: 2,
-            time: date.substring(11, 16)
-          });
+
+  // 方案1: 东方财富 newsapi 7x24快讯（JSONP，var回调格式）
+  // URL格式: getlist_{type}_{callback}_{pageSize}_{pageIndex}_.html
+  // type=102 为7*24小时全球直播快讯
+  function tryNewsApi() {
+    var cbName = '_na_news_cb_' + Date.now();
+    var url = 'https://newsapi.eastmoney.com/kuaixun/v1/getlist_102_' + cbName + '_30_1_.html';
+
+    return new Promise(function(resolve, reject) {
+      var script = document.createElement('script');
+      var timer = Perf.trackedSetTimeout(function() {
+        cleanup();
+        reject(new Error('newsapi快讯请求超时'));
+      }, 8000);
+
+      function cleanup() {
+        Perf.clearTimeout(timer);
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      // 保存可能存在的旧值
+      var oldVal = window[cbName];
+      var checked = false;
+
+      script.onload = function() {
+        if (checked) return;
+        checked = true;
+        // 先读取数据，再cleanup（cleanup会删除全局变量）
+        var data = window[cbName];
+        cleanup();
+        // 恢复旧值
+        if (oldVal === undefined) delete window[cbName];
+        else window[cbName] = oldVal;
+
+        if (data && data.LivesList && data.LivesList.length > 0) {
+          if(__DEBUG__)console.log('[新闻] newsapi获取成功:', data.LivesList.length + '条');
+          resolve(data.LivesList);
+        } else {
+          reject(new Error('newsapi返回空数据'));
         }
-      });
-    }
-    // 更新缓存
-    try {
-      localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({
-        ts: Date.now(),
-        news: news
-      }));
-    } catch(e) {}
-    return news;
-  })
-  .catch(function(e) {
-    if (__DEBUG__) console.log('市场新闻获取失败:', e);
-    return [];
-  });
-}
+      };
 
-/**
- * 从搜索结果解析市场新闻
- */
-function parseNewsFromSearch(data) {
-  if (!data || !data.result || !data.result.cmsArticleWebOld) return [];
-  var articles = data.result.cmsArticleWebOld.list || [];
-  var news = [];
-  
-  articles.forEach(function(article) {
-    var title = article.title || '';
-    var desc = article.content || '';
-    title = title.replace(/<[^>]+>/g, '');
-    desc = desc.replace(/<[^>]+>/g, '').substring(0, 150);
-    
-    if (!isMarketNews(title, desc)) return;
-    
-    var dateStr = article.date || '';
-    var newsDate = dateStr ? dateStr.substring(0, 10) : formatDate(new Date());
-    
-    // 只保留近7天的新闻
-    var newsTime = new Date(newsDate).getTime();
-    if (isNaN(newsTime) || Date.now() - newsTime > 7 * 24 * 60 * 60 * 1000) return;
-    
-    var type = classifyNews(title, desc);
-    var impact = assessNewsImpact(title, desc);
-    
-    news.push({
-      date: newsDate,
-      type: type,
-      title: title,
-      desc: desc,
-      impact: impact,
-      _dynamic: true
+      script.onerror = function() {
+        if (checked) return;
+        checked = true;
+        cleanup();
+        reject(new Error('newsapi快讯加载失败'));
+      };
+
+      script.src = url;
+      document.head.appendChild(script);
     });
-  });
-  
-  return news;
+  }
+
+  // 方案2: 东方财富 np-weblist 快讯列表（尝试fetch+CORS，降级JSONP）
+  function tryWebList() {
+    var ts = Date.now();
+    var url = 'https://np-weblist.eastmoney.com/comm/web/getFastNewsList' +
+      '?client=web&biz=web_724&fastColumn=102&sortEnd=0&pageSize=30&req_trace=' + ts + '&_=' + ts;
+
+    // 尝试1: fetch + CORS
+    return fetchWithTimeout(url, { cache: 'no-store' }, 8000).then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).catch(function(fetchErr) {
+      // 尝试2: JSONP降级（添加cb参数）
+      if(__DEBUG__)console.log('[新闻] np-weblist fetch失败，尝试JSONP:', fetchErr.message);
+      return emJsonp(url, 8000);
+    }).then(function(data) {
+      if (data && data.data && data.data.fastNewsList && data.data.fastNewsList.length > 0) {
+        if(__DEBUG__)console.log('[新闻] np-weblist获取成功:', data.data.fastNewsList.length + '条');
+        // 转换为统一格式
+        return data.data.fastNewsList.map(function(item) {
+          return {
+            title: item.title || '',
+            digest: item.summary || '',
+            showtime: item.showTime || ''
+          };
+        });
+      }
+      throw new Error('np-weblist返回空数据');
+    });
+  }
+
+  // 解析快讯数据为标准新闻格式
+  function parseNewsList(livesList) {
+    var news = [];
+    var now = Date.now();
+    var maxAge = 3 * 24 * 60 * 60 * 1000; // 只保留3天内的新闻
+
+    livesList.forEach(function(item) {
+      var title = (item.title || '').replace(/<[^>]+>/g, '').trim();
+      var desc = (item.digest || item.simdigest || '').replace(/<[^>]+>/g, '').trim();
+      var showtime = item.showtime || item.ordertime || '';
+
+      if (!title || title.length < 4) return;
+      if (!isMarketNews(title, desc)) return;
+
+      // 解析时间
+      var newsDate = showtime ? showtime.substring(0, 10) : formatDate(new Date());
+      var newsTime = showtime ? showtime.substring(11, 16) : '';
+      var newsTimestamp = showtime ? new Date(showtime.replace(/-/g, '/')).getTime() : 0;
+
+      // 过滤过期新闻（3天前）
+      if (newsTimestamp && (now - newsTimestamp > maxAge)) return;
+
+      var type = classifyNews(title, desc);
+      var impact = assessNewsImpact(title, desc);
+
+      news.push({
+        date: newsDate,
+        time: newsTime,
+        type: type,
+        title: title,
+        desc: desc.substring(0, 200),
+        impact: impact,
+        _source: '实时快讯'
+      });
+    });
+
+    // 按时间倒序排列
+    news.sort(function(a, b) {
+      return (b.date + ' ' + (b.time || '')).localeCompare(a.date + ' ' + (a.time || ''));
+    });
+
+    return news;
+  }
+
+  // 链式尝试：newsapi → np-weblist
+  return tryNewsApi()
+    .then(function(livesList) {
+      _newsDataSource = '实时快讯';
+      return parseNewsList(livesList);
+    })
+    .catch(function(err) {
+      console.warn('[新闻] newsapi失败:', err.message, '→ 尝试np-weblist');
+      return tryWebList()
+        .then(function(list) {
+          _newsDataSource = '实时快讯';
+          return parseNewsList(list);
+        });
+    })
+    .then(function(news) {
+      if (news.length > 0) {
+        // 写入缓存
+        try {
+          localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({
+            ts: Date.now(),
+            news: news
+          }));
+        } catch(e) {}
+      }
+      return news;
+    })
+    .catch(function(err) {
+      console.warn('[新闻] 所有快讯API失败:', err.message);
+      _newsDataSource = '';
+      return [];
+    });
 }
 
 /**
- * 合并动态新闻到静态数据
+ * 更新新闻数据并重新渲染
  */
-function mergeNewsData(dynamicNews) {
-  if (!dynamicNews || dynamicNews.length === 0) return;
-  
-  var existingTitles = {};
-  NEWS_DATA.forEach(function(n) {
-    existingTitles[n.title] = true;
-  });
-  
-  var newItems = dynamicNews.filter(function(n) {
-    return !existingTitles[n.title];
-  });
-  
-  if (newItems.length === 0) return;
-  
-  newItems.sort(function(a, b) { return b.date.localeCompare(a.date); });
-  NEWS_DATA = newItems.concat(NEWS_DATA);
-  
-  // 限制总数不超过20条
-  if (NEWS_DATA.length > 20) {
-    NEWS_DATA = NEWS_DATA.slice(0, 20);
+function updateNewsData(dynamicNews) {
+  if (!dynamicNews || dynamicNews.length === 0) {
+    if (NEWS_DATA.length === 0) {
+      _newsDataSource = '暂无数据';
+    }
+    return;
   }
-  
-  // 更新全局数据并重新渲染
+
+  // 完全替换为实时数据（不再混合静态模拟数据）
+  NEWS_DATA = dynamicNews.slice(0, 25); // 限制最多25条
   _naNewsData = NEWS_DATA.slice();
   renderNewsAnalysis();
 }
 
 /**
- * 启动新闻自动刷新（30分钟周期）
+ * 启动新闻自动刷新（15分钟周期）
  */
 var _newsRefreshTimer = null;
 function startNewsAutoRefresh() {
   stopNewsAutoRefresh();
   _newsRefreshTimer = Perf.setInterval(function() {
     if (document.hidden) return;
-    fetchLatestNews(false).then(function(news) {
-      mergeNewsData(news);
+    fetchLatestNews(true).then(function(news) {
+      updateNewsData(news);
     });
-  }, 30 * 60 * 1000);
-  if (__DEBUG__) console.log('[新闻刷新] 已启动，间隔30分钟');
+  }, NEWS_CACHE_TTL);
+  if (__DEBUG__) console.log('[新闻刷新] 已启动，间隔15分钟');
 }
 function stopNewsAutoRefresh() {
   if (_newsRefreshTimer) {
@@ -2432,8 +2465,9 @@ function stopNewsAutoRefresh() {
 }
 
  /**
-  * 消息面分析主函数 - 每日更新
+  * 消息面分析主函数 - 实时更新
   * 分析当前市场消息面，判定利好/利空/中性因素
+  * 数据来源：东方财富7x24快讯API + 市场数据分析
   */
 function renderNewsAnalysis() {
     var container = document.getElementById('naList');
@@ -2441,73 +2475,79 @@ function renderNewsAnalysis() {
     var bullCountEl = document.getElementById('nasBullCount');
     var bearCountEl = document.getElementById('nasBearCount');
     var neutralCountEl = document.getElementById('nasNeutralCount');
-    
-    // 调试日志
-    if (typeof NEWS_DATA !== 'undefined') {
-      console.log('[DEBUG] NEWS_DATA length:', NEWS_DATA.length);
-    } else {
-      console.error('[DEBUG] NEWS_DATA is undefined!');
-    }
-    
+
     if (!container) return;
-    
+
     var now = new Date();
-    var dateStr = now.getFullYear() + '-' + 
-      String(now.getMonth() + 1).padStart(2, '0') + '-' +
-      String(now.getDate()).padStart(2, '0');
-    
+
     // 获取市场数据用于判断
     _naFactors = analyzeMarketFactors();
-    
+
     // 更新全局新闻数据
     _naNewsData = NEWS_DATA.slice();
-    
+
     // 合并新闻数据与分析因素（新闻在前，分析在后）
     var allItems = _naNewsData.concat(_naFactors);
-    
+
     // 统计因素数量（包含新闻和分析）
     var bullCount = allItems.filter(function(f) { return f.type === 'bull'; }).length;
     var bearCount = allItems.filter(function(f) { return f.type === 'bear'; }).length;
     var neutralCount = allItems.filter(function(f) { return f.type === 'neutral'; }).length;
-   
+
    // 更新统计
    if (bullCountEl) bullCountEl.textContent = bullCount;
    if (bearCountEl) bearCountEl.textContent = bearCount;
    if (neutralCountEl) neutralCountEl.textContent = neutralCount;
-   
-   // 综合判断
+
+   // 综合判断（加权评分：高影响新闻权重更大）
+   var weightedScore = 0;
+   allItems.forEach(function(f) {
+     var w = f.impact || 1;
+     if (f.type === 'bull') weightedScore += w;
+     else if (f.type === 'bear') weightedScore -= w;
+   });
+
    var overall = '震荡整理';
    var overallClass = 'neutral';
-   var score = bullCount - bearCount;
-   if (score >= 3) {
+   if (weightedScore >= 5) {
      overall = '整体偏多';
      overallClass = 'bull';
-   } else if (score >= 1) {
+   } else if (weightedScore >= 2) {
      overall = '略微偏多';
      overallClass = 'bull';
-   } else if (score <= -3) {
+   } else if (weightedScore <= -5) {
      overall = '整体偏空';
      overallClass = 'bear';
-   } else if (score <= -1) {
+   } else if (weightedScore <= -2) {
      overall = '略微偏空';
      overallClass = 'bear';
    }
-   
+
    if (overallEl) {
      overallEl.textContent = overall;
      overallEl.className = 'nas-value nas-overall-' + overallClass;
    }
-   
+
+   // 更新数据来源标签
+   var sourceEl = document.getElementById('naDataSource');
+   if (sourceEl) {
+     sourceEl.textContent = _newsDataSource || (_naNewsData.length > 0 ? '缓存数据' : '加载中...');
+   }
+
    // 根据筛选条件过滤所有项目
    var filtered = allItems;
    if (_naFilter !== 'all') {
      filtered = allItems.filter(function(f) { return f.type === _naFilter; });
    }
-   
+
    // 渲染消息卡片
    var html = '';
    if (filtered.length === 0) {
-     html = '<div class="na-empty">暂无相关因素</div>';
+     if (_naNewsData.length === 0) {
+       html = '<div class="na-empty">正在获取实时快讯...</div>';
+     } else {
+       html = '<div class="na-empty">暂无相关因素</div>';
+     }
    } else {
      filtered.forEach(function(factor) {
        var tagClass = {
@@ -2520,30 +2560,44 @@ function renderNewsAnalysis() {
          'bear': '利空',
          'neutral': '中性'
        };
-       
+
        // 影响力圆点
        var dotsHtml = '';
        for (var d = 0; d < 3; d++) {
          dotsHtml += '<span class="na-impact-dot' + (d < (factor.impact || 1) ? ' on' : '') + '"></span>';
        }
-       
+
        // 格式化时间
-       var timeStr = factor.time || (now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0'));
-       
+       var timeStr = factor.time || '';
+       if (!timeStr && factor.date) {
+         timeStr = factor.date.substring(5); // MM-DD
+       }
+       if (!timeStr) {
+         timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+       }
+
+       // 数据来源标签
+       var sourceLabel = factor._source ? '<span class="na-source-tag">' + escHTML(factor._source) + '</span>' : '<span class="na-source-tag">市场分析</span>';
+
+       // XSS防护：转义标题和描述
+       var safeTitle = escHTML(factor.title || '');
+       var safeDesc = escHTML(factor.desc || '');
+
        html += '<div class="na-card na-' + factor.type + '">' +
          '<div class="na-card-row">' +
            '<span class="na-tag ' + tagClass[factor.type] + '">' + tagText[factor.type] + '</span>' +
-           '<span class="na-card-title">' + factor.title + '</span>' +
+           '<span class="na-card-title">' + safeTitle + '</span>' +
            '<span class="na-impact">' + dotsHtml + '</span>' +
-           '<span class="na-card-time">' + timeStr + '</span>' +
+           '<span class="na-card-time">' + escHTML(timeStr) + '</span>' +
          '</div>' +
-         '<div class="na-card-desc">' + factor.desc + '</div>' +
+         '<div class="na-card-desc">' + safeDesc + '</div>' +
+         '<div class="na-card-footer">' + sourceLabel + '</div>' +
        '</div>';
      });
    }
-   
+
    container.innerHTML = html;
-   
+
    // 绑定筛选按钮事件
    bindNaFilters();
  }
@@ -2696,7 +2750,7 @@ function analyzeMarketFactors() {
   }
   
   // 3. 国债收益率影响
-  var treasuryYield = TREASURY_10Y || 2.0;
+  var treasuryYield = TREASURY_10Y || 1.72;
   if (treasuryYield < 2.0) {
     factors.push({
       type: 'bull',
@@ -2798,34 +2852,45 @@ function analyzeMarketFactors() {
 function getGrahamScore() {
   var hs300 = BASE_DATA.indices.filter(function(i) { return i.code === 'sh000300'; })[0];
   var pe = hs300 ? hs300.pe : 14.3;
-  var treasuryYield = TREASURY_10Y || 2.0;
+  var treasuryYield = TREASURY_10Y || 1.72;
   var earningsYield = 100 / pe;
   return earningsYield - treasuryYield;
 }
 
 /**
- * 刷新消息面分析
+ * 刷新消息面分析 — 强制获取最新实时快讯
  */
 function refreshNewsAnalysis() {
   var btn = document.querySelector('.na-refresh-btn');
   var listEl = document.getElementById('naList');
-  
+
   if (btn) {
     btn.classList.add('spinning');
     btn.textContent = '⏳';
   }
-  
+
   if (listEl) {
-    listEl.innerHTML = '<div class="na-loading">📡 正在重新分析...</div>';
+    listEl.innerHTML = '<div class="na-loading">📡 正在获取实时快讯...</div>';
   }
-  
-  // 模拟短暂延迟效果
-  setTimeout(function() {
+
+  // 强制刷新：忽略缓存，直接请求API
+  fetchLatestNews(true).then(function(news) {
+    if (news && news.length > 0) {
+      updateNewsData(news);
+    } else {
+      // API返回空数据，仍然渲染已有数据+市场分析
+      renderNewsAnalysis();
+    }
+    if (btn) {
+      btn.classList.remove('spinning');
+      btn.textContent = '🔄';
+    }
+  }).catch(function() {
     renderNewsAnalysis();
     if (btn) {
       btn.classList.remove('spinning');
       btn.textContent = '🔄';
     }
-  }, 500);
+  });
 }
 

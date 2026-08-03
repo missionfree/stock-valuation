@@ -2715,7 +2715,7 @@ function runAnalysis(forceRefresh) {
       renderNewsAnalysis();
       // 并行获取动态新闻（不阻塞主流程）
       fetchLatestNews(false).then(function(news) {
-        mergeNewsData(news);
+        updateNewsData(news);
         startNewsAutoRefresh(); // 启动新闻自动刷新
       });
     }).then(function() {

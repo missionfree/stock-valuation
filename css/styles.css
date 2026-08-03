@@ -526,6 +526,20 @@ body {
   font-size: 0.48rem; color: var(--muted); text-align: center;
   margin-top: 0.4rem; opacity: 0.6;
 }
+/* 消息面数据来源标签 */
+.na-data-source {
+  font-size: 0.46rem; color: var(--accent); opacity: 0.7;
+  font-family: var(--font-mono); white-space: nowrap;
+}
+.na-card-footer {
+  margin-top: 0.15rem; display: flex; align-items: center; gap: 0.2rem;
+}
+.na-source-tag {
+  font-size: 0.42rem; color: var(--muted); opacity: 0.6;
+  padding: 1px 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.03);
+  border: 0.5px solid rgba(255,255,255,0.05);
+}
 
 /* 消息面分析刷新按钮 */
 .na-refresh-btn {

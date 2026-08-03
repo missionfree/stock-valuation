@@ -1,6 +1,9 @@
 {
-  "date": "2026-08-01",
-  "yield_10y": 1.72,
-  "source": "chinabond",
-  "updated": "2026-08-01T00:00:00Z"
+  "date": "2026-08-03",
+  "yield_10y": 1.7169,
+  "yield_2y": 1.2646,
+  "yield_5y": 1.4167,
+  "yield_30y": 2.1891,
+  "source": "eastmoney-datacenter / chinabond",
+  "updated": "2026-08-03T00:00:00Z"
 }
