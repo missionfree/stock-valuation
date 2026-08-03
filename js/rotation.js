@@ -2710,9 +2710,14 @@ function runAnalysis(forceRefresh) {
     }).catch(function() {
       renderMarketFlow(null);
       renderSectorCapitalAnalysis(null);
-    }).then(function() {
-      // 阶段2.5：消息面分析（基于已有数据快速渲染）
+}).then(function() {
+      // 阶段2.5：消息面分析（基于已有数据快速渲染，同时获取动态新闻）
       renderNewsAnalysis();
+      // 并行获取动态新闻（不阻塞主流程）
+      fetchLatestNews(false).then(function(news) {
+        mergeNewsData(news);
+        startNewsAutoRefresh(); // 启动新闻自动刷新
+      });
     }).then(function() {
       // 阶段3：市场情绪数据（最后获取，优先级最低，且自带缓存策略）
       return refreshSentimentData(false);

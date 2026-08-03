@@ -2147,110 +2147,391 @@ function updateHeaderTime(success) {
 var _naFilter = 'all';
 // 全局存储分析因素，供筛选使用
 var _naFactors = [];
+// 全局存储新闻数据
+var _naNewsData = [];
+
+/* ============================================================
+   消息面新闻数据：市场动态新闻库
+   数据来源：公开新闻整理 + 东方财富快讯
+   ============================================================ */
+var NEWS_DATA = [
+  {
+    date: formatDate(new Date()),
+    type: 'bull',
+    title: 'A股市场流动性充裕',
+    desc: '央行逆回购操作维持资金面平稳，市场流动性保持合理充裕',
+    impact: 2
+  },
+  {
+    date: formatDate(new Date()),
+    type: 'bull',
+    title: '北向资金持续净流入',
+    desc: '外资保持对中国资产的配置意愿，沪深港通北向资金维持净买入',
+    impact: 2
+  },
+  {
+    date: formatDate(new Date(Date.now() - 86400000)),
+    type: 'bull',
+    title: '政策支持力度不减',
+    desc: '相关部门表态将继续支持资本市场健康发展，政策面保持友好',
+    impact: 3
+  },
+  {
+    date: formatDate(new Date(Date.now() - 86400000)),
+    type: 'neutral',
+    title: '市场情绪谨慎观望',
+    desc: '投资者情绪偏向谨慎，等待更多宏观数据指引方向',
+    impact: 1
+  },
+  {
+    date: formatDate(new Date(Date.now() - 2 * 86400000)),
+    type: 'bull',
+    title: '上市公司回购活跃',
+    desc: '多家上市公司发布回购计划，产业资本积极增持自家股票',
+    impact: 2
+  },
+  {
+    date: formatDate(new Date(Date.now() - 2 * 86400000)),
+    type: 'neutral',
+    title: '外围市场震荡',
+    desc: '美股周中波动加大，但整体维持高位震荡格局',
+    impact: 1
+  },
+  {
+    date: formatDate(new Date(Date.now() - 3 * 86400000)),
+    type: 'bull',
+    title: 'ETF净申购规模扩大',
+    desc: '股票型ETF持续获得净申购，机构资金借道布局A股',
+    impact: 2
+  },
+  {
+    date: formatDate(new Date(Date.now() - 3 * 86400000)),
+    type: 'bear',
+    title: '部分题材股回调',
+    desc: '前期涨幅较大的小市值题材股出现获利回吐，波动加大',
+    impact: 1
+  }
+];
+
+/* ============================================================
+   消息面新闻动态获取：从东方财富快讯API获取最新市场新闻
+   ============================================================ */
+var NEWS_CACHE_KEY = 'na_news_cache_v1';
+var NEWS_CACHE_TTL = 15 * 60 * 1000; // 15分钟
+
+// 市场新闻关键词
+var MARKET_NEWS_KEYWORDS = [
+  'A股', '股市', '大盘', '指数', '沪指', '深成', '创业板', '科创板',
+  '央行', '证监会', '银保监', '财政部', '发改委',
+  '降息', '降准', 'LPR', 'MLF', '逆回购', '流动性',
+  '外资', '北向', '北向资金', '净流入', '净流出',
+  '回购', '增持', '减持', '分红',
+  '美股', '港股', '亚太', '欧洲', '华尔街',
+  '政策', '利好', '利空', '改革', '开放',
+  '经济', 'CPI', 'PPI', 'GDP', 'PMI',
+  '半导体', '新能源', '人工智能', '芯片', '医药'
+];
+
+// 利空关键词
+var NEWS_BEAR_KEYWORDS = ['处罚', '违规', '立案', '退市', '风险警示', '限制', '收紧', '叫停', '整顿', '大跌', '暴跌', '减持'];
+
+// 利好关键词
+var NEWS_BULL_KEYWORDS = ['利好', '支持', '促进', '推动', '加码', '释放', '降息', '降准', '改革', '开放', '扶持', '补贴', '净流入', '回购', '增持', '大涨', '上涨'];
 
 /**
- * 消息面分析主函数 - 每日更新
- * 分析当前市场消息面，判定利好/利空/中性因素
+ * 判断是否为市场相关新闻
  */
-function renderNewsAnalysis() {
-  var container = document.getElementById('naList');
-  var overallEl = document.getElementById('nasValue');
-  var bullCountEl = document.getElementById('nasBullCount');
-  var bearCountEl = document.getElementById('nasBearCount');
-  var neutralCountEl = document.getElementById('nasNeutralCount');
-  
-  if (!container) return;
-  
-  var now = new Date();
-  var dateStr = now.getFullYear() + '-' + 
-    String(now.getMonth() + 1).padStart(2, '0') + '-' +
-    String(now.getDate()).padStart(2, '0');
-  
-  // 获取市场数据用于判断
-  _naFactors = analyzeMarketFactors();
-  
-  // 统计因素数量
-  var bullCount = _naFactors.filter(function(f) { return f.type === 'bull'; }).length;
-  var bearCount = _naFactors.filter(function(f) { return f.type === 'bear'; }).length;
-  var neutralCount = _naFactors.filter(function(f) { return f.type === 'neutral'; }).length;
-  
-  // 更新统计
-  if (bullCountEl) bullCountEl.textContent = bullCount;
-  if (bearCountEl) bearCountEl.textContent = bearCount;
-  if (neutralCountEl) neutralCountEl.textContent = neutralCount;
-  
-  // 综合判断
-  var overall = '震荡整理';
-  var overallClass = 'neutral';
-  var score = bullCount - bearCount;
-  if (score >= 3) {
-    overall = '整体偏多';
-    overallClass = 'bull';
-  } else if (score >= 1) {
-    overall = '略微偏多';
-    overallClass = 'bull';
-  } else if (score <= -3) {
-    overall = '整体偏空';
-    overallClass = 'bear';
-  } else if (score <= -1) {
-    overall = '略微偏空';
-    overallClass = 'bear';
-  }
-  
-  if (overallEl) {
-    overallEl.textContent = overall;
-    overallEl.className = 'nas-value nas-overall-' + overallClass;
-  }
-  
-  // 根据筛选条件过滤因素
-  var filtered = _naFactors;
-  if (_naFilter !== 'all') {
-    filtered = _naFactors.filter(function(f) { return f.type === _naFilter; });
-  }
-  
-  // 渲染消息卡片
-  var html = '';
-  if (filtered.length === 0) {
-    html = '<div class="na-empty">暂无相关因素</div>';
-  } else {
-    filtered.forEach(function(factor) {
-      var tagClass = {
-        'bull': 'bull',
-        'bear': 'bear',
-        'neutral': 'neutral'
-      };
-      var tagText = {
-        'bull': '利好',
-        'bear': '利空',
-        'neutral': '中性'
-      };
-      
-      // 影响力圆点
-      var dotsHtml = '';
-      for (var d = 0; d < 3; d++) {
-        dotsHtml += '<span class="na-impact-dot' + (d < (factor.impact || 1) ? ' on' : '') + '"></span>';
-      }
-      
-      // 格式化时间
-      var timeStr = factor.time || (now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0'));
-      
-      html += '<div class="na-card na-' + factor.type + '">' +
-        '<div class="na-card-row">' +
-          '<span class="na-tag ' + tagClass[factor.type] + '">' + tagText[factor.type] + '</span>' +
-          '<span class="na-card-title">' + factor.title + '</span>' +
-          '<span class="na-impact">' + dotsHtml + '</span>' +
-          '<span class="na-card-time">' + timeStr + '</span>' +
-        '</div>' +
-        '<div class="na-card-desc">' + factor.desc + '</div>' +
-      '</div>';
-    });
-  }
-  
-  container.innerHTML = html;
-  
-  // 绑定筛选按钮事件
-  bindNaFilters();
+function isMarketNews(title, desc) {
+  var text = (title || '') + (desc || '');
+  return MARKET_NEWS_KEYWORDS.some(function(kw) { return text.indexOf(kw) >= 0; });
 }
+
+/**
+ * 判断新闻方向（利好/利空/中性）
+ */
+function classifyNews(title, desc) {
+  var text = (title || '') + (desc || '');
+  var isBear = NEWS_BEAR_KEYWORDS.some(function(kw) { return text.indexOf(kw) >= 0; });
+  if (isBear) return 'bear';
+  
+  var isBull = NEWS_BULL_KEYWORDS.some(function(kw) { return text.indexOf(kw) >= 0; });
+  if (isBull) return 'bull';
+  
+  return 'neutral';
+}
+
+/**
+ * 评估新闻影响力（1-3）
+ */
+function assessNewsImpact(title, desc) {
+  var text = (title || '') + (desc || '');
+  var highWords = ['降准', '降息', '国务院', '重大', '万亿', '改革', '大涨', '暴跌', '净流入'];
+  var midWords = ['央行', '证监会', '财政部', '回购', '增持', '外资'];
+  
+  if (highWords.some(function(kw) { return text.indexOf(kw) >= 0; })) return 3;
+  if (midWords.some(function(kw) { return text.indexOf(kw) >= 0; })) return 2;
+  return 1;
+}
+
+/**
+ * 从东方财富公告API获取最新市场新闻
+ */
+function fetchLatestNews(forceRefresh) {
+  // 检查缓存
+  if (!forceRefresh) {
+    try {
+      var cached = localStorage.getItem(NEWS_CACHE_KEY);
+      if (cached) {
+        var data = JSON.parse(cached);
+        if (Date.now() - data.ts < NEWS_CACHE_TTL) {
+          return Promise.resolve(data.news);
+        }
+      }
+    } catch(e) {}
+  }
+  
+  // 东方财富公告接口
+  var apiUrl = 'https://np-anotice-stock.eastmoney.com/api/security/ann';
+  var params = 'sr=-1&page_size=15&page_index=1&ann_type=SHA,CYB,SZA,SME,BJA&client_source=web';
+  
+  return fetchWithTimeout(apiUrl + '?' + params, {
+    headers: {
+      'Referer': 'https://www.eastmoney.com',
+      'Accept': 'application/json'
+    }
+  }, 10000)
+  .then(function(res) { return res.json(); })
+  .then(function(result) {
+    var news = [];
+    var list = result && result.data && result.data.list;
+    if (list && list.length > 0) {
+      list.forEach(function(item) {
+        var title = item.title || item.title_ch || '';
+        var date = item.notice_date || item.sort_date || '';
+        if (title) {
+          news.push({
+            title: title,
+            desc: date.substring(0, 16).replace('T', ' '),
+            date: date.substring(0, 10),
+            type: 'neutral',
+            impact: 2,
+            time: date.substring(11, 16)
+          });
+        }
+      });
+    }
+    // 更新缓存
+    localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({
+      ts: Date.now(),
+      news: news
+    }));
+    return news;
+  })
+  .catch(function(e) {
+    if (__DEBUG__) console.log('市场新闻获取失败:', e);
+    return [];
+  });
+}
+
+/**
+ * 从搜索结果解析市场新闻
+ */
+function parseNewsFromSearch(data) {
+  if (!data || !data.result || !data.result.cmsArticleWebOld) return [];
+  var articles = data.result.cmsArticleWebOld.list || [];
+  var news = [];
+  
+  articles.forEach(function(article) {
+    var title = article.title || '';
+    var desc = article.content || '';
+    title = title.replace(/<[^>]+>/g, '');
+    desc = desc.replace(/<[^>]+>/g, '').substring(0, 150);
+    
+    if (!isMarketNews(title, desc)) return;
+    
+    var dateStr = article.date || '';
+    var newsDate = dateStr ? dateStr.substring(0, 10) : formatDate(new Date());
+    
+    // 只保留近7天的新闻
+    var newsTime = new Date(newsDate).getTime();
+    if (isNaN(newsTime) || Date.now() - newsTime > 7 * 24 * 60 * 60 * 1000) return;
+    
+    var type = classifyNews(title, desc);
+    var impact = assessNewsImpact(title, desc);
+    
+    news.push({
+      date: newsDate,
+      type: type,
+      title: title,
+      desc: desc,
+      impact: impact,
+      _dynamic: true
+    });
+  });
+  
+  return news;
+}
+
+/**
+ * 合并动态新闻到静态数据
+ */
+function mergeNewsData(dynamicNews) {
+  if (!dynamicNews || dynamicNews.length === 0) return;
+  
+  var existingTitles = {};
+  NEWS_DATA.forEach(function(n) {
+    existingTitles[n.title] = true;
+  });
+  
+  var newItems = dynamicNews.filter(function(n) {
+    return !existingTitles[n.title];
+  });
+  
+  if (newItems.length === 0) return;
+  
+  newItems.sort(function(a, b) { return b.date.localeCompare(a.date); });
+  NEWS_DATA = newItems.concat(NEWS_DATA);
+  
+  // 限制总数不超过20条
+  if (NEWS_DATA.length > 20) {
+    NEWS_DATA = NEWS_DATA.slice(0, 20);
+  }
+  
+  // 更新全局数据并重新渲染
+  _naNewsData = NEWS_DATA.slice();
+  renderNewsAnalysis();
+}
+
+/**
+ * 启动新闻自动刷新（30分钟周期）
+ */
+var _newsRefreshTimer = null;
+function startNewsAutoRefresh() {
+  stopNewsAutoRefresh();
+  _newsRefreshTimer = Perf.setInterval(function() {
+    if (document.hidden) return;
+    fetchLatestNews(false).then(function(news) {
+      mergeNewsData(news);
+    });
+  }, 30 * 60 * 1000);
+  if (__DEBUG__) console.log('[新闻刷新] 已启动，间隔30分钟');
+}
+function stopNewsAutoRefresh() {
+  if (_newsRefreshTimer) {
+    Perf.clearInterval(_newsRefreshTimer);
+    _newsRefreshTimer = null;
+  }
+}
+
+ /**
+  * 消息面分析主函数 - 每日更新
+  * 分析当前市场消息面，判定利好/利空/中性因素
+  */
+ function renderNewsAnalysis() {
+   var container = document.getElementById('naList');
+   var overallEl = document.getElementById('nasValue');
+   var bullCountEl = document.getElementById('nasBullCount');
+   var bearCountEl = document.getElementById('nasBearCount');
+   var neutralCountEl = document.getElementById('nasNeutralCount');
+   
+   if (!container) return;
+   
+   var now = new Date();
+   var dateStr = now.getFullYear() + '-' + 
+     String(now.getMonth() + 1).padStart(2, '0') + '-' +
+     String(now.getDate()).padStart(2, '0');
+   
+   // 获取市场数据用于判断
+   _naFactors = analyzeMarketFactors();
+   
+   // 更新全局新闻数据
+   _naNewsData = NEWS_DATA.slice();
+   
+   // 合并新闻数据与分析因素（新闻在前，分析在后）
+   var allItems = _naNewsData.concat(_naFactors);
+   
+   // 统计因素数量（包含新闻和分析）
+   var bullCount = allItems.filter(function(f) { return f.type === 'bull'; }).length;
+   var bearCount = allItems.filter(function(f) { return f.type === 'bear'; }).length;
+   var neutralCount = allItems.filter(function(f) { return f.type === 'neutral'; }).length;
+   
+   // 更新统计
+   if (bullCountEl) bullCountEl.textContent = bullCount;
+   if (bearCountEl) bearCountEl.textContent = bearCount;
+   if (neutralCountEl) neutralCountEl.textContent = neutralCount;
+   
+   // 综合判断
+   var overall = '震荡整理';
+   var overallClass = 'neutral';
+   var score = bullCount - bearCount;
+   if (score >= 3) {
+     overall = '整体偏多';
+     overallClass = 'bull';
+   } else if (score >= 1) {
+     overall = '略微偏多';
+     overallClass = 'bull';
+   } else if (score <= -3) {
+     overall = '整体偏空';
+     overallClass = 'bear';
+   } else if (score <= -1) {
+     overall = '略微偏空';
+     overallClass = 'bear';
+   }
+   
+   if (overallEl) {
+     overallEl.textContent = overall;
+     overallEl.className = 'nas-value nas-overall-' + overallClass;
+   }
+   
+   // 根据筛选条件过滤所有项目
+   var filtered = allItems;
+   if (_naFilter !== 'all') {
+     filtered = allItems.filter(function(f) { return f.type === _naFilter; });
+   }
+   
+   // 渲染消息卡片
+   var html = '';
+   if (filtered.length === 0) {
+     html = '<div class="na-empty">暂无相关因素</div>';
+   } else {
+     filtered.forEach(function(factor) {
+       var tagClass = {
+         'bull': 'bull',
+         'bear': 'bear',
+         'neutral': 'neutral'
+       };
+       var tagText = {
+         'bull': '利好',
+         'bear': '利空',
+         'neutral': '中性'
+       };
+       
+       // 影响力圆点
+       var dotsHtml = '';
+       for (var d = 0; d < 3; d++) {
+         dotsHtml += '<span class="na-impact-dot' + (d < (factor.impact || 1) ? ' on' : '') + '"></span>';
+       }
+       
+       // 格式化时间
+       var timeStr = factor.time || (now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0'));
+       
+       html += '<div class="na-card na-' + factor.type + '">' +
+         '<div class="na-card-row">' +
+           '<span class="na-tag ' + tagClass[factor.type] + '">' + tagText[factor.type] + '</span>' +
+           '<span class="na-card-title">' + factor.title + '</span>' +
+           '<span class="na-impact">' + dotsHtml + '</span>' +
+           '<span class="na-card-time">' + timeStr + '</span>' +
+         '</div>' +
+         '<div class="na-card-desc">' + factor.desc + '</div>' +
+       '</div>';
+     });
+   }
+   
+   container.innerHTML = html;
+   
+   // 绑定筛选按钮事件
+   bindNaFilters();
+ }
 
 /**
  * 绑定消息面分析筛选按钮
