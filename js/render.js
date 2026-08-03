@@ -1,5 +1,13 @@
 'use strict';
 
+// 兼容性格式化函数（在 app.js 的 formatDate 之前使用）
+function formatDate(date) {
+  var y = date.getFullYear();
+  var m = String(date.getMonth() + 1).padStart(2, '0');
+  var d = String(date.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+}
+
 /* ============================================================
    六、渲染指数卡片
    ============================================================ */
