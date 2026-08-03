@@ -1677,7 +1677,7 @@ function fetchTreasuryYield() {
     var trEl = document.getElementById('dashTreasury');
     if (trEl) {
       var suffix = isDefault ? ' (默认)' : '';
-      trEl.textContent = '国债 ' + TREASURY_10Y.toFixed(2) + '%' + suffix;
+      trEl.textContent = '国债 ' + TREASURY_10Y.toFixed(4) + '%' + suffix;
     }
   }
 
@@ -1781,7 +1781,7 @@ function renderDashboard(realtimeData) {
 
   // 显示国债收益率
   var trEl = document.getElementById('dashTreasury');
-  if (trEl) trEl.textContent = '国债 ' + TREASURY_10Y.toFixed(2) + '%';
+  if (trEl) trEl.textContent = '国债 ' + TREASURY_10Y.toFixed(4) + '%';
 
   // === 格雷厄姆指数 ===
   var grahamCard = document.getElementById('dashGraham');
@@ -2755,19 +2755,19 @@ function analyzeMarketFactors() {
     factors.push({
       type: 'bull',
       title: '无风险利率低位',
-      desc: '10年期国债收益率 ' + treasuryYield.toFixed(2) + '%，资金成本低，利于股市'
+      desc: '10年期国债收益率 ' + treasuryYield.toFixed(4) + '%，资金成本低，利于股市'
     });
   } else if (treasuryYield > 3.5) {
     factors.push({
       type: 'bear',
       title: '无风险利率偏高',
-      desc: '10年期国债收益率 ' + treasuryYield.toFixed(2) + '%，资金回流债市压力大'
+      desc: '10年期国债收益率 ' + treasuryYield.toFixed(4) + '%，资金回流债市压力大'
     });
   } else {
     factors.push({
       type: 'neutral',
       title: '利率环境平稳',
-      desc: '10年期国债收益率 ' + treasuryYield.toFixed(2) + '%，利率环境整体平稳'
+      desc: '10年期国债收益率 ' + treasuryYield.toFixed(4) + '%，利率环境整体平稳'
     });
   }
   
