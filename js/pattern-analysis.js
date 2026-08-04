@@ -128,18 +128,24 @@ function analyzePatterns(rt, sent, klineData) {
   var price = hs300.price || 0;
   var open = hs300.open || 0;
   var high = hs300.high || 0;
+  var low = hs300.low || 0;
   var prevClose = hs300.yesterdayClose || 0;
   var chgPct = hs300.changePercent || 0;
+  var turnover = hs300.turnover || 0;
+  var volume = hs300.volume || 0;
 
-  var upCount = sent ? sent.up : 0;
-  var downCount = sent ? sent.down : 0;
-  var totalAmount = sent ? sent.totalAmount : 0;
-  var prevAmount = sent ? sent.prevAmount : 0;
-  var avg20Amount = sent ? sent.avg20Amount : 0;
+  var upCount = sent ? (sent.up || 0) : 0;
+  var downCount = sent ? (sent.down || 0) : 0;
+  var flatCount = sent ? (sent.flat || 0) : 0;
+  var totalAmount = sent ? (sent.totalAmount || 0) : 0;
+  var prevAmount = sent ? (sent.prevAmount || 0) : 0;
+  var avg20Amount = sent ? (sent.avg20Amount || 0) : 0;
+  var limitUp = sent ? (sent.limitUp || 0) : 0;
+  var limitDown = sent ? (sent.limitDown || 0) : 0;
 
-  var closes = klineData ? klineData.closes : [];
-  var klines = klineData ? klineData.klines : [];
-  var volumes = klines.map(function(k) { return parseFloat(k[5]) || 0; });
+  var closes = klineData ? (klineData.closes || []) : [];
+  var klines = klineData ? (klineData.klines || []) : [];
+  var volumes = klines.length > 0 ? klines.map(function(k) { return parseFloat(k[5]) || 0; }) : [];
 
   var hs300Base = null;
   if (typeof BASE_DATA !== 'undefined') {
@@ -149,7 +155,11 @@ function analyzePatterns(rt, sent, klineData) {
   }
   var pePct = hs300Base ? (hs300Base.pct10 || 50) : 50;
 
-  // Rule 1: continuous small rises
+  var totalStocks = upCount + downCount + flatCount;
+  var breadthChg = totalStocks > 0 ? (upCount - downCount) / totalStocks * 100 : 0;
+  var breadthRatio = totalStocks > 0 ? upCount / totalStocks * 100 : 50;
+
+  // ========== Rule 1: continuous small rises ==========
   if (closes.length >= 4) {
     var smallRiseDays = 0;
     for (var i = closes.length - 4; i < closes.length - 1; i++) {
@@ -158,11 +168,11 @@ function analyzePatterns(rt, sent, klineData) {
     }
     if (smallRiseDays >= 3) {
       signals.push({ ruleId: 1, triggered: true, signal: 'bull', confidence: 0.7,
-        detail: '\u8fd14\u65e5\u4e2d\u6709' + smallRiseDays + '\u65e5\u5c0f\u5e45\u4e0a\u6da8\uff08<1%\uff09\uff0c\u84c4\u52bf\u5f85\u53d1' });
+        detail: '近4日中有' + smallRiseDays + '日小幅上涨（<1%），蓄势待发' });
     }
   }
 
-  // Rule 2: continuous big rises
+  // ========== Rule 2: continuous big rises ==========
   if (closes.length >= 3) {
     var bigRiseDays = 0;
     for (var j = closes.length - 3; j < closes.length - 1; j++) {
@@ -171,131 +181,185 @@ function analyzePatterns(rt, sent, klineData) {
     }
     if (bigRiseDays >= 2) {
       signals.push({ ruleId: 2, triggered: true, signal: 'bear', confidence: 0.75,
-        detail: '\u8fd13\u65e5\u4e2d\u6709' + bigRiseDays + '\u65e5\u5927\u5e45\u4e0a\u6da8\uff08>1.5%\uff09\uff0c\u77ed\u671f\u8fc7\u70ed\u98ce\u9669' });
+        detail: '近3日中有' + bigRiseDays + '日大幅上涨（>1.5%），短期过热风险' });
     }
   }
 
-  // Rules 3-6: relative strength
-  var breadthChg = (upCount + downCount) > 0 ? (upCount - downCount) / (upCount + downCount) * 100 : 0;
-
-  if (chgPct < -0.3 && Math.abs(breadthChg) < 10 && upCount > downCount * 0.8) {
+  // ========== Rules 3-6: relative strength (放宽阈值) ==========
+  // Rule 3: 大盘跌但个股抗跌
+  if (chgPct < -0.2 && breadthRatio > 35) {
     signals.push({ ruleId: 3, triggered: true, signal: 'bull', confidence: 0.55,
-      detail: '\u5927\u76d8\u8dcc' + chgPct.toFixed(2) + '%\u4f46\u6da8\u8dcc\u5bb6\u6570\u63a5\u8fd1\uff0c\u591a\u6570\u4e2a\u80a1\u6297\u8dcc' });
+      detail: '大盘跌' + chgPct.toFixed(2) + '%但' + breadthRatio.toFixed(0) + '%个股上涨，多数个股抗跌' });
   }
 
-  if (chgPct < -0.3 && upCount > downCount * 1.5 && downCount > 0) {
+  // Rule 4: 大盘跌但上涨家数远超下跌
+  if (chgPct < -0.2 && upCount > downCount * 1.2 && downCount > 0) {
     signals.push({ ruleId: 4, triggered: true, signal: 'bull', confidence: 0.7,
-      detail: '\u5927\u76d8\u8dcc' + chgPct.toFixed(2) + '%\u4f46\u4e0a\u6da8' + upCount + '\u5bb6\u8fdc\u8d85\u4e0b\u8dcc' + downCount + '\u5bb6' });
+      detail: '大盘跌' + chgPct.toFixed(2) + '%但上涨' + upCount + '家超过下跌' + downCount + '家' });
   }
 
-  if (chgPct > 0.3 && Math.abs(breadthChg) < 10 && downCount > upCount * 0.8) {
+  // Rule 5: 大盘涨但个股滞涨
+  if (chgPct > 0.2 && breadthRatio < 65) {
     signals.push({ ruleId: 5, triggered: true, signal: 'bear', confidence: 0.5,
-      detail: '\u5927\u76d8\u6da8' + chgPct.toFixed(2) + '%\u4f46\u6da8\u8dcc\u5bb6\u6570\u63a5\u8fd1\uff0c\u591a\u6570\u4e2a\u80a1\u6ede\u6da8' });
+      detail: '大盘涨' + chgPct.toFixed(2) + '%但仅' + breadthRatio.toFixed(0) + '%个股上涨，多数个股滞涨' });
   }
 
-  if (chgPct > 0.3 && downCount > upCount * 1.5 && upCount > 0) {
+  // Rule 6: 大盘涨但下跌家数远超上涨
+  if (chgPct > 0.2 && downCount > upCount * 1.2 && upCount > 0) {
     signals.push({ ruleId: 6, triggered: true, signal: 'bear', confidence: 0.65,
-      detail: '\u5927\u76d8\u6da8' + chgPct.toFixed(2) + '%\u4f46\u4e0b\u8dcc' + downCount + '\u5bb6\u8fdc\u8d85\u4e0a\u6da8' + upCount + '\u5bb6' });
+      detail: '大盘涨' + chgPct.toFixed(2) + '%但下跌' + downCount + '家超过上涨' + upCount + '家' });
   }
 
-  // Rule 7: fast drop + shrinking volume = washout
-  if (chgPct < -1.0 && prevAmount > 0 && totalAmount > 0 && totalAmount < prevAmount * 0.9) {
+  // ========== Rule 7: fast drop + shrinking volume = washout ==========
+  if (chgPct < -0.5 && prevAmount > 0 && totalAmount > 0 && totalAmount < prevAmount * 0.95) {
     signals.push({ ruleId: 7, triggered: true, signal: 'bull', confidence: 0.6,
-      detail: '\u4eca\u65e5\u8dcc' + chgPct.toFixed(2) + '%\u4f46\u6210\u4ea4\u91cf\u8f83\u6628\u65e5\u840e\u7f29' + ((1 - totalAmount / prevAmount) * 100).toFixed(0) + '%' });
+      detail: '今日跌' + chgPct.toFixed(2) + '%但成交量较昨日萎缩' + ((1 - totalAmount / prevAmount) * 100).toFixed(0) + '%' });
   }
 
-  // Rule 8: slow drop + increasing volume = distribution
+  // ========== Rule 8: slow drop + increasing volume = distribution ==========
   if (closes.length >= 4) {
     var fallDays = 0;
     var volIncreasing = true;
     for (var k = closes.length - 4; k < closes.length - 1; k++) {
       var dChg = (closes[k + 1] - closes[k]) / closes[k] * 100;
       if (dChg < 0) fallDays++;
-      if (volumes[k + 1] < volumes[k] * 0.95) volIncreasing = false;
+      if (volumes.length > k + 1 && volumes[k + 1] < volumes[k] * 0.95) volIncreasing = false;
     }
     if (fallDays >= 2 && volIncreasing && chgPct < 0) {
       signals.push({ ruleId: 8, triggered: true, signal: 'bear', confidence: 0.65,
-        detail: '\u8fd14\u65e5\u6709' + fallDays + '\u65e5\u4e0b\u8dcc\u4e14\u6210\u4ea4\u91cf\u9012\u589e\uff0c\u51fa\u8d27\u7279\u5f81' });
+        detail: '近4日有' + fallDays + '日下跌且成交量递增，出货特征' });
     }
   }
 
-  // Rule 9: low open high close = accumulation
+  // ========== Rule 9: low open high close = accumulation ==========
   if (prevClose > 0 && open > 0 && price > 0) {
     var openGap = (open - prevClose) / prevClose * 100;
     var intradayChg = (price - open) / open * 100;
-    if (openGap < -0.2 && intradayChg > 0.5) {
+    if (openGap < -0.1 && intradayChg > 0.2) {
       signals.push({ ruleId: 9, triggered: true, signal: 'bull', confidence: 0.6,
-        detail: '\u4f4e\u5f00' + openGap.toFixed(2) + '%\u540e\u8d70\u9ad8' + intradayChg.toFixed(2) + '%\uff0c\u5438\u7b79\u7279\u5f81' });
+        detail: '低开' + openGap.toFixed(2) + '%后走高' + intradayChg.toFixed(2) + '%，吸筹特征' });
     }
   }
 
-  // Rule 10: high open low close = distribution
+  // ========== Rule 10: high open low close = distribution ==========
   if (prevClose > 0 && open > 0 && price > 0) {
     var openGapUp = (open - prevClose) / prevClose * 100;
     var intradayFall = (open - price) / open * 100;
-    if (openGapUp > 0.2 && intradayFall > 0.3) {
+    if (openGapUp > 0.1 && intradayFall > 0.2) {
       signals.push({ ruleId: 10, triggered: true, signal: 'bear', confidence: 0.6,
-        detail: '\u9ad8\u5f00' + openGapUp.toFixed(2) + '%\u540e\u8d70\u4f4e' + intradayFall.toFixed(2) + '%\uff0c\u51fa\u8d27\u7279\u5f81' });
+        detail: '高开' + openGapUp.toFixed(2) + '%后走低' + intradayFall.toFixed(2) + '%，出货特征' });
     }
   }
 
-  // Rule 11: morning rise afternoon pullback = washout
+  // ========== Rule 11: morning rise afternoon pullback = washout ==========
   if (open > 0 && high > 0 && price > 0) {
     var morningRise = (high - open) / open * 100;
     var afternoonFall = (high - price) / high * 100;
-    if (morningRise > 0.5 && afternoonFall > 0.3 && price > open) {
+    if (morningRise > 0.3 && afternoonFall > 0.2 && price >= open) {
       signals.push({ ruleId: 11, triggered: true, signal: 'bull', confidence: 0.5,
-        detail: '\u76d8\u4e2d\u51b2\u9ad8' + morningRise.toFixed(2) + '%\u540e\u56de\u843d\u4f46\u6536\u76d8\u9ad8\u4e8e\u5f00\u76d8\uff0c\u6d17\u76d8\u7279\u5f81' });
+        detail: '盘中冲高' + morningRise.toFixed(2) + '%后回落但收盘高于开盘，洗盘特征' });
     }
   }
 
-  // Rule 12: low position + volume = accumulation
-  if (pePct < 30 && avg20Amount > 0 && totalAmount > avg20Amount * 1.2) {
+  // ========== Rule 12: low position + volume = accumulation ==========
+  if (pePct < 40 && avg20Amount > 0 && totalAmount > avg20Amount * 1.1) {
     signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.7,
-      detail: 'PE\u5206\u4f4d' + pePct.toFixed(0) + '%\uff08\u4f4e\u4f4d\uff09+ \u6210\u4ea4\u91cf\u8d8520\u65e5\u5747\u91cf' + ((totalAmount / avg20Amount - 1) * 100).toFixed(0) + '%' });
+      detail: 'PE分位' + pePct.toFixed(0) + '%（低位）+ 成交量超20日均量' + ((totalAmount / avg20Amount - 1) * 100).toFixed(0) + '%' });
   }
 
-  // Rule 13: high position + volume = distribution
-  if (pePct > 70 && avg20Amount > 0 && totalAmount > avg20Amount * 1.2) {
+  // ========== Rule 13: high position + volume = distribution ==========
+  if (pePct > 60 && avg20Amount > 0 && totalAmount > avg20Amount * 1.1) {
     signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.7,
-      detail: 'PE\u5206\u4f4d' + pePct.toFixed(0) + '%\uff08\u9ad8\u4f4d\uff09+ \u6210\u4ea4\u91cf\u8d8520\u65e5\u5747\u91cf' + ((totalAmount / avg20Amount - 1) * 100).toFixed(0) + '%' });
+      detail: 'PE分位' + pePct.toFixed(0) + '%（高位）+ 成交量超20日均量' + ((totalAmount / avg20Amount - 1) * 100).toFixed(0) + '%' });
   }
 
-  // Rule 14: low position flat + volume
-  if (closes.length >= 10 && pePct < 40) {
+  // ========== Rule 14: low position flat + volume ==========
+  if (closes.length >= 10 && pePct < 50) {
     var recent10 = closes.slice(-10);
     var maxP = Math.max.apply(null, recent10);
     var minP = Math.min.apply(null, recent10);
     var volatility = (maxP - minP) / minP * 100;
-    if (volatility < 3 && avg20Amount > 0 && totalAmount > avg20Amount * 1.3) {
+    if (volatility < 5 && avg20Amount > 0 && totalAmount > avg20Amount * 1.2) {
       signals.push({ ruleId: 14, triggered: true, signal: 'bull', confidence: 0.65,
-        detail: 'PE\u5206\u4f4d' + pePct.toFixed(0) + '% + \u8fd110\u65e5\u6ce2\u52a8\u4ec5' + volatility.toFixed(1) + '% + \u653e\u91cf\u7a81\u7834' });
+        detail: 'PE分位' + pePct.toFixed(0) + '% + 近10日波动仅' + volatility.toFixed(1) + '% + 放量突破' });
     }
   }
 
-  // Rule 15: low position narrow range + volume + big yang = launch
-  if (closes.length >= 6 && pePct < 40) {
+  // ========== Rule 15: low position narrow range + volume + big yang = launch ==========
+  if (closes.length >= 6 && pePct < 50) {
     var recent5 = closes.slice(-6, -1);
     var max5 = Math.max.apply(null, recent5);
     var min5 = Math.min.apply(null, recent5);
     var vol5 = (max5 - min5) / min5 * 100;
-    var todayChg = closes.length >= 2 ? (closes[closes.length - 1] - closes[closes.length - 2]) / closes[closes.length - 2] * 100 : 0;
-    if (vol5 < 2.5 && todayChg > 2.0 && avg20Amount > 0 && totalAmount > avg20Amount * 1.3) {
+    var todayChg = closes.length >= 2 ? (closes[closes.length - 1] - closes[closes.length - 2]) / closes[closes.length - 2] * 100 : chgPct;
+    if (vol5 < 4 && todayChg > 1.0 && avg20Amount > 0 && totalAmount > avg20Amount * 1.2) {
       signals.push({ ruleId: 15, triggered: true, signal: 'bull', confidence: 0.8,
-        detail: '\u4f4e\u4f4d\u7a84\u5e45\u9707\u8361\uff08\u6ce2\u52a8' + vol5.toFixed(1) + '%\uff09\u540e\u4eca\u65e5\u6da8' + todayChg.toFixed(2) + '%\u4e14\u653e\u91cf\uff0c\u542f\u52a8\u4fe1\u53f7' });
+        detail: '低位窄幅震荡（波动' + vol5.toFixed(1) + '%）后今日涨' + todayChg.toFixed(2) + '%且放量，启动信号' });
     }
   }
 
-  // Rule 16: high position narrow range + volume + big yin = exit
-  if (closes.length >= 6 && pePct > 60) {
+  // ========== Rule 16: high position narrow range + volume + big yin = exit ==========
+  if (closes.length >= 6 && pePct > 50) {
     var recent5h = closes.slice(-6, -1);
     var max5h = Math.max.apply(null, recent5h);
     var min5h = Math.min.apply(null, recent5h);
     var vol5h = (max5h - min5h) / min5h * 100;
-    var todayChgH = closes.length >= 2 ? (closes[closes.length - 1] - closes[closes.length - 2]) / closes[closes.length - 2] * 100 : 0;
-    if (vol5h < 2.5 && todayChgH < -2.0 && avg20Amount > 0 && totalAmount > avg20Amount * 1.3) {
+    var todayChgH = closes.length >= 2 ? (closes[closes.length - 1] - closes[closes.length - 2]) / closes[closes.length - 2] * 100 : chgPct;
+    if (vol5h < 4 && todayChgH < -1.0 && avg20Amount > 0 && totalAmount > avg20Amount * 1.2) {
       signals.push({ ruleId: 16, triggered: true, signal: 'bear', confidence: 0.8,
-        detail: '\u9ad8\u4f4d\u7a84\u5e45\u9707\u8361\uff08\u6ce2\u52a8' + vol5h.toFixed(1) + '%\uff09\u540e\u4eca\u65e5\u8dcc' + todayChgH.toFixed(2) + '%\u4e14\u653e\u91cf\uff0c\u51fa\u9003\u4fe1\u53f7' });
+        detail: '高位窄幅震荡（波动' + vol5h.toFixed(1) + '%）后今日跌' + todayChgH.toFixed(2) + '%且放量，出逃信号' });
+    }
+  }
+
+  // ========== 基础信号：市场方向（确保非极端日也有信号触发）==========
+  // 市场上涨 + 涨多跌少 = 偏多
+  if (chgPct > 0.1 && breadthRatio > 55) {
+    signals.push({ ruleId: 3, triggered: true, signal: 'bull', confidence: 0.45,
+      detail: '大盘涨' + chgPct.toFixed(2) + '%，上涨' + upCount + '家多于下跌' + downCount + '家，市场偏强' });
+  }
+  // 市场下跌 + 跌多涨少 = 偏空
+  if (chgPct < -0.1 && breadthRatio < 45) {
+    signals.push({ ruleId: 6, triggered: true, signal: 'bear', confidence: 0.45,
+      detail: '大盘跌' + chgPct.toFixed(2) + '%，下跌' + downCount + '家多于上涨' + upCount + '家，市场偏弱' });
+  }
+  // 放量上涨 = 多头强势
+  if (chgPct > 0.3 && avg20Amount > 0 && totalAmount > avg20Amount * 1.1) {
+    signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.55,
+      detail: '大盘涨' + chgPct.toFixed(2) + '%且成交量超20日均量' + ((totalAmount / avg20Amount - 1) * 100).toFixed(0) + '%，多头放量' });
+  }
+  // 放量下跌 = 空头强势
+  if (chgPct < -0.3 && avg20Amount > 0 && totalAmount > avg20Amount * 1.1) {
+    signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.55,
+      detail: '大盘跌' + chgPct.toFixed(2) + '%且成交量超20日均量' + ((totalAmount / avg20Amount - 1) * 100).toFixed(0) + '%，空头放量' });
+  }
+  // 涨停远多于跌停 = 情绪高涨
+  if (limitUp > 0 && limitUp > limitDown * 2) {
+    signals.push({ ruleId: 4, triggered: true, signal: 'bull', confidence: 0.6,
+      detail: '涨停' + limitUp + '家远超跌停' + limitDown + '家，赚钱效应强' });
+  }
+  // 跌停远多于涨停 = 情绪恐慌
+  if (limitDown > 0 && limitDown > limitUp * 2) {
+    signals.push({ ruleId: 5, triggered: true, signal: 'bear', confidence: 0.6,
+      detail: '跌停' + limitDown + '家远超涨停' + limitUp + '家，恐慌情绪蔓延' });
+  }
+  // 收盘价高于开盘价 = 多头日内占优
+  if (open > 0 && price > open && chgPct > 0) {
+    signals.push({ ruleId: 9, triggered: true, signal: 'bull', confidence: 0.4,
+      detail: '收盘' + price.toFixed(2) + '高于开盘' + open.toFixed(2) + '，日内多头占优' });
+  }
+  // 收盘价低于开盘价 = 空头日内占优
+  if (open > 0 && price < open && chgPct < 0) {
+    signals.push({ ruleId: 10, triggered: true, signal: 'bear', confidence: 0.4,
+      detail: '收盘' + price.toFixed(2) + '低于开盘' + open.toFixed(2) + '，日内空头占优' });
+  }
+  // 缩量 = 观望情绪（无论涨跌都标记为弱信号）
+  if (avg20Amount > 0 && totalAmount > 0 && totalAmount < avg20Amount * 0.7) {
+    if (chgPct >= 0) {
+      signals.push({ ruleId: 7, triggered: true, signal: 'bull', confidence: 0.35,
+        detail: '成交量低于20日均量' + ((1 - totalAmount / avg20Amount) * 100).toFixed(0) + '%，缩量上涨抛压轻' });
+    } else {
+      signals.push({ ruleId: 8, triggered: true, signal: 'bear', confidence: 0.35,
+        detail: '成交量低于20日均量' + ((1 - totalAmount / avg20Amount) * 100).toFixed(0) + '%，缩量下跌动能不足' });
     }
   }
 
@@ -318,11 +382,11 @@ function analyzePatterns(rt, sent, klineData) {
   }
 
   var level, levelColor, levelIcon;
-  if (compositeScore >= 70) { level = '\u770b\u6da8'; levelColor = 'bull'; levelIcon = '\ud83d\udcc8'; }
-  else if (compositeScore >= 58) { level = '\u504f\u591a'; levelColor = 'bull-weak'; levelIcon = '\ud83d\udd06'; }
-  else if (compositeScore >= 42) { level = '\u4e2d\u6027'; levelColor = 'neutral'; levelIcon = '\u27a1\ufe0f'; }
-  else if (compositeScore >= 30) { level = '\u504f\u7a7a'; levelColor = 'bear-weak'; levelIcon = '\ud83d\udd07'; }
-  else { level = '\u770b\u8dcc'; levelColor = 'bear'; levelIcon = '\ud83d\udcc9'; }
+  if (compositeScore >= 70) { level = '看涨'; levelColor = 'bull'; levelIcon = '📈'; }
+  else if (compositeScore >= 58) { level = '偏多'; levelColor = 'bull-weak'; levelIcon = '🔅'; }
+  else if (compositeScore >= 42) { level = '中性'; levelColor = 'neutral'; levelIcon = '➡️'; }
+  else if (compositeScore >= 30) { level = '偏空'; levelColor = 'bear-weak'; levelIcon = '🔅'; }
+  else { level = '看跌'; levelColor = 'bear'; levelIcon = '📉'; }
 
   var bullCount = signals.filter(function(s) { return s.signal === 'bull'; }).length;
   var bearCount = signals.filter(function(s) { return s.signal === 'bear'; }).length;
