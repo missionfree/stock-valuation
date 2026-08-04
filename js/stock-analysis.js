@@ -3301,7 +3301,7 @@ function renderDailyReviewContent(container, rt, sent, flow) {
  */
 function fetchSectorCapitalFlow() {
   // 缓存策略：5分钟TTL，板块资金流向无需每3分钟刷新
-  var SECTOR_FLOW_CACHE_KEY = 'sector_flow_cache_v1';
+  var SECTOR_FLOW_CACHE_KEY = 'sector_flow_cache_v2';
   var SECTOR_FLOW_TTL = 5 * 60 * 1000; // 5分钟
   try {
     var raw = localStorage.getItem(SECTOR_FLOW_CACHE_KEY);
@@ -3315,18 +3315,22 @@ function fetchSectorCapitalFlow() {
   } catch(e) {}
 
   // 东方财富行业板块资金流向API（push2delay支持CORS跨域）
-  // 优化：单请求获取全部板块（m:90+t:2约100个行业板块），避免双请求合并导致的数据不一致
-  // 旧方案问题：po=1(降序)+po=0(升序)双请求并行，两请求间行情波动导致同一板块mainNet值不一致，
-  //   合并去重时总是保留po=1版本，可能将实际流出的板块错误归入流入列表
+  // 双请求策略：po=1(降序)取流入TOP + po=0(升序)取流出TOP
+  // 注意：API单次最多返回100条，po=1降序时只能看到正数（流入），流出板块需要po=0升序单独获取
   var fields = 'f2,f3,f4,f5,f6,f7,f8,f10,f12,f14,f15,f16,f17,f18,f62,f184,f66,f72,f78,f84';
-  var url = 'https://push2delay.eastmoney.com/api/qt/clist/get' +
-    '?fid=f62&po=1&pz=200&pn=1&np=1&fltt=2&invt=2' +
+  var urlInflow = 'https://push2delay.eastmoney.com/api/qt/clist/get' +
+    '?fid=f62&po=1&pz=100&pn=1&np=1&fltt=2&invt=2' +
     '&fs=m:90+t:2&fields=' + fields;
-  // 备用源：push2（非延迟，数据更全但可能不支持CORS）
-  var url2 = 'https://push2.eastmoney.com/api/qt/clist/get' +
-    '?fid=f62&po=1&pz=200&pn=1&np=1&fltt=2&invt=2' +
+  var urlOutflow = 'https://push2delay.eastmoney.com/api/qt/clist/get' +
+    '?fid=f62&po=0&pz=100&pn=1&np=1&fltt=2&invt=2' +
     '&fs=m:90+t:2&fields=' + fields;
-
+  // 备用源
+  var urlInflow2 = 'https://push2.eastmoney.com/api/qt/clist/get' +
+    '?fid=f62&po=1&pz=100&pn=1&np=1&fltt=2&invt=2' +
+    '&fs=m:90+t:2&fields=' + fields;
+  var urlOutflow2 = 'https://push2.eastmoney.com/api/qt/clist/get' +
+    '?fid=f62&po=0&pz=100&pn=1&np=1&fltt=2&invt=2' +
+    '&fs=m:90+t:2&fields=' + fields;
   // 解析API返回的原始数据为items数组
   function parseItems(resp) {
     if (!resp || !resp.data || !resp.data.diff) return [];
@@ -3364,8 +3368,8 @@ function fetchSectorCapitalFlow() {
     return items;
   }
 
-  // 单请求获取全部板块数据（消除双请求合并的数据不一致风险）
-  // 方案1: push2delay fetch → 方案2: push2delay JSONP → 方案3: push2 JSONP → 方案4: ETF估算
+  // 双请求获取流入+流出数据
+  // po=1(降序)获取流入TOP100，po=0(升序)获取流出TOP100，合并去重
   function tryFetch(targetUrl, label) {
     return fetchWithTimeout(targetUrl, { cache: 'no-store' }, 8000).then(function(res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -3373,33 +3377,65 @@ function fetchSectorCapitalFlow() {
     }).then(function(resp) {
       var items = parseItems(resp);
       if (items.length === 0) throw new Error(label + '数据为空');
-      // 检查是否全部mainNet为0（非盘中可能返回0值）
-      var allZero = items.every(function(d) { return Math.abs(d.mainNet) < 0.01; });
-      if (allZero) throw new Error(label + '全部mainNet为0');
       return items;
     });
   }
 
-  return tryFetch(url, 'push2delay-fetch').catch(function(fetchErr) {
-    console.warn('板块资金流向push2delay fetch失败:', fetchErr.message);
-    // 方案2: push2delay JSONP
-    return emJsonp(url, 8000).then(function(resp) {
+  // JSONP降级
+  function tryJsonp(targetUrl, label) {
+    return emJsonp(targetUrl, 8000).then(function(resp) {
       var items = parseItems(resp);
-      if (items.length === 0) throw new Error('push2delay-JSONP数据为空');
-      var allZero = items.every(function(d) { return Math.abs(d.mainNet) < 0.01; });
-      if (allZero) throw new Error('push2delay-JSONP全部mainNet为0');
-      console.log('板块资金流向push2delay-JSONP成功，获取' + items.length + '个板块');
+      if (items.length === 0) throw new Error(label + '数据为空');
       return items;
+    });
+  }
+
+  // 合并流入+流出数据（按code去重，保留各自的mainNet值）
+  function mergeInflowOutflow(inflowItems, outflowItems) {
+    var seen = {};
+    var merged = [];
+    inflowItems.forEach(function(d) {
+      if (!seen[d.code]) { seen[d.code] = true; merged.push(d); }
+    });
+    outflowItems.forEach(function(d) {
+      if (!seen[d.code]) { seen[d.code] = true; merged.push(d); }
+    });
+    return merged;
+  }
+
+  // 方案1: push2delay fetch 双请求并行
+  return Promise.all([
+    tryFetch(urlInflow, 'inflow-fetch'),
+    tryFetch(urlOutflow, 'outflow-fetch')
+  ]).then(function(results) {
+    var merged = mergeInflowOutflow(results[0], results[1]);
+    if (merged.length === 0) throw new Error('双请求合并数据为空');
+    var allZero = merged.every(function(d) { return Math.abs(d.mainNet) < 0.01; });
+    if (allZero) throw new Error('合并数据全部mainNet为0');
+    console.log('板块资金流向fetch双请求成功，流入' + results[0].length + '个，流出' + results[1].length + '个');
+    return merged;
+  }).catch(function(fetchErr) {
+    console.warn('板块资金流向fetch双请求失败:', fetchErr.message);
+    // 方案2: push2delay JSONP 双请求
+    return Promise.all([
+      tryJsonp(urlInflow, 'inflow-jsonp'),
+      tryJsonp(urlOutflow, 'outflow-jsonp')
+    ]).then(function(results) {
+      var merged = mergeInflowOutflow(results[0], results[1]);
+      if (merged.length === 0) throw new Error('JSONP合并数据为空');
+      console.log('板块资金流向JSONP双请求成功，流入' + results[0].length + '个，流出' + results[1].length + '个');
+      return merged;
     }).catch(function(jsonpErr) {
-      console.warn('板块资金流向push2delay JSONP失败:', jsonpErr.message);
-      // 方案3: push2 JSONP（非延迟源，数据更全）
-      return emJsonp(url2, 8000).then(function(resp) {
-        var items = parseItems(resp);
-        if (items.length === 0) throw new Error('push2-JSONP数据为空');
-        var allZero = items.every(function(d) { return Math.abs(d.mainNet) < 0.01; });
-        if (allZero) throw new Error('push2-JSONP全部mainNet为0');
-        console.log('板块资金流向push2-JSONP成功，获取' + items.length + '个板块');
-        return items;
+      console.warn('板块资金流向JSONP双请求失败:', jsonpErr.message);
+      // 方案3: push2 JSONP 双请求
+      return Promise.all([
+        tryJsonp(urlInflow2, 'inflow-push2'),
+        tryJsonp(urlOutflow2, 'outflow-push2')
+      ]).then(function(results) {
+        var merged = mergeInflowOutflow(results[0], results[1]);
+        if (merged.length === 0) throw new Error('push2合并数据为空');
+        console.log('板块资金流向push2双请求成功，流入' + results[0].length + '个，流出' + results[1].length + '个');
+        return merged;
       }).catch(function(err2) {
         console.warn('板块资金流向所有API均失败:', err2.message);
         return _fetchSectorCapitalFlowFallback();

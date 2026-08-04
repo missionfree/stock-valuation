@@ -3939,6 +3939,56 @@ body {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+/* ==================== 统一卡片刷新按钮 ==================== */
+.card-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  background: var(--bg3);
+  border: 0.5px solid var(--glass-border);
+  color: var(--muted);
+  font-size: 0.62rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 0.3rem;
+  vertical-align: middle;
+  position: relative;
+  z-index: 5;
+  opacity: 0.55;
+}
+.card-refresh-btn:hover {
+  color: var(--neon-cyan);
+  border-color: rgba(0,229,255,0.35);
+  background: var(--neon-cyan-bg);
+  opacity: 1;
+  transform: rotate(15deg);
+}
+.card-refresh-btn:active {
+  transform: rotate(30deg) scale(0.92);
+}
+.card-refresh-btn.spinning {
+  animation: cardRefreshSpin 0.8s linear infinite;
+  color: var(--neon-cyan);
+  opacity: 1;
+}
+@keyframes cardRefreshSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+/* tier1 绝对定位刷新按钮 */
+.tier1-refresh {
+  opacity: 0.4;
+}
+.tier1-overview:hover .tier1-refresh {
+  opacity: 0.7;
+}
+.tier1-refresh:hover {
+  opacity: 1;
+}
 .pv-list {
   display: flex; flex-direction: column; gap: 0.3rem;
 }

@@ -2772,7 +2772,7 @@ function forceRefreshAll() {
 
   // 清除行情缓存
   try { localStorage.removeItem('quote_cache_v4'); } catch(e) {}
-  try { localStorage.removeItem('sector_flow_cache_v1'); } catch(e) {}
+  try { localStorage.removeItem('sector_flow_cache_v2'); } catch(e) {}
 
   showToast('🔄 正在重新拉取数据…');
   runAnalysis(true);
@@ -2790,7 +2790,7 @@ function refreshModule(module) {
       runAnalysis(true);
       break;
     case 'flow':
-      try { localStorage.removeItem('sector_flow_cache_v1'); } catch(e) {}
+      try { localStorage.removeItem('sector_flow_cache_v2'); } catch(e) {}
       fetchSectorCapitalFlow().then(function(data) {
         _lastSectorFlowData = data;
         renderMarketFlow(data);
