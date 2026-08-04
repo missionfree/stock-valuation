@@ -1144,22 +1144,93 @@ function initPage() {
     }
   }, 2000);
 
-  // 键盘快捷键：按"/"聚焦搜索框（非输入框聚焦时生效）
+  // 键盘快捷键系统
   document.addEventListener('keydown', function(e) {
-    if (e.key === '/' && document.activeElement) {
-      var tag = document.activeElement.tagName;
-      if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
-        e.preventDefault();
-        var searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-          searchInput.focus();
-          searchInput.select();
-          var searchbar = document.querySelector('.search-bar');
-          if (searchbar) searchbar.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+    var tag = document.activeElement ? document.activeElement.tagName : '';
+    var isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    var isModifier = e.ctrlKey || e.metaKey || e.altKey;
+
+    // Escape: 清空搜索框 / 关闭主题选择器 / 取消聚焦
+    if (e.key === 'Escape') {
+      var searchInput = document.getElementById('searchInput');
+      var picker = document.getElementById('themePicker');
+      if (picker && picker.classList.contains('show')) {
+        picker.classList.remove('show');
+        var modeToggle = document.getElementById('modeToggle');
+        if (modeToggle) modeToggle.setAttribute('aria-expanded', 'false');
+        return;
       }
+      if (searchInput && searchInput.value) {
+        clearSearchInput();
+        return;
+      }
+      if (document.activeElement) document.activeElement.blur();
+      return;
+    }
+
+    // 以下快捷键仅在非输入框聚焦时生效
+    if (isInput) return;
+
+    // "/": 聚焦搜索框
+    if (e.key === '/') {
+      e.preventDefault();
+      var si = document.getElementById('searchInput');
+      if (si) {
+        si.focus();
+        si.select();
+        var sb = document.querySelector('.search-bar');
+        if (sb) sb.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    // "1-4": 切换Tab
+    if (e.key >= '1' && e.key <= '4' && !isModifier) {
+      var tabMap = { '1': 'valuation', '2': 'industry', '3': 'strategy', '4': 'portfolio' };
+      var targetTab = tabMap[e.key];
+      if (targetTab) {
+        e.preventDefault();
+        switchTab(targetTab);
+        showToast('已切换到：' + ['估值强度', '行业全景', '策略信号', '我的组合'][parseInt(e.key) - 1]);
+      }
+      return;
+    }
+
+    // "Alt+R": 手动刷新数据
+    if (e.key === 'r' && e.altKey) {
+      e.preventDefault();
+      if (typeof runAnalysis === 'function') {
+        showToast('正在刷新数据...');
+        runAnalysis(true);
+      }
+      return;
+    }
+
+    // "Alt+T": 切换主题选择器
+    if (e.key === 't' && e.altKey) {
+      e.preventDefault();
+      toggleThemePicker();
+      return;
+    }
+
+    // "Alt+Left/Right": 左右切换Tab
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && e.altKey) {
+      e.preventDefault();
+      var curIdx = getCurrentTabIndex();
+      var newIdx = e.key === 'ArrowLeft' ? curIdx - 1 : curIdx + 1;
+      if (newIdx >= 0 && newIdx < _tabOrder.length) {
+        switchTab(_tabOrder[newIdx], e.key === 'ArrowLeft' ? 'right' : 'left');
+      }
+      return;
     }
   });
+
+  // 桌面端显示快捷键提示（首次加载时短暂显示）
+  if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    Perf.trackedSetTimeout(function() {
+      showKeyboardHint();
+    }, 5000);
+  }
 }
 
 /* 全局状态：热力图数据类型和筛选 */

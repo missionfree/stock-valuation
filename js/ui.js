@@ -2048,3 +2048,62 @@ function bindPortfolioItemEvents(container) {
   });
 }
 
+/* ============================================================
+   快捷键提示浮层（桌面端首次加载时短暂显示）
+   ============================================================ */
+function showKeyboardHint() {
+  // 仅显示一次
+  try {
+    if (localStorage.getItem('kb_hint_shown')) return;
+    localStorage.setItem('kb_hint_shown', '1');
+  } catch(e) {}
+
+  var existing = document.getElementById('kbHintOverlay');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'kbHintOverlay';
+  overlay.innerHTML = '<div class="kb-hint-card">' +
+    '<div class="kb-hint-title">键盘快捷键</div>' +
+    '<div class="kb-hint-grid">' +
+      '<div class="kb-hint-item"><kbd>/</kbd><span>搜索</span></div>' +
+      '<div class="kb-hint-item"><kbd>1</kbd>-<kbd>4</kbd><span>切换Tab</span></div>' +
+      '<div class="kb-hint-item"><kbd>Alt</kbd>+<kbd>R</kbd><span>刷新数据</span></div>' +
+      '<div class="kb-hint-item"><kbd>Alt</kbd>+<kbd>T</kbd><span>切换主题</span></div>' +
+      '<div class="kb-hint-item"><kbd>Alt</kbd>+<kbd>←→</kbd><span>左右Tab</span></div>' +
+      '<div class="kb-hint-item"><kbd>Esc</kbd><span>清空/关闭</span></div>' +
+    '</div>' +
+    '<div class="kb-hint-dismiss">点击任意处关闭</div>' +
+  '</div>';
+
+  document.body.appendChild(overlay);
+
+  // 动画进入
+  requestAnimationFrame(function() {
+    overlay.classList.add('show');
+  });
+
+  // 点击任意处关闭
+  function dismiss() {
+    overlay.classList.remove('show');
+    Perf.trackedSetTimeout(function() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }, 300);
+    document.removeEventListener('click', dismiss);
+    document.removeEventListener('keydown', dismissKey);
+  }
+  function dismissKey(e) {
+    if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') dismiss();
+  }
+
+  // 4秒后自动关闭
+  Perf.trackedSetTimeout(function() {
+    if (overlay.parentNode) dismiss();
+  }, 6000);
+
+  Perf.trackedSetTimeout(function() {
+    document.addEventListener('click', dismiss);
+    document.addEventListener('keydown', dismissKey);
+  }, 300);
+}
+
