@@ -1784,21 +1784,23 @@ function renderDashboard(realtimeData) {
   if (trEl) trEl.textContent = '国债 ' + TREASURY_10Y.toFixed(4) + '%';
 
   // === 格雷厄姆指数 ===
+  // 阈值校准：低利率环境下graham天然偏高（PE14/国债1.7%≈4.2），需提高阈值避免长期"黄金买入区"
+  // 历史分位校准：graham > 4.5 为极端低位（近10年前5%），3.5-4.5 偏低，2.5-3.5 适中，<2.5 偏高
   var grahamCard = document.getElementById('dashGraham');
   var grahamVal = grahamCard.querySelector('.d-val');
   var grahamTag = grahamCard.querySelector('.d-tag');
   animateOdometer(grahamVal, graham.toFixed(2));
-  if (graham >= 2.5) {
+  if (graham >= 4.5) {
     grahamVal.className = 'd-val t-green';
     grahamTag.textContent = '黄金买入区';
     grahamTag.className = 'd-tag green';
     grahamCard.className = 'dash-card hl-green';
-  } else if (graham >= 1.8) {
+  } else if (graham >= 3.5) {
     grahamVal.className = 'd-val t-green';
     grahamTag.textContent = '具备投资价值';
     grahamTag.className = 'd-tag green';
     grahamCard.className = 'dash-card hl-green';
-  } else if (graham >= 1.5) {
+  } else if (graham >= 2.5) {
     grahamVal.className = 'd-val t-yellow';
     grahamTag.textContent = '适中区间';
     grahamTag.className = 'd-tag yellow';
@@ -1815,12 +1817,14 @@ function renderDashboard(realtimeData) {
   var sexyVal = sexyCard.querySelector('.d-val');
   var sexySub = sexyCard.querySelector('.d-sub');
   animateOdometer(sexyVal, sexy.toFixed(2));
-  // 吸引力指数阈值（等权超额收益率口径）：>2 绝对低位（绿），1.5~2 熊市低位（绿），0.5~1.5 适中（黄），0~0.5 偏高（橙），<0 泡沫（红）
-  if (sexy >= 1.5) {
+  // 吸引力指数阈值校准（等权超额收益率口径）：
+  // 低利率环境下sexy天然偏高，需提高阈值
+  // >3 绝对低位（绿），2~3 熊市低位（绿），1~2 适中（黄），0~1 偏高（橙），<0 泡沫（红）
+  if (sexy >= 2) {
     sexyVal.style.color = '#00FF88';
     sexyVal.style.textShadow = '0 0 8px rgba(0,255,136,0.4)';
     sexyCard.className = 'dash-card hl-blue';
-  } else if (sexy >= 0.5) {
+  } else if (sexy >= 1) {
     sexyVal.style.color = '#FFD700';
     sexyVal.style.textShadow = '0 0 8px rgba(255,215,0,0.4)';
     sexyCard.className = 'dash-card';
@@ -1829,23 +1833,24 @@ function renderDashboard(realtimeData) {
     sexyVal.style.textShadow = '0 0 8px rgba(255,51,102,0.4)';
     sexyCard.className = 'dash-card';
   }
-  sexySub.textContent = (sexy >= 2 ? '绝对低位' : sexy >= 1.5 ? '熊市低位' : sexy >= 0.5 ? '适中区间' : sexy >= 0 ? '偏高区间' : '泡沫预警') + ' · 超额收益率·激进口径';
+  sexySub.textContent = (sexy >= 3 ? '绝对低位' : sexy >= 2 ? '熊市低位' : sexy >= 1 ? '适中区间' : sexy >= 0 ? '偏高区间' : '泡沫预警') + ' · 超额收益率·激进口径';
 
-  // === 仓位建议：吸引力指数直接映射股票仓位百分比 ===
+  // === 仓位建议：吸引力指数映射股票仓位百分比 ===
+  // 校准：低利率环境sexy偏高，映射区间上调
   // sexy ≤ 0 → 0%股（全仓债券）
-  // 0 < sexy < 1.0 → stockPos% = sexy × 100（如0.86→86%）
-  // 1.0 ≤ sexy < 1.2 → 100%（满仓股票）
-  // sexy ≥ 1.2 → 超配
+  // 0 < sexy < 2.0 → stockPos% = sexy / 2.0 × 100（如1.5→75%）
+  // 2.0 ≤ sexy < 2.5 → 100%（满仓股票）
+  // sexy ≥ 2.5 → 超配
   var posBar = document.getElementById('dashSexyPos');
   if (posBar) {
     var stockPos, posLabel, isOverweight;
     if (sexy <= 0) {
       stockPos = 0; isOverweight = false;
       posLabel = '仓位建议 0%股 · 全仓债券';
-    } else if (sexy < 1.0) {
-      stockPos = Math.round(sexy * 100); isOverweight = false;
+    } else if (sexy < 2.0) {
+      stockPos = Math.round(sexy / 2.0 * 100); isOverweight = false;
       posLabel = '仓位建议 ' + stockPos + '%股 / ' + (100 - stockPos) + '%债';
-    } else if (sexy < 1.2) {
+    } else if (sexy < 2.5) {
       stockPos = 100; isOverweight = false;
       posLabel = '仓位建议 100% · 满仓股票';
     } else {
@@ -1938,9 +1943,9 @@ function updateHeroDashboard(graham, sexy, sentimentScore, sentimentLevel) {
   var hgCard = document.getElementById('dashGraham');
   if (hgCard) {
     hgCard.classList.remove('weight-risk', 'weight-buy');
-    if (graham >= 2.5) {
+    if (graham >= 4.5) {
       hgCard.classList.add('weight-buy');
-    } else if (graham < 1.5) {
+    } else if (graham < 2.5) {
       hgCard.classList.add('weight-risk');
     }
   }
@@ -2041,13 +2046,14 @@ function renderOverview(realtimeData) {
   if (aiSubEl) aiSubEl.textContent = posText + ' · 超额收益率·保守口径·>2.5超配';
   
   // 估值星级 = 沪深300盈利收益率 ÷ 国债收益率，星越多说明股票越便宜
+  // 校准：与仪表盘格雷厄姆指数阈值一致
   var starRatio = graham; // 沪深300盈利收益率/国债收益率
   var stars = 5;
-  if (starRatio > 2.5) stars = 5;
-  else if (starRatio > 2.0) stars = 4;
-  else if (starRatio > 1.5) stars = 3;
-  else if (starRatio > 1.2) stars = 2;
-  else stars = 1;
+  if (starRatio >= 4.5) stars = 5;       // 黄金买入区
+  else if (starRatio >= 3.5) stars = 4;   // 具备投资价值
+  else if (starRatio >= 2.5) stars = 3;   // 适中区间
+  else if (starRatio >= 1.8) stars = 2;   // 偏低
+  else stars = 1;                          // 风险偏高
   var starsEl = document.getElementById('tier1Stars');
   if (starsEl) {
     var starHtml = '';
@@ -2576,8 +2582,10 @@ function renderNewsAnalysis() {
          timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
        }
 
-       // 数据来源标签
-       var sourceLabel = factor._source ? '<span class="na-source-tag">' + escHTML(factor._source) + '</span>' : '<span class="na-source-tag">市场分析</span>';
+       // 数据来源标签（实时数据用高亮样式）
+       var isRealtime = factor._source && (factor._source.indexOf('实时') >= 0 || factor._source.indexOf('快讯') >= 0);
+       var sourceCls = isRealtime ? 'na-source-tag realtime' : 'na-source-tag';
+       var sourceLabel = factor._source ? '<span class="' + sourceCls + '">' + escHTML(factor._source) + '</span>' : '<span class="na-source-tag">市场分析</span>';
 
        // XSS防护：转义标题和描述
        var safeTitle = escHTML(factor.title || '');
@@ -2656,6 +2664,10 @@ function bindNaFilters() {
           
           var timeStr = factor.time || (now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0'));
           
+          var isRealtime2 = factor._source && (factor._source.indexOf('实时') >= 0 || factor._source.indexOf('快讯') >= 0);
+          var sourceCls2 = isRealtime2 ? 'na-source-tag realtime' : 'na-source-tag';
+          var sourceLabel2 = factor._source ? '<span class="' + sourceCls2 + '">' + escHTML(factor._source) + '</span>' : '<span class="na-source-tag">市场分析</span>';
+          
           html += '<div class="na-card na-' + factor.type + '">' +
             '<div class="na-card-row">' +
               '<span class="na-tag ' + tagClass[factor.type] + '">' + tagText[factor.type] + '</span>' +
@@ -2664,6 +2676,7 @@ function bindNaFilters() {
               '<span class="na-card-time">' + escHTML(timeStr) + '</span>' +
             '</div>' +
             '<div class="na-card-desc">' + escHTML(factor.desc || '') + '</div>' +
+            '<div class="na-card-footer">' + sourceLabel2 + '</div>' +
           '</div>';
         });
       }
@@ -2689,63 +2702,76 @@ function analyzeMarketFactors() {
       type: 'neutral',
       title: '周末休市',
       desc: 'A股、港股休市，下周一正常开市',
-      impact: 1
+      impact: 1,
+      _source: '市场日历'
     });
   } else if (hour >= 9 && hour < 12) {
     factors.push({
       type: 'neutral',
       title: '早盘交易中',
       desc: '沪深两市早盘时段，盘中波动正常',
-      impact: 1
+      impact: 1,
+      _source: '市场日历'
     });
   } else if (hour >= 13 && hour < 15) {
     factors.push({
       type: 'neutral',
       title: '午盘进行中',
       desc: '沪深两市午盘时段，关注尾盘动向',
-      impact: 1
+      impact: 1,
+      _source: '市场日历'
     });
   } else if (hour >= 15) {
     factors.push({
       type: 'neutral',
       title: '收盘完成',
       desc: '今日交易已结束，明日继续',
-      impact: 1
+      impact: 1,
+      _source: '市场日历'
     });
   } else {
     factors.push({
       type: 'neutral',
       title: '盘前观察',
       desc: '开盘前准备阶段',
-      impact: 1
+      impact: 1,
+      _source: '市场日历'
     });
   }
   
-  // 2. 获取格雷厄姆指数判断
+  // 2. 获取格雷厄姆指数判断（阈值与仪表盘一致）
   var grahamScore = getGrahamScore();
-  if (grahamScore >= 2) {
+  if (grahamScore >= 4.5) {
     factors.push({
       type: 'bull',
-      title: '估值低位',
-      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，市场整体低估，性价比突出'
+      title: '估值黄金底',
+      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，历史极端低位，性价比极高',
+      impact: 3,
+      _source: '估值分析'
     });
-  } else if (grahamScore >= 1.5) {
+  } else if (grahamScore >= 3.5) {
     factors.push({
       type: 'bull',
       title: '估值偏低',
-      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，估值处于历史低位区域'
+      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，具备投资价值',
+      impact: 2,
+      _source: '估值分析'
     });
-  } else if (grahamScore >= 0.5) {
+  } else if (grahamScore >= 2.5) {
     factors.push({
       type: 'neutral',
       title: '估值适中',
-      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，市场估值处于合理区间'
+      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，市场估值处于合理区间',
+      impact: 1,
+      _source: '估值分析'
     });
   } else {
     factors.push({
       type: 'bear',
       title: '估值偏高',
-      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，市场估值偏高，注意风险'
+      desc: '格雷厄姆指数 ' + grahamScore.toFixed(2) + '，市场估值偏高，注意风险',
+      impact: 2,
+      _source: '估值分析'
     });
   }
   
@@ -2755,37 +2781,52 @@ function analyzeMarketFactors() {
     factors.push({
       type: 'bull',
       title: '无风险利率低位',
-      desc: '10年期国债收益率 ' + treasuryYield.toFixed(4) + '%，资金成本低，利于股市'
+      desc: '10年期国债收益率 ' + treasuryYield.toFixed(4) + '%，资金成本低，利于股市',
+      _source: '估值分析'
     });
   } else if (treasuryYield > 3.5) {
     factors.push({
       type: 'bear',
       title: '无风险利率偏高',
-      desc: '10年期国债收益率 ' + treasuryYield.toFixed(4) + '%，资金回流债市压力大'
+      desc: '10年期国债收益率 ' + treasuryYield.toFixed(4) + '%，资金回流债市压力大',
+      _source: '估值分析'
     });
   } else {
     factors.push({
       type: 'neutral',
       title: '利率环境平稳',
-      desc: '10年期国债收益率 ' + treasuryYield.toFixed(4) + '%，利率环境整体平稳'
+      desc: '10年期国债收益率 ' + treasuryYield.toFixed(4) + '%，利率环境整体平稳',
+      _source: '估值分析'
     });
   }
   
-  // 4. 股债利差判断
+  // 4. 股债利差判断（校准：低利率环境下利差天然偏大）
   // getGrahamScore() 返回 盈利收益率/国债收益率 的比值
   // 股债利差(百分点) = 盈利收益率 - 国债收益率 = 国债收益率 × (格雷厄姆指数 - 1)
   var spread = treasuryYield * (grahamScore - 1);
-  if (spread > 3) {
+  if (spread > 5) {
     factors.push({
       type: 'bull',
-      title: '股债利差扩大',
-      desc: '当前利差 ' + spread.toFixed(2) + '%，股票相对债券吸引力增强'
+      title: '股债利差极大',
+      desc: '当前利差 ' + spread.toFixed(2) + '%，股票相对债券吸引力极强',
+      impact: 2,
+      _source: '估值分析'
     });
-  } else if (spread < 1) {
+  } else if (spread > 3) {
+    factors.push({
+      type: 'bull',
+      title: '股债利差偏大',
+      desc: '当前利差 ' + spread.toFixed(2) + '%，股票相对债券有吸引力',
+      impact: 1,
+      _source: '估值分析'
+    });
+  } else if (spread < 1.5) {
     factors.push({
       type: 'bear',
       title: '股债利差收窄',
-      desc: '当前利差 ' + spread.toFixed(2) + '%，股票相对债券吸引力减弱'
+      desc: '当前利差 ' + spread.toFixed(2) + '%，股票相对债券吸引力减弱',
+      impact: 1,
+      _source: '估值分析'
     });
   }
   
@@ -2796,14 +2837,119 @@ function analyzeMarketFactors() {
     factors.push({
       type: 'bull',
       title: '北向资金净流入',
-      desc: '北向资金净流入约 ' + Math.abs(northFlow).toFixed(0) + '亿，外资持续买入'
+      desc: '北向资金净流入约 ' + Math.abs(northFlow).toFixed(0) + '亿，外资持续买入',
+      _source: '实时资金'
     });
   } else if (northFlow < -50) {
     factors.push({
       type: 'bear',
       title: '北向资金净流出',
-      desc: '北向资金净流出约 ' + Math.abs(northFlow).toFixed(0) + '亿，外资短期撤离'
+      desc: '北向资金净流出约 ' + Math.abs(northFlow).toFixed(0) + '亿，外资短期撤离',
+      _source: '实时资金'
     });
+  }
+  
+  // 5b. 主力资金流向（实时板块资金流数据）
+  if (typeof _lastSectorFlowData !== 'undefined' && _lastSectorFlowData) {
+    var sf = _lastSectorFlowData;
+    var totalMain = sf.totalMain || 0;
+    var inflowCount = sf.inflow ? sf.inflow.length : 0;
+    var outflowCount = sf.outflow ? sf.outflow.length : 0;
+    if (totalMain > 0 && inflowCount > outflowCount) {
+      var topInflow = sf.inflow && sf.inflow[0] ? sf.inflow[0].name : '';
+      factors.push({
+        type: 'bull',
+        title: '主力资金净流入',
+        desc: '今日板块主力净流入，' + inflowCount + '个板块流入' + (topInflow ? '，领涨：' + topInflow : ''),
+        _source: '实时资金'
+      });
+    } else if (totalMain < 0 && outflowCount > 0) {
+      var topOutflow = sf.outflow && sf.outflow[0] ? sf.outflow[0].name : '';
+      factors.push({
+        type: 'bear',
+        title: '主力资金净流出',
+        desc: '今日板块主力净流出，' + outflowCount + '个板块流出' + (topOutflow ? '，领跌：' + topOutflow : ''),
+        _source: '实时资金'
+      });
+    }
+  }
+  
+  // 5c. 实时大盘表现（基于实时行情数据）
+  if (typeof _lastRealtimeData !== 'undefined' && _lastRealtimeData) {
+    var rt300 = _lastRealtimeData['sh000300'];
+    var rtChiNext = _lastRealtimeData['sz399006'];
+    if (rt300 && rt300.changePercent !== undefined) {
+      var chg300 = rt300.changePercent;
+      if (chg300 > 1.5) {
+        factors.push({
+          type: 'bull',
+          title: '沪深300大幅上涨',
+          desc: '沪深300涨' + chg300.toFixed(2) + '%，大盘强势上攻',
+          _source: '实时行情'
+        });
+      } else if (chg300 > 0.5) {
+        factors.push({
+          type: 'bull',
+          title: '沪深300上涨',
+          desc: '沪深300涨' + chg300.toFixed(2) + '%，市场表现偏强',
+          _source: '实时行情'
+        });
+      } else if (chg300 < -1.5) {
+        factors.push({
+          type: 'bear',
+          title: '沪深300大幅下跌',
+          desc: '沪深300跌' + Math.abs(chg300).toFixed(2) + '%，大盘承压明显',
+          _source: '实时行情'
+        });
+      } else if (chg300 < -0.5) {
+        factors.push({
+          type: 'bear',
+          title: '沪深300下跌',
+          desc: '沪深300跌' + Math.abs(chg300).toFixed(2) + '%，市场表现偏弱',
+          _source: '实时行情'
+        });
+      }
+    }
+    // 创业板表现
+    if (rtChiNext && rtChiNext.changePercent !== undefined) {
+      var chgCN = rtChiNext.changePercent;
+      if (chgCN > 2) {
+        factors.push({
+          type: 'bull',
+          title: '创业板大涨',
+          desc: '创业板涨' + chgCN.toFixed(2) + '%，成长股活跃',
+          _source: '实时行情'
+        });
+      } else if (chgCN < -2) {
+        factors.push({
+          type: 'bear',
+          title: '创业板大跌',
+          desc: '创业板跌' + Math.abs(chgCN).toFixed(2) + '%，成长股承压',
+          _source: '实时行情'
+        });
+      }
+    }
+  }
+  
+  // 5d. 涨跌家数（市场广度）
+  if (sentiment.up && sentiment.down) {
+    var totalStocks = sentiment.up + sentiment.down;
+    var upRatio = totalStocks > 0 ? sentiment.up / totalStocks * 100 : 50;
+    if (upRatio > 75) {
+      factors.push({
+        type: 'bull',
+        title: '普涨行情',
+        desc: '上涨' + sentiment.up + '家，下跌' + sentiment.down + '家，涨跌比' + (sentiment.up / Math.max(1, sentiment.down)).toFixed(1) + ':1',
+        _source: '实时行情'
+      });
+    } else if (upRatio < 25) {
+      factors.push({
+        type: 'bear',
+        title: '普跌行情',
+        desc: '上涨' + sentiment.up + '家，下跌' + sentiment.down + '家，跌涨比' + (sentiment.down / Math.max(1, sentiment.up)).toFixed(1) + ':1',
+        _source: '实时行情'
+      });
+    }
   }
   
   // 6. 市场情绪判断
@@ -2812,35 +2958,40 @@ function analyzeMarketFactors() {
     factors.push({
       type: 'bull',
       title: '市场情绪贪婪',
-      desc: '恐慌指数 ' + fearIndex.toFixed(0) + '，市场情绪偏乐观'
+      desc: '恐慌指数 ' + fearIndex.toFixed(0) + '，市场情绪偏乐观',
+      _source: '情绪指标'
     });
   } else if (fearIndex > 70) {
     factors.push({
       type: 'bear',
       title: '市场情绪恐慌',
-      desc: '恐慌指数 ' + fearIndex.toFixed(0) + '，市场情绪偏谨慎'
+      desc: '恐慌指数 ' + fearIndex.toFixed(0) + '，市场情绪偏谨慎',
+      _source: '情绪指标'
     });
   }
   
-  // 7. 政策环境（静态分析）
+  // 7. 政策环境（季节性参考）
   var month = now.getMonth() + 1;
   if (month >= 3 && month <= 4) {
     factors.push({
       type: 'neutral',
       title: '两会效应',
-      desc: '政策预期升温，市场关注政策导向'
+      desc: '政策预期升温，市场关注政策导向',
+      _source: '季节规律'
     });
   } else if (month === 12) {
     factors.push({
       type: 'neutral',
       title: '年底效应',
-      desc: '机构调仓换股，市场波动加大'
+      desc: '机构调仓换股，市场波动加大',
+      _source: '季节规律'
     });
   } else if (month === 1) {
     factors.push({
       type: 'neutral',
       title: '年初布局期',
-      desc: '新年行情预期，资金面相对宽松'
+      desc: '新年行情预期，资金面相对宽松',
+      _source: '季节规律'
     });
   }
   

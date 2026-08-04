@@ -541,6 +541,16 @@ body {
   background: rgba(255,255,255,0.03);
   border: 0.5px solid rgba(255,255,255,0.05);
 }
+.na-source-tag.realtime {
+  color: #00FF88;
+  opacity: 1;
+  background: rgba(0,255,136,0.06);
+  border-color: rgba(0,255,136,0.15);
+  font-weight: 600;
+}
+.na-card-footer {
+  margin-top: 0.15rem;
+}
 
 /* 消息面分析刷新按钮 */
 .na-refresh-btn {
@@ -8212,6 +8222,51 @@ html {
 .pa-refresh-btn:active { transform: scale(0.96); }
 .pa-refresh-btn:disabled { opacity: 0.5; cursor: wait; }
 
+/* 小白使用指引条 */
+.pa-guide-bar {
+  display: flex;
+  gap: 0.4rem 0.6rem;
+  padding: 0.4rem 0.6rem;
+  background: linear-gradient(135deg, rgba(0,200,255,0.06), rgba(0,255,136,0.03));
+  border-bottom: 1px solid rgba(0,200,255,0.1);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.pa-guide-item {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.5rem;
+  color: var(--muted);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.pa-guide-item b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.pa-guide-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 0.45rem;
+  font-weight: 800;
+  color: var(--neon-cyan);
+  background: rgba(0,200,255,0.12);
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,200,255,0.2);
+}
+.pa-guide-dot {
+  font-size: 0.55rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.pa-guide-dot.green { color: #00FF88; text-shadow: 0 0 4px rgba(0,255,136,0.5); }
+.pa-guide-dot.red { color: #FF3366; text-shadow: 0 0 4px rgba(255,51,102,0.5); }
+
 /* === 三列可视化区 === */
 .pa-visual-row {
   display: flex;
@@ -8602,13 +8657,35 @@ html {
   to { opacity: 1; transform: translateY(0); }
 }
 .pa-disclaimer {
-  padding: 0.4rem 0.8rem 0.5rem;
   font-size: 0.48rem;
   color: var(--muted);
-  text-align: center;
-  border-top: 1px solid rgba(0,200,255,0.04);
   opacity: 0.7;
 }
+.pa-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem 0.45rem;
+  border-top: 1px solid rgba(0,200,255,0.04);
+  flex-wrap: wrap;
+}
+.pa-data-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.5rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  background: rgba(0,200,255,0.06);
+  color: var(--neon-cyan);
+  border: 1px solid rgba(0,200,255,0.12);
+  white-space: nowrap;
+}
+.pa-data-status.live { color: #00FF88; background: rgba(0,255,136,0.06); border-color: rgba(0,255,136,0.15); }
+.pa-data-status.closed { color: var(--neon-cyan); }
+.pa-data-status.fallback { color: #FFAE00; background: rgba(255,174,0,0.06); border-color: rgba(255,174,0,0.15); }
 
 /* === 主题适配 === */
 [data-theme="light"] .pattern-analysis-panel {

@@ -3322,6 +3322,10 @@ function fetchSectorCapitalFlow() {
   var url = 'https://push2delay.eastmoney.com/api/qt/clist/get' +
     '?fid=f62&po=1&pz=200&pn=1&np=1&fltt=2&invt=2' +
     '&fs=m:90+t:2&fields=' + fields;
+  // 备用源：push2（非延迟，数据更全但可能不支持CORS）
+  var url2 = 'https://push2.eastmoney.com/api/qt/clist/get' +
+    '?fid=f62&po=1&pz=200&pn=1&np=1&fltt=2&invt=2' +
+    '&fs=m:90+t:2&fields=' + fields;
 
   // 解析API返回的原始数据为items数组
   function parseItems(resp) {
@@ -3361,13 +3365,59 @@ function fetchSectorCapitalFlow() {
   }
 
   // 单请求获取全部板块数据（消除双请求合并的数据不一致风险）
-  return fetchWithTimeout(url, { cache: 'no-store' }, 8000).then(function(res) {
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return res.json();
-  }).then(function(resp) {
-    var items = parseItems(resp);
-    if (items.length === 0) return null;
+  // 方案1: push2delay fetch → 方案2: push2delay JSONP → 方案3: push2 JSONP → 方案4: ETF估算
+  function tryFetch(targetUrl, label) {
+    return fetchWithTimeout(targetUrl, { cache: 'no-store' }, 8000).then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function(resp) {
+      var items = parseItems(resp);
+      if (items.length === 0) throw new Error(label + '数据为空');
+      // 检查是否全部mainNet为0（非盘中可能返回0值）
+      var allZero = items.every(function(d) { return Math.abs(d.mainNet) < 0.01; });
+      if (allZero) throw new Error(label + '全部mainNet为0');
+      return items;
+    });
+  }
 
+  return tryFetch(url, 'push2delay-fetch').catch(function(fetchErr) {
+    console.warn('板块资金流向push2delay fetch失败:', fetchErr.message);
+    // 方案2: push2delay JSONP
+    return emJsonp(url, 8000).then(function(resp) {
+      var items = parseItems(resp);
+      if (items.length === 0) throw new Error('push2delay-JSONP数据为空');
+      var allZero = items.every(function(d) { return Math.abs(d.mainNet) < 0.01; });
+      if (allZero) throw new Error('push2delay-JSONP全部mainNet为0');
+      console.log('板块资金流向push2delay-JSONP成功，获取' + items.length + '个板块');
+      return items;
+    }).catch(function(jsonpErr) {
+      console.warn('板块资金流向push2delay JSONP失败:', jsonpErr.message);
+      // 方案3: push2 JSONP（非延迟源，数据更全）
+      return emJsonp(url2, 8000).then(function(resp) {
+        var items = parseItems(resp);
+        if (items.length === 0) throw new Error('push2-JSONP数据为空');
+        var allZero = items.every(function(d) { return Math.abs(d.mainNet) < 0.01; });
+        if (allZero) throw new Error('push2-JSONP全部mainNet为0');
+        console.log('板块资金流向push2-JSONP成功，获取' + items.length + '个板块');
+        return items;
+      }).catch(function(err2) {
+        console.warn('板块资金流向所有API均失败:', err2.message);
+        return _fetchSectorCapitalFlowFallback();
+      });
+    });
+  }).then(function(items) {
+    // 如果是数组，说明是API获取的items；如果是对象，说明是fallback返回的result
+    if (Array.isArray(items)) {
+      return _processCapitalFlowItems(items, SECTOR_FLOW_CACHE_KEY);
+    }
+    return items; // 已经是处理好的result（来自fallback）
+  });
+}
+
+/**
+ * 处理板块资金流向数据（公共逻辑：过滤、排序、分流、K线信号）
+ */
+function _processCapitalFlowItems(items, cacheKey) {
     // 过滤子行业分类（Ⅱ/Ⅲ/Ⅳ/Ⅴ），仅保留一级行业，避免重复计算
     items = items.filter(function(d) {
       return d.name && !/[ⅡⅢⅣⅤ]/.test(d.name);
@@ -3437,19 +3487,12 @@ function fetchSectorCapitalFlow() {
           d.outflowDays5 = sig.outflowDays5;
           d.total5 = sig.total5;
           d.recent5 = sig.recent5;
-          // 保留真实的量比(volumeRatio)，不覆盖
         }
-        // 资金面分析：使用真实量比(f10) + 真实开盘价
         d.capitalAnalysis = _analyzeSectorCapital(d);
       });
-      // 写入缓存
-      try { localStorage.setItem(SECTOR_FLOW_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: result })); } catch(e) {}
+      try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: result })); } catch(e) {}
       return result;
     });
-  }).catch(function(err) {
-    console.warn('板块资金流向获取失败(push2delay)，回退ETF估算:', err.message);
-    return _fetchSectorCapitalFlowFallback();
-  });
 }
 
 /**

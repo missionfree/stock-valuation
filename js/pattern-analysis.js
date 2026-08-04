@@ -38,10 +38,24 @@ function runPatternAnalysis(forceRefresh) {
   var btn = document.getElementById('btnPatternRefresh');
   if (btn) { btn.disabled = true; btn.textContent = '\u27f3 \u63a8\u6f14\u4e2d\u2026'; }
 
+  // 更新数据状态指示器
+  var statusEl = document.getElementById('paDataStatus');
+  function setStatus(text, cls) {
+    if (statusEl) { statusEl.textContent = text; statusEl.className = 'pa-data-status ' + (cls || ''); }
+  }
+
   var rt = _lastRealtimeData || {};
   var sent = _lastSentimentData || null;
   var hasRt = rt && Object.keys(rt).length > 0;
   var hasHS300 = rt && rt['sh000300'] && (rt['sh000300'].price || rt['sh000300'].changePercent !== undefined);
+
+  // 判断盘中/收盘
+  var now = new Date();
+  var hour = now.getHours();
+  var minutes = now.getMinutes();
+  var day = now.getDay();
+  var isWeekend = (day === 0 || day === 6);
+  var isMarketHours = !isWeekend && ((hour === 9 && minutes >= 30) || (hour >= 10 && hour < 12) || (hour >= 13 && hour < 15));
 
   // 数据未就绪：自动重试
   if (!hasRt || !hasHS300) {
@@ -50,6 +64,7 @@ function runPatternAnalysis(forceRefresh) {
       if (container) {
         container.innerHTML = '<div class="pa-loading">\u23f3 \u6b63\u5728\u7b49\u5f85\u884c\u60c5\u6570\u636e\u52a0\u8f7d\uff08\u7b2c' + _paRetryCount + '/' + _paMaxRetries + '\u6b21\u91cd\u8bd5\uff09\u2026</div>';
       }
+      setStatus('\u23f3 \u6570\u636e\u52a0\u8f7d\u4e2d(' + _paRetryCount + '/' + _paMaxRetries + ')', '');
       if (btn) { btn.disabled = false; btn.textContent = '\u27f3 \u63a8\u6f14'; }
       _paAnalysisLock = false;
       Perf.trackedSetTimeout(function() { runPatternAnalysis(false); }, 3000);
@@ -59,6 +74,7 @@ function runPatternAnalysis(forceRefresh) {
     if (container) {
       container.innerHTML = '<div class="pa-loading">\u26a0\ufe0f \u884c\u60c5\u6570\u636e\u6682\u672a\u5c31\u7eea\uff0c\u5df2\u4f7f\u7528\u57fa\u51c6\u6570\u636e\u63a8\u6f14\u3002\u70b9\u51fb\u300c\u63a8\u6f14\u300d\u91cd\u8bd5</div>';
     }
+    setStatus('\u26a0\ufe0f \u57fa\u51c6\u6570\u636e\u5151\u5e95', 'fallback');
     if (btn) { btn.disabled = false; btn.textContent = '\u27f3 \u63a8\u6f14'; }
     _paAnalysisLock = false;
     _paRetryCount = 0;
@@ -71,6 +87,7 @@ function runPatternAnalysis(forceRefresh) {
 
   // 数据就绪，重置重试计数
   _paRetryCount = 0;
+  setStatus(isMarketHours ? '\ud83d\udfe2 \u76d8\u4e2d\u5b9e\u65f6\u6570\u636e' : '\ud83d\udd52 \u6536\u76d8\u6570\u636e\u63a8\u6f14', isMarketHours ? 'live' : 'closed');
 
   // 带超时的fetchKline（8秒超时）
   var klinePromise = new Promise(function(resolve, reject) {
@@ -93,6 +110,7 @@ function runPatternAnalysis(forceRefresh) {
     _paAnalysisLock = false;
   }).catch(function(err) {
     // K线超时或失败，仍用实时数据推演（K线相关规则跳过）
+    setStatus(isMarketHours ? '\ud83d\udfe2 \u76d8\u4e2d\u5b9e\u65f6(K\u7ebf\u8df3\u8fc7)' : '\ud83d\udd52 \u6536\u76d8\u6570\u636e(K\u7ebf\u8df3\u8fc7)', isMarketHours ? 'live' : 'closed');
     var result = analyzePatterns(rt, sent, null);
     _paLastResult = result;
     renderPatternAnalysis(result);

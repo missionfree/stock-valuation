@@ -37,14 +37,14 @@
 <link rel="dns-prefetch" href="https://datacenter-web.eastmoney.com">
 <link rel="dns-prefetch" href="https://searchapi.eastmoney.com">
 <link rel="dns-prefetch" href="https://ifzq.gtimg.cn">
-<link rel="preload" href="js/config.js?v=20260804b" as="script">
-<link rel="preload" href="js/utils.js?v=20260804b" as="script">
+<link rel="preload" href="js/config.js?v=20260804c" as="script">
+<link rel="preload" href="js/utils.js?v=20260804c" as="script">
 <link rel="preconnect" href="https://qt.gtimg.cn" crossorigin>
 <link rel="preconnect" href="https://push2.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2delay.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2his.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://datacenter-web.eastmoney.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=20260804b">
+<link rel="stylesheet" href="css/styles.css?v=20260804c">
 
 </head>
 <body>
@@ -425,22 +425,19 @@
       </div>
     </div>
 
-    <!-- 今日复盘 -->
-    <div class="daily-review-panel" id="dailyReviewPanel">
-      <div class="daily-review-header">
-        <h3>今日复盘 <span style="font-size:0.56rem;color:var(--muted);font-weight:400;margin-left:0.3rem">行情走向详解·自动生成</span></h3>
-        <button class="btn-review-refresh" onclick="generateDailyReview(true)" id="btnReviewRefresh">⟳ 刷新复盘</button>
-      </div>
-      <div class="daily-review-content" id="dailyReviewContent">
-        <div style="text-align:center;padding:1.2rem;color:var(--muted);font-size:0.72rem">数据加载中，复盘将在行情数据就绪后自动生成…</div>
-      </div>
-    </div>
-
     <!-- 盘口推演：基于16条炒股口诀的量化分析引擎 -->
     <div class="pattern-analysis-panel" id="patternAnalysisPanel">
       <div class="pa-header">
         <h3>盘口推演 <span style="font-size:0.56rem;color:var(--muted);font-weight:400;margin-left:0.3rem">16条量价口诀·大数据回测引擎</span></h3>
         <button class="pa-refresh-btn" onclick="runPatternAnalysis(true)" id="btnPatternRefresh">⟳ 推演</button>
+      </div>
+      <!-- 小白使用指引（一看就懂） -->
+      <div class="pa-guide-bar">
+        <div class="pa-guide-item"><span class="pa-guide-num">1</span><b>看分数</b>：&gt;58看涨，&lt;42看跌</div>
+        <div class="pa-guide-item"><span class="pa-guide-dot green">●</span><b>绿色</b>=涨信号</div>
+        <div class="pa-guide-item"><span class="pa-guide-dot red">●</span><b>红色</b>=跌信号</div>
+        <div class="pa-guide-item"><span class="pa-guide-num">2</span><b>随时能用</b>：收盘后自动用最新收盘数据推演</div>
+        <div class="pa-guide-item"><span class="pa-guide-num">3</span>点「⟳ 推演」可手动刷新</div>
       </div>
 
       <!-- 三列可视化：仪表盘 + 雷达图 + 信号摘要 -->
@@ -581,7 +578,21 @@
       <div class="pa-rules-list" id="paRulesList">
         <div class="pa-loading">⏳ 等待行情数据就绪后自动启动推演…</div>
       </div>
-      <div class="pa-disclaimer">⚠️ 本推演基于历史量价口诀的量化匹配，非投资建议。口诀源自市场经验总结，存在失效可能。</div>
+      <div class="pa-footer-bar">
+        <span class="pa-data-status" id="paDataStatus">⏳ 数据加载中</span>
+        <span class="pa-disclaimer">⚠️ 基于历史量价口诀量化匹配，非投资建议</span>
+      </div>
+    </div>
+
+    <!-- 今日复盘 -->
+    <div class="daily-review-panel" id="dailyReviewPanel">
+      <div class="daily-review-header">
+        <h3>今日复盘 <span style="font-size:0.56rem;color:var(--muted);font-weight:400;margin-left:0.3rem">行情走向详解·自动生成</span></h3>
+        <button class="btn-review-refresh" onclick="generateDailyReview(true)" id="btnReviewRefresh">⟳ 刷新复盘</button>
+      </div>
+      <div class="daily-review-content" id="dailyReviewContent">
+        <div style="text-align:center;padding:1.2rem;color:var(--muted);font-size:0.72rem">数据加载中，复盘将在行情数据就绪后自动生成…</div>
+      </div>
     </div>
 
     <!-- 估值仪表盘已移至首屏顶部 -->
@@ -947,14 +958,14 @@
 <!-- ==================== JavaScript 主逻辑 ==================== -->
 
 <!-- ==================== JavaScript Modules (deferred, ordered by dependency) ==================== -->
-<script defer src="js/performance.js?v=20260804b"></script>
-<script defer src="js/config.js?v=20260804b"></script>
-<script defer src="js/utils.js?v=20260804b"></script>
-<script defer src="js/render.js?v=20260804b"></script>
-<script defer src="js/stock-analysis.js?v=20260804b"></script>
-<script defer src="js/rotation.js?v=20260804b"></script>
-<script defer src="js/pattern-analysis.js?v=20260804b"></script>
-<script defer src="js/ui.js?v=20260804b"></script>
-<script defer src="js/app.js?v=20260804b"></script>
+<script defer src="js/performance.js?v=20260804c"></script>
+<script defer src="js/config.js?v=20260804c"></script>
+<script defer src="js/utils.js?v=20260804c"></script>
+<script defer src="js/render.js?v=20260804c"></script>
+<script defer src="js/stock-analysis.js?v=20260804c"></script>
+<script defer src="js/rotation.js?v=20260804c"></script>
+<script defer src="js/pattern-analysis.js?v=20260804c"></script>
+<script defer src="js/ui.js?v=20260804c"></script>
+<script defer src="js/app.js?v=20260804c"></script>
 </body>
 </html>
