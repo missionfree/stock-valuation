@@ -2557,11 +2557,19 @@ function generateDailyReview(forceRefresh) {
       renderDailyReviewContent(container, _lastRealtimeData || {}, null, _lastSectorFlowData);
       if (btn) { btn.disabled = false; btn.textContent = '⟳ 刷新复盘'; }
     });
+    // 复盘完成后自动触发盘口推演
+    Perf.trackedSetTimeout(function() {
+      if (typeof runPatternAnalysis === 'function') runPatternAnalysis(false);
+    }, 500);
     return;
   }
 
   renderDailyReviewContent(container, rt, sent, flow);
   if (btn) { btn.disabled = false; btn.textContent = '⟳ 刷新复盘'; }
+  // 复盘完成后自动触发盘口推演
+  Perf.trackedSetTimeout(function() {
+    if (typeof runPatternAnalysis === 'function') runPatternAnalysis(false);
+  }, 500);
 }
 
 /**

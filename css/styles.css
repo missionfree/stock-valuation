@@ -8161,3 +8161,301 @@ html {
   border-color: rgba(139, 105, 20, 0.2);
   color: #2c1810;
 }
+
+/* —— 45. 盘口推演面板 —— */
+.pattern-analysis-panel {
+  margin: 0.8rem 0;
+  background: linear-gradient(145deg, rgba(15,22,35,0.6), rgba(10,15,26,0.8));
+  border: 1px solid rgba(0,200,255,0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+.pattern-analysis-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,200,255,0.4), rgba(255,174,0,0.3), transparent);
+}
+.pa-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 0.8rem 0.5rem;
+  border-bottom: 1px solid rgba(0,200,255,0.06);
+}
+.pa-header h3 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.03em;
+}
+.pa-refresh-btn {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(0,200,255,0.08);
+  border: 1px solid rgba(0,200,255,0.15);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+.pa-refresh-btn:hover {
+  background: rgba(0,200,255,0.15);
+  border-color: rgba(0,200,255,0.3);
+  box-shadow: 0 2px 8px rgba(0,200,255,0.1);
+}
+.pa-refresh-btn:active { transform: scale(0.96); }
+.pa-refresh-btn:disabled { opacity: 0.5; cursor: wait; }
+
+/* 汇总栏 */
+.pa-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(0,200,255,0.03);
+}
+.pa-score-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+}
+.pa-score-label {
+  font-size: 0.5rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+.pa-score-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  line-height: 1.2;
+  transition: color 0.4s ease;
+}
+.pa-score-value.pa-bull { color: var(--neon-green); text-shadow: 0 0 10px rgba(0,255,198,0.3); }
+.pa-score-value.pa-bull-weak { color: var(--neon-yellow); }
+.pa-score-value.pa-neutral { color: var(--neon-cyan); }
+.pa-score-value.pa-bear-weak { color: var(--neon-yellow); }
+.pa-score-value.pa-bear { color: var(--neon-red); text-shadow: 0 0 10px rgba(255,51,102,0.3); }
+.pa-score-tag {
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: 3px;
+  margin-top: 0.15rem;
+}
+.pa-score-tag.pa-bull { background: rgba(0,255,198,0.12); color: var(--neon-green); }
+.pa-score-tag.pa-bull-weak { background: rgba(255,174,0,0.1); color: var(--neon-yellow); }
+.pa-score-tag.pa-neutral { background: rgba(0,200,255,0.1); color: var(--neon-cyan); }
+.pa-score-tag.pa-bear-weak { background: rgba(255,174,0,0.1); color: var(--neon-yellow); }
+.pa-score-tag.pa-bear { background: rgba(255,51,102,0.12); color: var(--neon-red); }
+
+/* 统计 */
+.pa-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  justify-content: center;
+}
+.pa-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pa-stat-num {
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.pa-stat-item:first-child .pa-stat-num { color: var(--neon-green); }
+.pa-stat-item:nth-child(3) .pa-stat-num { color: var(--neon-red); }
+.pa-stat-item:last-child .pa-stat-num { color: var(--muted); }
+.pa-stat-label {
+  font-size: 0.48rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+.pa-stat-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(0,200,255,0.1);
+}
+
+/* 热力条 */
+.pa-heatmap {
+  padding: 0.3rem 0.8rem 0.5rem;
+}
+.pa-heatmap-track {
+  position: relative;
+  height: 8px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  overflow: visible;
+  border: 1px solid rgba(0,200,255,0.06);
+}
+.pa-heatmap-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1), background 0.4s ease;
+}
+.pa-heatmap-marker {
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 16px;
+  transition: left 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+.pa-heatmap-marker-dot {
+  position: absolute;
+  top: -3px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 8px rgba(0,200,255,0.4);
+  border: 2px solid rgba(0,200,255,0.3);
+}
+.pa-heatmap-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.46rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+
+/* 口诀列表 */
+.pa-rules-list {
+  padding: 0.3rem 0.5rem;
+  max-height: 600px;
+  overflow-y: auto;
+}
+.pa-loading {
+  text-align: center;
+  padding: 1.2rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+.pa-rule-item {
+  padding: 0.5rem 0.6rem;
+  margin: 0.25rem 0;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.15);
+  border-left: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+.pa-rule-item.pa-rule-bull {
+  border-left-color: var(--neon-green);
+  background: linear-gradient(90deg, rgba(0,255,198,0.05), rgba(0,0,0,0.1));
+}
+.pa-rule-item.pa-rule-bear {
+  border-left-color: var(--neon-red);
+  background: linear-gradient(90deg, rgba(255,51,102,0.05), rgba(0,0,0,0.1));
+}
+.pa-rule-item.pa-rule-idle {
+  border-left-color: rgba(107,125,153,0.3);
+  opacity: 0.65;
+}
+.pa-rule-item.pa-rule-idle:hover {
+  opacity: 0.85;
+  background: rgba(0,200,255,0.03);
+}
+.pa-rule-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.pa-rule-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  background: rgba(0,200,255,0.06);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.pa-rule-bull .pa-rule-num { color: var(--neon-green); background: rgba(0,255,198,0.1); }
+.pa-rule-bear .pa-rule-num { color: var(--neon-red); background: rgba(255,51,102,0.1); }
+.pa-rule-icon { font-size: 0.7rem; flex-shrink: 0; }
+.pa-rule-text {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ink);
+  flex: 1;
+}
+.pa-signal-badge {
+  font-size: 0.48rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pa-badge-bull { background: rgba(0,255,198,0.15); color: var(--neon-green); }
+.pa-badge-bear { background: rgba(255,51,102,0.15); color: var(--neon-red); }
+.pa-badge-idle { background: rgba(107,125,153,0.1); color: var(--muted); }
+.pa-rule-meta {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.2rem;
+  padding-left: 1.8rem;
+  font-size: 0.52rem;
+  color: var(--muted);
+}
+.pa-rule-cat {
+  padding: 0.05rem 0.3rem;
+  background: rgba(0,200,255,0.06);
+  border-radius: 2px;
+  color: var(--neon-cyan);
+}
+.pa-rule-confidence { color: var(--neon-yellow); }
+.pa-rule-detail {
+  margin-top: 0.25rem;
+  padding: 0.3rem 0.5rem;
+  padding-left: 1.8rem;
+  font-size: 0.6rem;
+  color: var(--ink);
+  line-height: 1.5;
+  background: rgba(0,200,255,0.03);
+  border-radius: 4px;
+}
+.pa-rule-desc {
+  margin-top: 0.2rem;
+  padding-left: 1.8rem;
+  font-size: 0.56rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.pa-disclaimer {
+  padding: 0.4rem 0.8rem 0.5rem;
+  font-size: 0.48rem;
+  color: var(--muted);
+  text-align: center;
+  border-top: 1px solid rgba(0,200,255,0.04);
+  opacity: 0.7;
+}
+
+/* 主题适配 */
+[data-theme="light"] .pattern-analysis-panel {
+  background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(240,245,255,0.85));
+  border-color: rgba(59,130,246,0.12);
+}
+[data-theme="light"] .pa-rule-item { background: rgba(0,0,0,0.02); }
+[data-theme="light"] .pa-rule-item.pa-rule-bull { background: linear-gradient(90deg, rgba(0,255,198,0.04), rgba(255,255,255,0.5)); }
+[data-theme="light"] .pa-rule-item.pa-rule-bear { background: linear-gradient(90deg, rgba(255,51,102,0.04), rgba(255,255,255,0.5)); }
+
+[data-theme="classical"] .pattern-analysis-panel {
+  background: linear-gradient(145deg, rgba(255,254,250,0.9), rgba(245,240,230,0.85));
+  border-color: rgba(139,105,20,0.15);
+}
+[data-theme="classical"] .pa-rule-item { background: rgba(139,105,20,0.03); }
