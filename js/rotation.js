@@ -2757,6 +2757,80 @@ function runAnalysis(forceRefresh) {
 }
 
 /**
+ * 全局强制刷新：清除所有缓存 + 重置状态 + 重新拉取全部数据
+ * 用于卡片刷新按钮和手动重试
+ */
+function forceRefreshAll() {
+  // 重置可能卡住的状态
+  _isFetching = false;
+  _paAnalysisLock = false;
+  _paRetryCount = 0;
+  _paWasFallback = false;
+  // 重置全局并发信号量（防止泄漏导致死锁）
+  _globalReqActive = 0;
+  _globalReqQueue = [];
+
+  // 清除行情缓存
+  try { localStorage.removeItem('quote_cache_v4'); } catch(e) {}
+  try { localStorage.removeItem('sector_flow_cache_v1'); } catch(e) {}
+
+  showToast('🔄 正在重新拉取数据…');
+  runAnalysis(true);
+}
+
+/**
+ * 刷新单个模块数据
+ * @param {string} module - 模块名: 'quote'|'flow'|'pattern'|'news'|'sentiment'
+ */
+function refreshModule(module) {
+  switch(module) {
+    case 'quote':
+      _isFetching = false;
+      try { localStorage.removeItem('quote_cache_v4'); } catch(e) {}
+      runAnalysis(true);
+      break;
+    case 'flow':
+      try { localStorage.removeItem('sector_flow_cache_v1'); } catch(e) {}
+      fetchSectorCapitalFlow().then(function(data) {
+        _lastSectorFlowData = data;
+        renderMarketFlow(data);
+        renderSectorCapitalAnalysis(data);
+        renderNewsAnalysis();
+        showToast('✅ 资金流向已刷新');
+      }).catch(function() {
+        renderMarketFlow(null);
+        showToast('⚠️ 资金流向刷新失败');
+      });
+      break;
+    case 'pattern':
+      _paAnalysisLock = false;
+      _paRetryCount = 0;
+      runPatternAnalysis(true);
+      showToast('🔄 盘口推演刷新中…');
+      break;
+    case 'news':
+      refreshNewsAnalysis();
+      break;
+    case 'sentiment':
+      if (typeof refreshSentimentManual === 'function') {
+        refreshSentimentManual();
+      } else {
+        refreshSentimentData(true).then(function() {
+          renderNewsAnalysis();
+          showToast('✅ 情绪数据已刷新');
+        });
+      }
+      break;
+    default:
+      forceRefreshAll();
+  }
+}
+
+// 确保全局可访问（onclick 调用）
+window.forceRefreshAll = forceRefreshAll;
+window.refreshModule = refreshModule;
+
+/**
  * 独立获取K线数据（分层顺序获取 · 防封禁）
  *   用户主动触发，分层顺序获取：双线轮动→动量轮动→行业信号
  *   2并发 + 层间500ms延迟 + 30秒冷却防频繁请求

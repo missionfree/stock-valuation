@@ -37,14 +37,14 @@
 <link rel="dns-prefetch" href="https://datacenter-web.eastmoney.com">
 <link rel="dns-prefetch" href="https://searchapi.eastmoney.com">
 <link rel="dns-prefetch" href="https://ifzq.gtimg.cn">
-<link rel="preload" href="js/config.js?v=20260804d" as="script">
-<link rel="preload" href="js/utils.js?v=20260804d" as="script">
+<link rel="preload" href="js/config.js?v=20260804e" as="script">
+<link rel="preload" href="js/utils.js?v=20260804e" as="script">
 <link rel="preconnect" href="https://qt.gtimg.cn" crossorigin>
 <link rel="preconnect" href="https://push2.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2delay.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2his.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://datacenter-web.eastmoney.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=20260804d">
+<link rel="stylesheet" href="css/styles.css?v=20260804e">
 
 </head>
 <body>
@@ -132,7 +132,12 @@
   </div>
 
   <!-- ==================== 首屏估值仪表盘（核心决策数据） ==================== -->
-  <div class="sec-title" style="margin-top:0.3rem">估值仪表盘 <span style="font-size:0.6rem;color:var(--muted);font-weight:400;margin-left:0.3rem" id="dashTreasury">国债 —</span><span class="data-driven-label">非预测</span></div>
+  <div class="sec-title" style="margin-top:0.3rem;display:flex;align-items:center;gap:0.3rem">
+    <span>估值仪表盘</span>
+    <span style="font-size:0.6rem;color:var(--muted);font-weight:400" id="dashTreasury">国债 —</span>
+    <span class="data-driven-label">非预测</span>
+    <button class="card-refresh-btn" onclick="refreshModule('quote')" title="刷新行情数据" aria-label="刷新行情">⟳</button>
+  </div>
   <div class="dash-grid dash-grid-hero" id="heroDash">
     <div class="dash-card glass-card" id="dashGraham">
       <div class="d-label">格雷厄姆指数</div>
@@ -167,6 +172,7 @@
 
   <!-- ==================== 第一层：核心指标总览 ==================== -->
   <div class="tier1-overview">
+    <button class="card-refresh-btn tier1-refresh" onclick="refreshModule('quote')" title="刷新核心指标" aria-label="刷新核心指标" style="position:absolute;top:0.3rem;left:0.3rem;z-index:5">⟳</button>
     <div class="tier1-grid">
       <div class="tier1-big">
         <div class="tb-label" title="沪深300盈利收益率 + 国债收益率，与吸引力指数同口径，>8%投资划算">综合回报率</div>
@@ -200,6 +206,7 @@
   <div class="market-flow" id="marketFlow">
     <div class="mf-header">
       <span class="mf-title">主力资金流向</span>
+      <button class="card-refresh-btn" onclick="refreshModule('flow')" title="刷新资金流向" aria-label="刷新资金流向">⟳</button>
       <span class="mf-summary" id="mfSummary">加载中...</span>
       <span class="mf-time" id="mfTime"></span>
     </div>
@@ -600,6 +607,7 @@
     <!-- 核心指数估值卡片 -->
     <div class="sec-title">
       核心指数估值
+      <button class="card-refresh-btn" onclick="refreshModule('quote')" title="刷新指数估值" aria-label="刷新指数估值">⟳</button>
       <div class="sec-toolbar">
         <button class="sort-btn" data-sort="pct10" onclick="sortIndexCards('pct10')">分位排序</button>
         <button class="sort-btn" data-sort="pe" onclick="sortIndexCards('pe')">PE排序</button>
@@ -612,14 +620,14 @@
     </div>
 
     <!-- 指数PE对比图 -->
-    <div class="sec-title">指数 PE 对比</div>
+    <div class="sec-title">指数 PE 对比 <button class="card-refresh-btn" onclick="refreshModule('quote')" title="刷新PE图表" aria-label="刷新PE图表">⟳</button></div>
     <div class="chart-card">
       <div class="c-title">主要指数 PE(TTM) 横向对比 <span class="data-driven-label">近10年历史区间</span></div>
       <canvas id="peBarCanvas" class="chart-canvas" height="220" role="img" aria-label="核心指数PE分位对比柱状图"></canvas>
     </div>
 
     <!-- 智能解读（重命名为客观数据解读） -->
-    <div class="sec-title">数据解读 <span class="data-driven-label">数据驱动</span></div>
+    <div class="sec-title">数据解读 <span class="data-driven-label">数据驱动</span> <button class="card-refresh-btn" onclick="refreshModule('quote')" title="刷新数据解读" aria-label="刷新数据解读">⟳</button></div>
     <div class="insight" id="insightLow">
       <div class="ins-title green">低估关注方向</div>
       <p id="insightLowText">数据获取中，即将显示最新解读⋯</p>
@@ -659,7 +667,7 @@
   <!-- ====== Tab2: 行业全景 ====== -->
   <div class="tab-content" id="tab-industry">
     <!-- 行业估值热力图（增加Tab选项） -->
-    <div class="sec-title">行业估值热力 <span class="data-driven-label">非预测</span></div>
+    <div class="sec-title">行业估值热力 <span class="data-driven-label">非预测</span> <button class="card-refresh-btn" onclick="refreshModule('quote')" title="刷新热力图" aria-label="刷新热力图">⟳</button></div>
     <div class="chart-card">
       <div class="hm-toolbar">
         <div class="hm-tabs">
@@ -685,19 +693,19 @@
     </div>
 
     <!-- 今日瞩目 -->
-    <div class="sec-title">今日瞩目 <span style="font-size:0.56rem;color:var(--muted);font-weight:400;margin-left:0.3rem">涨幅最强板块 · 买入/风险提示</span></div>
+    <div class="sec-title">今日瞩目 <span style="font-size:0.56rem;color:var(--muted);font-weight:400;margin-left:0.3rem">涨幅最强板块 · 买入/风险提示</span><button class="card-refresh-btn" onclick="refreshModule('quote')" title="刷新今日瞩目" aria-label="刷新今日瞩目">⟳</button></div>
     <div class="spotlight-box" id="spotlightArea">
       <div style="text-align:center;padding:0.8rem;color:var(--muted);font-size:0.68rem">实时行情每日10:30自动更新，刷新页面即可获取最新数据</div>
     </div>
 
     <!-- 趋势右侧·强者恒强 -->
-    <div class="sec-title">趋势右侧 · 强者恒强 <span style="font-size:0.56rem;color:var(--muted);font-weight:400;margin-left:0.3rem">站上20日线且均线向上 · 右侧交易优先</span><span class="data-driven-label">非预测</span></div>
+    <div class="sec-title">趋势右侧 · 强者恒强 <span style="font-size:0.56rem;color:var(--muted);font-weight:400;margin-left:0.3rem">站上20日线且均线向上 · 右侧交易优先</span><span class="data-driven-label">非预测</span><button class="card-refresh-btn" onclick="refreshKlineData()" title="刷新K线数据" aria-label="刷新K线数据">⟳</button></div>
     <div class="trend-box" id="trendLeadersArea">
       <div class="trend-empty">⏳ K线数据自动加载中，请稍候...</div>
     </div>
 
     <!-- 左侧抄底·超跌蓄势 -->
-    <div class="sec-title">左侧抄底 · 超跌蓄势 <span style="font-size:0.56rem;color:var(--muted);font-weight:400;margin-left:0.3rem">跌破20日线且超跌 · 左侧逆向埋伏</span><span class="data-driven-label">非预测</span></div>
+    <div class="sec-title">左侧抄底 · 超跌蓄势 <span style="font-size:0.56rem;color:var(--muted);font-weight:400;margin-left:0.3rem">跌破20日线且超跌 · 左侧逆向埋伏</span><span class="data-driven-label">非预测</span><button class="card-refresh-btn" onclick="refreshKlineData()" title="刷新K线数据" aria-label="刷新K线数据">⟳</button></div>
     <div class="bottom-box" id="bottomPickArea">
       <div class="bottom-empty">⏳ K线数据自动加载中，请稍候...</div>
     </div>
@@ -785,7 +793,7 @@
   <!-- ====== Tab3: 策略信号 ====== -->
   <div class="tab-content" id="tab-strategy">
     <!-- 双线轮动策略（Step流程图重构） -->
-    <div class="sec-title">双线轮动 · <span style="font-size:0.6rem;color:var(--muted);font-weight:400" class="rot-date">—</span></div>
+    <div class="sec-title">双线轮动 · <span style="font-size:0.6rem;color:var(--muted);font-weight:400" class="rot-date">—</span><button class="card-refresh-btn" onclick="refreshKlineData()" title="刷新轮动数据" aria-label="刷新轮动数据">⟳</button></div>
 
     <!-- K线状态显示（按钮已移至页面顶部） -->
     <div class="kline-action-bar">
@@ -848,7 +856,7 @@
     <div id="rotSignalAlert" style="display:none"></div>
 
     <!-- ==================== 动量轮动策略 ==================== -->
-    <div class="sec-title" style="margin-top:0.8rem">动量轮动 · <span style="font-size:0.6rem;color:var(--muted);font-weight:400" class="mom-date">—</span></div>
+    <div class="sec-title" style="margin-top:0.8rem">动量轮动 · <span style="font-size:0.6rem;color:var(--muted);font-weight:400" class="mom-date">—</span><button class="card-refresh-btn" onclick="refreshKlineData()" title="刷新动量数据" aria-label="刷新动量数据">⟳</button></div>
 
     <!-- 策略规则说明 -->
     <div class="rot-block mom-strategy-block">
@@ -958,14 +966,14 @@
 <!-- ==================== JavaScript 主逻辑 ==================== -->
 
 <!-- ==================== JavaScript Modules (deferred, ordered by dependency) ==================== -->
-<script defer src="js/performance.js?v=20260804d"></script>
-<script defer src="js/config.js?v=20260804d"></script>
-<script defer src="js/utils.js?v=20260804d"></script>
-<script defer src="js/render.js?v=20260804d"></script>
-<script defer src="js/stock-analysis.js?v=20260804d"></script>
-<script defer src="js/rotation.js?v=20260804d"></script>
-<script defer src="js/pattern-analysis.js?v=20260804d"></script>
-<script defer src="js/ui.js?v=20260804d"></script>
-<script defer src="js/app.js?v=20260804d"></script>
+<script defer src="js/performance.js?v=20260804e"></script>
+<script defer src="js/config.js?v=20260804e"></script>
+<script defer src="js/utils.js?v=20260804e"></script>
+<script defer src="js/render.js?v=20260804e"></script>
+<script defer src="js/stock-analysis.js?v=20260804e"></script>
+<script defer src="js/rotation.js?v=20260804e"></script>
+<script defer src="js/pattern-analysis.js?v=20260804e"></script>
+<script defer src="js/ui.js?v=20260804e"></script>
+<script defer src="js/app.js?v=20260804e"></script>
 </body>
 </html>

@@ -198,6 +198,7 @@ function _globalReqRelease() {
 /**
  * 带超时的fetch封装（避免请求卡死导致按钮一直转圈）
  * 内置全局并发控制，防止同时发起过多请求导致浏览器排队卡顿
+ * 修复：使用settled标志防止double-release导致信号量泄漏
  * @param {string} url
  * @param {object} options - fetch options
  * @param {number} timeout - 超时毫秒
@@ -209,7 +210,10 @@ function fetchWithTimeout(url, options, timeout) {
   return _globalReqAcquire().then(function() {
     return new Promise(function(resolve, reject) {
       var controller = null;
+      var settled = false; // 防止double-release
       var timer = Perf.trackedSetTimeout(function() {
+        if (settled) return;
+        settled = true;
         if (controller) {
           try { controller.abort(); } catch(e) {}
         }
@@ -224,10 +228,14 @@ function fetchWithTimeout(url, options, timeout) {
       }
 
       fetch(url, options).then(function(res) {
+        if (settled) return;
+        settled = true;
         Perf.clearTimeout(timer);
         _globalReqRelease();
         resolve(res);
       }).catch(function(err) {
+        if (settled) return;
+        settled = true;
         Perf.clearTimeout(timer);
         _globalReqRelease();
         reject(err);
