@@ -277,84 +277,284 @@ function analyzePatterns(rt, sent, klineData) {
 }
 
 function renderPatternAnalysis(result) {
-  var scoreEl = document.getElementById('paScoreValue');
   var tagEl = document.getElementById('paScoreTag');
   var bullEl = document.getElementById('paBullCount');
   var bearEl = document.getElementById('paBearCount');
-  var neutralEl = document.getElementById('paNeutralCount');
-  var heatmapFill = document.getElementById('paHeatmapFill');
-  var heatmapMarker = document.getElementById('paHeatmapMarker');
   var rulesList = document.getElementById('paRulesList');
 
-  if (scoreEl) { scoreEl.textContent = result.compositeScore; scoreEl.className = 'pa-score-value pa-' + result.levelColor; }
-  if (tagEl) { tagEl.textContent = result.levelIcon + ' ' + result.level; tagEl.className = 'pa-score-tag pa-' + result.levelColor; }
+  // ===== 1. 更新标签 =====
+  if (tagEl) { tagEl.textContent = result.levelIcon + ' ' + result.level; tagEl.className = 'pa-gauge-tag pa-tag-' + result.levelColor; }
   if (bullEl) bullEl.textContent = result.bullCount;
   if (bearEl) bearEl.textContent = result.bearCount;
-  if (neutralEl) neutralEl.textContent = result.neutralCount;
 
-  var scorePct = result.compositeScore;
-  if (heatmapFill) {
-    heatmapFill.style.width = scorePct + '%';
-    if (scorePct >= 58) {
-      heatmapFill.style.background = 'linear-gradient(90deg, rgba(255,174,0,0.3), rgba(0,255,198,0.6))';
-    } else if (scorePct >= 42) {
-      heatmapFill.style.background = 'linear-gradient(90deg, rgba(0,200,255,0.2), rgba(255,174,0,0.3))';
-    } else {
-      heatmapFill.style.background = 'linear-gradient(90deg, rgba(255,51,102,0.6), rgba(255,174,0,0.3))';
+  // ===== 2. 仪表盘动画 =====
+  var gaugeArc = document.getElementById('paGaugeArc');
+  var gaugeNeedle = document.getElementById('paGaugeNeedle');
+  var gaugeScore = document.getElementById('paGaugeScore');
+  var gaugeLabel = document.getElementById('paGaugeLabel');
+  var gaugeTicks = document.getElementById('paGaugeTicks');
+
+  // 生成刻度（首次）
+  if (gaugeTicks && gaugeTicks.children.length === 0) {
+    var ticksHtml = '';
+    for (var t = 0; t <= 10; t++) {
+      var angle = -90 + t * 18; // -90 to +90 degrees
+      var rad = angle * Math.PI / 180;
+      var x1 = 100 + Math.cos(rad) * 72;
+      var y1 = 115 + Math.sin(rad) * 72;
+      var x2 = 100 + Math.cos(rad) * 78;
+      var y2 = 115 + Math.sin(rad) * 78;
+      ticksHtml += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '"/>';
     }
+    gaugeTicks.innerHTML = ticksHtml;
   }
-  if (heatmapMarker) { heatmapMarker.style.left = scorePct + '%'; }
 
+  // 弧线填充 (377 = total arc length)
+  var arcLen = 377;
+  var fillLen = arcLen * (result.compositeScore / 100);
+  if (gaugeArc) {
+    gaugeArc.style.strokeDashoffset = arcLen - fillLen;
+    gaugeArc.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)';
+  }
+
+  // 指针旋转 (-90 to +90 degrees, score 0-100 maps to -90 to +90)
+  var needleAngle = -90 + (result.compositeScore / 100) * 180;
+  if (gaugeNeedle) { gaugeNeedle.style.transform = 'rotate(' + needleAngle + 'deg)'; }
+
+  // 分数数字动画
+  if (gaugeScore) {
+    var displayScore = 0;
+    var targetScore = result.compositeScore;
+    var scoreStep = Math.max(1, Math.ceil(targetScore / 30));
+    var scoreTimer = Perf.trackedSetInterval(function() {
+      displayScore += scoreStep;
+      if (displayScore >= targetScore) {
+        displayScore = targetScore;
+        Perf.clearInterval(scoreTimer);
+      }
+      gaugeScore.textContent = displayScore;
+      gaugeScore.setAttribute('fill', result.levelColor === 'bull' ? '#00FFC6' : (result.levelColor === 'bear' ? '#FF3366' : (result.levelColor === 'neutral' ? '#00C8FF' : '#FFAE00')));
+    }, 30);
+  }
+  if (gaugeLabel) { gaugeLabel.textContent = result.level; }
+
+  // ===== 2b. 信号触发摘要环 =====
+  var ssArc = document.getElementById('paSSArc');
+  var ssNum = document.getElementById('paSSNum');
+  var ringLen = 150.8; // 2*PI*24
+  var triggeredRatio = result.triggeredCount / 16;
+  if (ssArc) { ssArc.style.strokeDashoffset = ringLen * (1 - triggeredRatio); }
+  if (ssNum) {
+    var displayTrig = 0;
+    var trigStep = Math.max(1, Math.ceil(result.triggeredCount / 10));
+    var trigTimer = Perf.trackedSetInterval(function() {
+      displayTrig += trigStep;
+      if (displayTrig >= result.triggeredCount) { displayTrig = result.triggeredCount; Perf.clearInterval(trigTimer); }
+      ssNum.textContent = displayTrig;
+    }, 40);
+  }
+
+  // ===== 3. 多空力量对比条 =====
+  var totalSignals = result.bullCount + result.bearCount;
+  var bullPct = totalSignals > 0 ? (result.bullCount / totalSignals) * 100 : 50;
+  var bearPct = 100 - bullPct;
+  var powerBull = document.getElementById('paPowerBull');
+  var powerBear = document.getElementById('paPowerBear');
+  var powerText = document.getElementById('paPowerText');
+  if (powerBull) { powerBull.style.width = bullPct + '%'; powerBull.style.transition = 'width 0.8s cubic-bezier(0.4,0,0.2,1)'; }
+  if (powerBear) { powerBear.style.width = bearPct + '%'; powerBear.style.transition = 'width 0.8s cubic-bezier(0.4,0,0.2,1)'; }
+  if (powerText) { powerText.textContent = result.bullCount + '涨 vs ' + result.bearCount + '跌'; }
+
+  // ===== 4. 分类强度计算 =====
+  var categories = ['trend', 'relative', 'volume', 'intraday', 'position', 'breakout'];
+  var catStrength = {};
+  categories.forEach(function(cat) {
+    var catRules = PATTERN_RULES.filter(function(r) { return r.category === cat; });
+    var catBull = 0, catBear = 0, catTotal = 0;
+    catRules.forEach(function(r) {
+      catTotal += r.weight;
+      var sig = result.signals.filter(function(s) { return s.ruleId === r.id; })[0];
+      if (sig) {
+        if (sig.signal === 'bull') catBull += r.weight * sig.confidence;
+        else catBear += r.weight * sig.confidence;
+      }
+    });
+    var netScore = catTotal > 0 ? ((catBull - catBear) / catTotal * 50 + 50) : 50;
+    catStrength[cat] = Math.max(0, Math.min(100, Math.round(netScore)));
+  });
+
+  // 更新分类卡片
+  categories.forEach(function(cat) {
+    var fillEl = document.getElementById('paCat' + cat.charAt(0).toUpperCase() + cat.slice(1));
+    var valEl = document.getElementById('paCat' + cat.charAt(0).toUpperCase() + cat.slice(1) + 'Val');
+    var strength = catStrength[cat];
+    if (fillEl) {
+      fillEl.style.width = strength + '%';
+      fillEl.style.transition = 'width 1s cubic-bezier(0.4,0,0.2,1)';
+      if (strength >= 58) fillEl.style.background = 'linear-gradient(90deg, rgba(255,174,0,0.4), rgba(0,255,198,0.7))';
+      else if (strength >= 42) fillEl.style.background = 'linear-gradient(90deg, rgba(0,200,255,0.3), rgba(255,174,0,0.4))';
+      else fillEl.style.background = 'linear-gradient(90deg, rgba(255,51,102,0.7), rgba(255,174,0,0.4))';
+    }
+    if (valEl) {
+      var catLabel = { trend: '趋势', relative: '强弱', volume: '量价', intraday: '分时', position: '位置', breakout: '突破' }[cat];
+      var arrow = strength >= 58 ? '↑' : (strength >= 42 ? '→' : '↓');
+      var color = strength >= 58 ? 'var(--neon-green)' : (strength >= 42 ? 'var(--neon-cyan)' : 'var(--neon-red)');
+      valEl.innerHTML = '<span style="color:' + color + '">' + arrow + '</span> ' + strength;
+    }
+  });
+
+  // ===== 4b. 雷达图绘制 =====
+  var radarGrid = document.getElementById('paRadarGrid');
+  var radarAxes = document.getElementById('paRadarAxes');
+  var radarShape = document.getElementById('paRadarShape');
+  var radarDots = document.getElementById('paRadarDots');
+  var radarLabels = document.getElementById('paRadarLabels');
+
+  var catNames = ['趋势', '强弱', '量价', '分时', '位置', '突破'];
+  var catKeys = ['trend', 'relative', 'volume', 'intraday', 'position', 'breakout'];
+  var cx = 100, cy = 100, maxR = 68;
+
+  // 顶点角度：从顶部开始，顺时针每60度
+  var angles = [-90, -30, 30, 90, 150, 210];
+
+  // 首次绘制网格和轴线
+  if (radarGrid && radarGrid.children.length === 0) {
+    // 3层网格六边形
+    var gridHtml = '';
+    for (var layer = 1; layer <= 3; layer++) {
+      var r = maxR * layer / 3;
+      var pts = [];
+      for (var a = 0; a < 6; a++) {
+        var rad = angles[a] * Math.PI / 180;
+        pts.push((cx + r * Math.cos(rad)).toFixed(1) + ',' + (cy + r * Math.sin(rad)).toFixed(1));
+      }
+      var opacity = layer === 3 ? 0.12 : 0.06;
+      gridHtml += '<polygon points="' + pts.join(' ') + '" fill="none" stroke="rgba(0,200,255,' + opacity + ')" stroke-width="1"/>';
+    }
+    radarGrid.innerHTML = gridHtml;
+  }
+
+  if (radarAxes && radarAxes.children.length === 0) {
+    var axesHtml = '';
+    for (var a2 = 0; a2 < 6; a2++) {
+      var rad2 = angles[a2] * Math.PI / 180;
+      var ex = cx + maxR * Math.cos(rad2);
+      var ey = cy + maxR * Math.sin(rad2);
+      axesHtml += '<line x1="' + cx + '" y1="' + cy + '" x2="' + ex.toFixed(1) + '" y2="' + ey.toFixed(1) + '"/>';
+    }
+    radarAxes.innerHTML = axesHtml;
+  }
+
+  if (radarLabels && radarLabels.children.length === 0) {
+    var labelsHtml = '';
+    for (var a3 = 0; a3 < 6; a3++) {
+      var rad3 = angles[a3] * Math.PI / 180;
+      var lx = cx + (maxR + 14) * Math.cos(rad3);
+      var ly = cy + (maxR + 14) * Math.sin(rad3);
+      labelsHtml += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="middle" dominant-baseline="middle" font-size="9" font-weight="600" fill="rgba(255,255,255,0.5)">' + catNames[a3] + '</text>';
+    }
+    radarLabels.innerHTML = labelsHtml;
+  }
+
+  // 绘制数据多边形
+  if (radarShape) {
+    var dataPts = [];
+    var dotsHtml = '';
+    for (var d = 0; d < 6; d++) {
+      var strength = catStrength[catKeys[d]] || 50;
+      var dr = maxR * (strength / 100);
+      var drad = angles[d] * Math.PI / 180;
+      var dx = cx + dr * Math.cos(drad);
+      var dy = cy + dr * Math.sin(drad);
+      dataPts.push(dx.toFixed(1) + ',' + dy.toFixed(1));
+      var dotColor = strength >= 58 ? '#00FFC6' : (strength >= 42 ? '#00C8FF' : '#FF3366');
+      dotsHtml += '<circle cx="' + dx.toFixed(1) + '" cy="' + dy.toFixed(1) + '" r="3" fill="' + dotColor + '" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>';
+    }
+    radarShape.setAttribute('points', dataPts.join(' '));
+    if (radarDots) { radarDots.innerHTML = dotsHtml; }
+  }
+
+  // ===== 5. 渲染口诀列表（触发优先+未触发折叠） =====
   if (!rulesList) return;
 
-  var html = '';
   var triggeredIds = result.signals.map(function(s) { return s.ruleId; });
+  var triggeredHtml = '';
+  var idleHtml = '';
 
   PATTERN_RULES.forEach(function(rule) {
     var triggered = triggeredIds.indexOf(rule.id) >= 0;
     var signal = triggered ? result.signals.filter(function(s) { return s.ruleId === rule.id; })[0] : null;
     var signalClass = triggered ? (rule.signal === 'bull' ? 'pa-rule-bull' : 'pa-rule-bear') : 'pa-rule-idle';
-    var signalIcon = triggered ? (rule.signal === 'bull' ? '\ud83d\udcc8' : '\ud83d\udcc9') : '\u26aa';
+    var signalIcon = triggered ? (rule.signal === 'bull' ? '📈' : '📉') : '⚪';
     var signalBadge = triggered
       ? (rule.signal === 'bull'
-        ? '<span class="pa-signal-badge pa-badge-bull">\u770b\u6da8</span>'
-        : '<span class="pa-signal-badge pa-badge-bear">\u770b\u8dcc</span>')
-      : '<span class="pa-signal-badge pa-badge-idle">\u672a\u89e6\u53d1</span>';
+        ? '<span class="pa-signal-badge pa-badge-bull">看涨</span>'
+        : '<span class="pa-signal-badge pa-badge-bear">看跌</span>')
+      : '';
+    var catLabel = { trend: '趋势', relative: '相对强弱', volume: '量价', intraday: '分时', position: '位置', breakout: '突破' }[rule.category] || '';
+    var catIcon = { trend: '📈', relative: '⚖️', volume: '📊', intraday: '🕐', position: '🎯', breakout: '🚀' }[rule.category] || '';
 
-    var catLabel = { trend: '\u8d8b\u52bf', relative: '\u76f8\u5bf9\u5f3a\u5f31', volume: '\u91cf\u4ef7', intraday: '\u5206\u65f6', position: '\u4f4d\u7f6e', breakout: '\u7a81\u7834' }[rule.category] || '';
-
-    html += '<div class="pa-rule-item ' + signalClass + (triggered ? ' triggered' : '') + '">';
-    html += '<div class="pa-rule-header">';
-    html += '<span class="pa-rule-num">' + rule.id + '</span>';
-    html += '<span class="pa-rule-icon">' + signalIcon + '</span>';
-    html += '<span class="pa-rule-text">' + rule.text + '</span>';
-    html += signalBadge;
-    html += '</div>';
-    html += '<div class="pa-rule-meta">';
-    html += '<span class="pa-rule-cat">' + catLabel + '</span>';
-    html += '<span class="pa-rule-weight">\u6743\u91cd' + rule.weight + '</span>';
+    var itemHtml = '<div class="pa-rule-item ' + signalClass + (triggered ? ' triggered' : '') + '">';
+    itemHtml += '<div class="pa-rule-left">';
+    itemHtml += '<span class="pa-rule-num">' + rule.id + '</span>';
+    itemHtml += '<span class="pa-rule-icon">' + signalIcon + '</span>';
+    itemHtml += '</div>';
+    itemHtml += '<div class="pa-rule-body">';
+    itemHtml += '<div class="pa-rule-header">';
+    itemHtml += '<span class="pa-rule-text">' + rule.text + '</span>';
+    itemHtml += signalBadge;
+    itemHtml += '</div>';
     if (triggered && signal) {
-      html += '<span class="pa-rule-confidence">\u7f6e\u4fe1\u5ea6' + Math.round(signal.confidence * 100) + '%</span>';
-    }
-    html += '</div>';
-    if (triggered && signal) {
-      html += '<div class="pa-rule-detail">' + signal.detail + '</div>';
+      var confPct = Math.round(signal.confidence * 100);
+      var confColor = rule.signal === 'bull' ? 'rgba(0,255,198,0.5)' : 'rgba(255,51,102,0.5)';
+      itemHtml += '<div class="pa-rule-meta">';
+      itemHtml += '<span class="pa-rule-cat">' + catIcon + ' ' + catLabel + '</span>';
+      itemHtml += '<span class="pa-rule-weight">权重' + rule.weight + '</span>';
+      itemHtml += '<span class="pa-rule-confidence">置信度' + confPct + '%</span>';
+      itemHtml += '</div>';
+      itemHtml += '<div class="pa-rule-detail">' + signal.detail + '</div>';
+      itemHtml += '<div class="pa-conf-bar"><div class="pa-conf-fill" style="width:' + confPct + '%;background:' + confColor + '"></div></div>';
     } else {
-      html += '<div class="pa-rule-desc">' + rule.desc + '</div>';
+      itemHtml += '<div class="pa-rule-meta">';
+      itemHtml += '<span class="pa-rule-cat">' + catIcon + ' ' + catLabel + '</span>';
+      itemHtml += '<span class="pa-rule-weight">权重' + rule.weight + '</span>';
+      itemHtml += '</div>';
+      itemHtml += '<div class="pa-rule-desc">' + rule.desc + '</div>';
     }
-    html += '</div>';
+    itemHtml += '</div>';
+    itemHtml += '</div>';
+
+    if (triggered) { triggeredHtml += itemHtml; } else { idleHtml += itemHtml; }
   });
 
-  rulesList.innerHTML = html;
+  // 组装：触发区 + 折叠的未触发区
+  var finalHtml = '';
+  if (triggeredHtml) {
+    finalHtml += '<div class="pa-rule-section-header"><span class="pa-rsh-icon">⚡</span> 已触发信号 <span class="pa-rsh-count">' + result.triggeredCount + '</span></div>';
+    finalHtml += triggeredHtml;
+  }
+  if (idleHtml) {
+    var idleCount = 16 - result.triggeredCount;
+    finalHtml += '<div class="pa-rule-toggle" id="paRuleToggle" onclick="var el=document.getElementById(\'paIdleRules\');var tg=this;el.style.display=el.style.display===\'none\'?\'block\':\'none\';tg.classList.toggle(\'expanded\')">';
+    finalHtml += '<span class="pa-rt-icon">▸</span> 未触发口诀 <span class="pa-rt-count">' + idleCount + '</span> 条';
+    finalHtml += '</div>';
+    finalHtml += '<div class="pa-idle-rules" id="paIdleRules" style="display:none">' + idleHtml + '</div>';
+  }
+  if (!triggeredHtml && !idleHtml) {
+    finalHtml = '<div class="pa-loading">暂无分析结果</div>';
+  }
 
+  rulesList.innerHTML = finalHtml;
+
+  // 触发动画
   var items = rulesList.querySelectorAll('.pa-rule-item.triggered');
   items.forEach(function(item, idx) {
     item.style.opacity = '0';
-    item.style.transform = 'translateX(-10px)';
+    item.style.transform = 'translateY(8px)';
     Perf.trackedSetTimeout(function() {
       item.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
       item.style.opacity = '1';
-      item.style.transform = 'translateX(0)';
-    }, idx * 80);
+      item.style.transform = 'translateY(0)';
+    }, idx * 60);
   });
 }

@@ -442,31 +442,142 @@
         <h3>盘口推演 <span style="font-size:0.56rem;color:var(--muted);font-weight:400;margin-left:0.3rem">16条量价口诀·大数据回测引擎</span></h3>
         <button class="pa-refresh-btn" onclick="runPatternAnalysis(true)" id="btnPatternRefresh">⟳ 推演</button>
       </div>
-      <div class="pa-summary-bar" id="paSummaryBar">
-        <div class="pa-score-wrap">
-          <div class="pa-score-label">推演信号</div>
-          <div class="pa-score-value" id="paScoreValue">—</div>
-          <div class="pa-score-tag" id="paScoreTag">待推演</div>
-        </div>
-        <div class="pa-stats" id="paStats">
-          <div class="pa-stat-item"><span class="pa-stat-num" id="paBullCount">0</span><span class="pa-stat-label">看涨信号</span></div>
-          <div class="pa-stat-divider"></div>
-          <div class="pa-stat-item"><span class="pa-stat-num" id="paBearCount">0</span><span class="pa-stat-label">看跌信号</span></div>
-          <div class="pa-stat-divider"></div>
-          <div class="pa-stat-item"><span class="pa-stat-num" id="paNeutralCount">0</span><span class="pa-stat-label">中性信号</span></div>
-        </div>
-      </div>
-      <div class="pa-heatmap" id="paHeatmap">
-        <div class="pa-heatmap-track">
-          <div class="pa-heatmap-fill" id="paHeatmapFill" style="width:50%"></div>
-          <div class="pa-heatmap-marker" id="paHeatmapMarker" style="left:50%">
-            <div class="pa-heatmap-marker-dot"></div>
+
+      <!-- 三列可视化：仪表盘 + 雷达图 + 信号摘要 -->
+      <div class="pa-visual-row">
+        <!-- 左：圆形仪表盘 + 信号触发环 -->
+        <div class="pa-gauge-section">
+          <svg viewBox="0 0 200 200" class="pa-gauge-svg" id="paGaugeSvg">
+            <defs>
+              <linearGradient id="paGaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FF3366"/>
+                <stop offset="25%" stop-color="#FFAE00"/>
+                <stop offset="50%" stop-color="#00C8FF"/>
+                <stop offset="75%" stop-color="#00FFC6"/>
+                <stop offset="100%" stop-color="#00FF88"/>
+              </linearGradient>
+              <filter id="paGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="3" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <path d="M 35 155 A 80 80 0 1 1 165 155" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="14" stroke-linecap="round"/>
+            <g id="paGaugeTicks" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"></g>
+            <path d="M 35 155 A 80 80 0 1 1 165 155" fill="none" stroke="url(#paGaugeGrad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="377" stroke-dashoffset="377" id="paGaugeArc" filter="url(#paGlow)"/>
+            <g id="paGaugeNeedle" style="transform: rotate(-90deg); transform-origin: 100px 115px; transition: transform 1s cubic-bezier(0.34,1.56,0.64,1);">
+              <path d="M 100 115 L 97 55 L 100 40 L 103 55 Z" fill="rgba(255,255,255,0.8)" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+              <circle cx="100" cy="40" r="2.5" fill="rgba(255,255,255,0.9)"/>
+            </g>
+            <circle cx="100" cy="115" r="10" fill="rgba(10,15,26,0.9)" stroke="rgba(0,200,255,0.2)" stroke-width="1"/>
+            <circle cx="100" cy="115" r="3" fill="rgba(0,200,255,0.4)"/>
+            <text x="100" y="135" text-anchor="middle" font-size="36" font-weight="800" fill="var(--ink)" font-family="var(--font-mono)" id="paGaugeScore">—</text>
+            <text x="100" y="155" text-anchor="middle" font-size="11" fill="var(--muted)" id="paGaugeLabel">推演信号</text>
+          </svg>
+          <div class="pa-gauge-tag" id="paScoreTag">待推演</div>
+          <!-- 信号触发摘要环 -->
+          <div class="pa-signal-summary">
+            <div class="pa-ss-ring" id="paSSRing">
+              <svg viewBox="0 0 60 60" class="pa-ss-svg">
+                <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="5"/>
+                <circle cx="30" cy="30" r="24" fill="none" stroke="url(#paGaugeGrad)" stroke-width="5"
+                        stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="150.8"
+                        id="paSSArc" transform="rotate(-90 30 30)"
+                        style="transition: stroke-dashoffset 1s ease"/>
+              </svg>
+              <div class="pa-ss-center">
+                <span class="pa-ss-num" id="paSSNum">0</span>
+                <span class="pa-ss-total">/16</span>
+              </div>
+            </div>
+            <div class="pa-ss-label">触发口诀</div>
           </div>
         </div>
-        <div class="pa-heatmap-labels">
-          <span>极度看跌</span><span>偏空</span><span>中性</span><span>偏多</span><span>极度看涨</span>
+
+        <!-- 中：六边形雷达图 -->
+        <div class="pa-radar-section">
+          <svg viewBox="0 0 200 200" class="pa-radar-svg" id="paRadarSvg">
+            <defs>
+              <radialGradient id="paRadarFill" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(0,255,198,0.35)"/>
+                <stop offset="60%" stop-color="rgba(0,200,255,0.2)"/>
+                <stop offset="100%" stop-color="rgba(0,200,255,0.05)"/>
+              </radialGradient>
+              <filter id="paRadarGlow">
+                <feGaussianBlur stdDeviation="2" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <!-- 网格层 -->
+            <g id="paRadarGrid"></g>
+            <!-- 轴线 -->
+            <g id="paRadarAxes"></g>
+            <!-- 数据多边形 -->
+            <polygon id="paRadarShape" fill="url(#paRadarFill)" stroke="rgba(0,255,198,0.7)" stroke-width="1.5" points="" filter="url(#paRadarGlow)"
+                     style="transition: all 0.8s cubic-bezier(0.4,0,0.2,1)"/>
+            <!-- 数据点 -->
+            <g id="paRadarDots"></g>
+            <!-- 标签 -->
+            <g id="paRadarLabels"></g>
+          </svg>
+        </div>
+
+        <!-- 右：多空力量 + 分类强度条 -->
+        <div class="pa-right-section">
+          <!-- 多空力量对比条 -->
+          <div class="pa-power-bar">
+            <div class="pa-power-label">多空力量 <span id="paPowerText">— vs —</span></div>
+            <div class="pa-power-track">
+              <div class="pa-power-bull" id="paPowerBull" style="width:50%">
+                <span id="paBullCount">0</span> 涨
+              </div>
+              <div class="pa-power-bear" id="paPowerBear" style="width:50%">
+                <span id="paBearCount">0</span> 跌
+              </div>
+            </div>
+          </div>
+          <!-- 6分类横向强度条 -->
+          <div class="pa-cat-bars" id="paCatBars">
+            <div class="pa-cat-bar-item">
+              <span class="pa-cb-icon">📈</span>
+              <span class="pa-cb-name">趋势</span>
+              <div class="pa-cb-track"><div class="pa-cb-fill" id="paCatTrend" style="width:0%"></div></div>
+              <span class="pa-cb-val" id="paCatTrendVal">—</span>
+            </div>
+            <div class="pa-cat-bar-item">
+              <span class="pa-cb-icon">⚖️</span>
+              <span class="pa-cb-name">强弱</span>
+              <div class="pa-cb-track"><div class="pa-cb-fill" id="paCatRelative" style="width:0%"></div></div>
+              <span class="pa-cb-val" id="paCatRelativeVal">—</span>
+            </div>
+            <div class="pa-cat-bar-item">
+              <span class="pa-cb-icon">📊</span>
+              <span class="pa-cb-name">量价</span>
+              <div class="pa-cb-track"><div class="pa-cb-fill" id="paCatVolume" style="width:0%"></div></div>
+              <span class="pa-cb-val" id="paCatVolumeVal">—</span>
+            </div>
+            <div class="pa-cat-bar-item">
+              <span class="pa-cb-icon">🕐</span>
+              <span class="pa-cb-name">分时</span>
+              <div class="pa-cb-track"><div class="pa-cb-fill" id="paCatIntraday" style="width:0%"></div></div>
+              <span class="pa-cb-val" id="paCatIntradayVal">—</span>
+            </div>
+            <div class="pa-cat-bar-item">
+              <span class="pa-cb-icon">🎯</span>
+              <span class="pa-cb-name">位置</span>
+              <div class="pa-cb-track"><div class="pa-cb-fill" id="paCatPosition" style="width:0%"></div></div>
+              <span class="pa-cb-val" id="paCatPositionVal">—</span>
+            </div>
+            <div class="pa-cat-bar-item">
+              <span class="pa-cb-icon">🚀</span>
+              <span class="pa-cb-name">突破</span>
+              <div class="pa-cb-track"><div class="pa-cb-fill" id="paCatBreakout" style="width:0%"></div></div>
+              <span class="pa-cb-val" id="paCatBreakoutVal">—</span>
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- 口诀列表 -->
       <div class="pa-rules-list" id="paRulesList">
         <div class="pa-loading">正在收集行情数据，盘口推演将在数据就绪后自动启动…</div>
       </div>
