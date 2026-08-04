@@ -2659,6 +2659,10 @@ function runAnalysis(forceRefresh) {
       renderIndustryLeaders(data);
       updateHeaderTime(true);
       generateDailyReview(false);
+      // 独立备份触发：确保盘口推演即使复盘失败也能启动
+      Perf.trackedSetTimeout(function() {
+        if (typeof runPatternAnalysis === 'function' && !_paLastResult) runPatternAnalysis(false);
+      }, 2000);
     }).catch(function(err) {
       console.warn('实时行情获取失败:', err.message);
       // 尝试使用过期缓存作为最后降级
@@ -2677,6 +2681,11 @@ function runAnalysis(forceRefresh) {
         renderIndustryLeaders(staleCache);
         updateHeaderTime(true);
         showToast('⚠️ 实时API暂时不可用，已使用上次缓存数据');
+        // 缓存数据也触发盘口推演
+        Perf.trackedSetTimeout(function() {
+          if (typeof generateDailyReview === 'function') generateDailyReview(false);
+          if (typeof runPatternAnalysis === 'function') runPatternAnalysis(false);
+        }, 800);
       } else {
         showToast('⚠️ 实时行情获取失败，已使用基准数据展示');
         renderIndexCards(null);

@@ -218,6 +218,7 @@
     setTimeout: trackedSetTimeout,
     trackedSetTimeout: trackedSetTimeout,
     setInterval: trackedSetInterval,
+    trackedSetInterval: trackedSetInterval,
     clearTimeout: trackedClearTimeout,
     clearInterval: trackedClearInterval,
     clearAllTimers: clearAllTimers,

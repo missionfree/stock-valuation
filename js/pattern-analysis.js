@@ -8,24 +8,26 @@
 var PATTERN_RULES = [
   { id: 1, text: '一直小涨，会有大涨', category: 'trend', signal: 'bull', weight: 2, desc: '连续3日以上小幅上涨（涨幅<1%），蓄势待发' },
   { id: 2, text: '连续大涨，赶紧离场', category: 'trend', signal: 'bear', weight: 3, desc: '连续2日以上大幅上涨（涨幅>1.5%），短期过热' },
-  { id: 3, text: '大盘跌它横盘，会小涨', category: 'relative', signal: 'bull', weight: 1, desc: '大盘下跌但个股抗跌横盘，后续补涨概率大' },
-  { id: 4, text: '大盘跌它还涨，会大涨', category: 'relative', signal: 'bull', weight: 3, desc: '大盘下跌个股逆势上涨，强势特征明显' },
+  { id: 3, text: '大盘跌它横着走，会小涨', category: 'relative', signal: 'bull', weight: 1, desc: '大盘下跌但个股抗跌横盘，后续补涨概率大' },
+  { id: 4, text: '大盘跌它还小涨，那会大涨', category: 'relative', signal: 'bull', weight: 3, desc: '大盘下跌个股逆势上涨，强势特征明显' },
   { id: 5, text: '大盘涨它横盘，会小跌', category: 'relative', signal: 'bear', weight: 1, desc: '大盘上涨个股滞涨横盘，后续补跌概率大' },
-  { id: 6, text: '大盘涨它还跌，会大跌', category: 'relative', signal: 'bear', weight: 3, desc: '大盘上涨个股逆势下跌，弱势特征明显' },
-  { id: 7, text: '快速下跌缩量，是洗盘', category: 'volume', signal: 'bull', weight: 2, desc: '单日跌幅>1%但成交量萎缩，主力洗盘特征' },
-  { id: 8, text: '慢慢下跌放量，是出货', category: 'volume', signal: 'bear', weight: 3, desc: '连续下跌且成交量放大，主力出货特征' },
-  { id: 9, text: '低开高走，是吸筹', category: 'intraday', signal: 'bull', weight: 2, desc: '开盘低于昨收，收盘高于开盘，主力吸筹' },
-  { id: 10, text: '高开低走，是出货', category: 'intraday', signal: 'bear', weight: 2, desc: '开盘高于昨收，收盘低于开盘，主力出货' },
+  { id: 6, text: '大盘涨它还小跌，那会大跌', category: 'relative', signal: 'bear', weight: 3, desc: '大盘上涨个股逆势下跌，弱势特征明显' },
+  { id: 7, text: '快速下跌成交量很小，是洗盘', category: 'volume', signal: 'bull', weight: 2, desc: '单日跌幅>1%但成交量萎缩，主力洗盘特征' },
+  { id: 8, text: '慢慢下跌成交量大，要出货', category: 'volume', signal: 'bear', weight: 3, desc: '连续下跌且成交量放大，主力出货特征' },
+  { id: 9, text: '早间低开下午大涨，是吸筹', category: 'intraday', signal: 'bull', weight: 2, desc: '开盘低于昨收，收盘高于开盘，主力吸筹' },
+  { id: 10, text: '早间高开下午大跌，是出货', category: 'intraday', signal: 'bear', weight: 2, desc: '开盘高于昨收，收盘低于开盘，主力出货' },
   { id: 11, text: '上午拉高下午回落，是洗盘', category: 'intraday', signal: 'bull', weight: 1, desc: '盘中冲高回落但收盘不破开盘，洗盘特征' },
-  { id: 12, text: '低位频繁放量，是建仓', category: 'position', signal: 'bull', weight: 3, desc: 'PE分位<30%且成交量连续放大，主力建仓' },
-  { id: 13, text: '高位频繁放量，是出货', category: 'position', signal: 'bear', weight: 3, desc: 'PE分位>70%且成交量连续放大，主力出货' },
+  { id: 12, text: '股价低位频繁放量，是建仓', category: 'position', signal: 'bull', weight: 3, desc: 'PE分位<30%且成交量连续放大，主力建仓' },
+  { id: 13, text: '股价高位频繁放量，是出货', category: 'position', signal: 'bear', weight: 3, desc: 'PE分位>70%且成交量连续放大，主力出货' },
   { id: 14, text: '低位横盘再放量，上涨概率大', category: 'position', signal: 'bull', weight: 2, desc: 'PE分位低+近期波动率低+突然放量，突破在即' },
-  { id: 15, text: '低位窄幅震荡后放量长阳，是启动', category: 'breakout', signal: 'bull', weight: 3, desc: '低位窄幅震荡后突然放量上涨>2%，启动信号' },
-  { id: 16, text: '高位窄幅震荡后放量长阴，是出货', category: 'breakout', signal: 'bear', weight: 3, desc: '高位窄幅震荡后突然放量下跌>2%，出逃信号' }
+  { id: 15, text: '低位小涨小跌突然放量长阳，是启动', category: 'breakout', signal: 'bull', weight: 3, desc: '低位窄幅震荡后突然放量上涨>2%，启动信号' },
+  { id: 16, text: '高位小涨小跌突然放量长阴，是出货', category: 'breakout', signal: 'bear', weight: 3, desc: '高位窄幅震荡后突然放量下跌>2%，出逃信号' }
 ];
 
 var _paLastResult = null;
 var _paAnalysisLock = false;
+var _paRetryCount = 0;
+var _paMaxRetries = 3;
 
 function runPatternAnalysis(forceRefresh) {
   var container = document.getElementById('paRulesList');
@@ -39,21 +41,58 @@ function runPatternAnalysis(forceRefresh) {
   var rt = _lastRealtimeData || {};
   var sent = _lastSentimentData || null;
   var hasRt = rt && Object.keys(rt).length > 0;
+  var hasHS300 = rt && rt['sh000300'] && (rt['sh000300'].price || rt['sh000300'].changePercent !== undefined);
 
-  if (!hasRt) {
-    container.innerHTML = '<div class="pa-loading">\u6b63\u5728\u7b49\u5f85\u884c\u60c5\u6570\u636e\u52a0\u8f7d\u2026</div>';
+  // 数据未就绪：自动重试
+  if (!hasRt || !hasHS300) {
+    if (_paRetryCount < _paMaxRetries && !forceRefresh) {
+      _paRetryCount++;
+      if (container) {
+        container.innerHTML = '<div class="pa-loading">\u23f3 \u6b63\u5728\u7b49\u5f85\u884c\u60c5\u6570\u636e\u52a0\u8f7d\uff08\u7b2c' + _paRetryCount + '/' + _paMaxRetries + '\u6b21\u91cd\u8bd5\uff09\u2026</div>';
+      }
+      if (btn) { btn.disabled = false; btn.textContent = '\u27f3 \u63a8\u6f14'; }
+      _paAnalysisLock = false;
+      Perf.trackedSetTimeout(function() { runPatternAnalysis(false); }, 3000);
+      return;
+    }
+    // 重试耗尽，用基准数据兜底
+    if (container) {
+      container.innerHTML = '<div class="pa-loading">\u26a0\ufe0f \u884c\u60c5\u6570\u636e\u6682\u672a\u5c31\u7eea\uff0c\u5df2\u4f7f\u7528\u57fa\u51c6\u6570\u636e\u63a8\u6f14\u3002\u70b9\u51fb\u300c\u63a8\u6f14\u300d\u91cd\u8bd5</div>';
+    }
     if (btn) { btn.disabled = false; btn.textContent = '\u27f3 \u63a8\u6f14'; }
     _paAnalysisLock = false;
+    _paRetryCount = 0;
+    // 用空数据兜底渲染
+    var fallbackResult = analyzePatterns({}, null, null);
+    _paLastResult = fallbackResult;
+    renderPatternAnalysis(fallbackResult);
     return;
   }
 
-  fetchKline('sh000300', 30).then(function(klineData) {
+  // 数据就绪，重置重试计数
+  _paRetryCount = 0;
+
+  // 带超时的fetchKline（8秒超时）
+  var klinePromise = new Promise(function(resolve, reject) {
+    var settled = false;
+    var timer = Perf.trackedSetTimeout(function() {
+      if (!settled) { settled = true; reject(new Error('K\u7ebf\u83b7\u53d6\u8d85\u65f6')); }
+    }, 8000);
+    fetchKline('sh000300', 30).then(function(data) {
+      if (!settled) { settled = true; Perf.clearTimeout(timer); resolve(data); }
+    }).catch(function(err) {
+      if (!settled) { settled = true; Perf.clearTimeout(timer); reject(err); }
+    });
+  });
+
+  klinePromise.then(function(klineData) {
     var result = analyzePatterns(rt, sent, klineData);
     _paLastResult = result;
     renderPatternAnalysis(result);
     if (btn) { btn.disabled = false; btn.textContent = '\u27f3 \u63a8\u6f14'; }
     _paAnalysisLock = false;
   }).catch(function(err) {
+    // K线超时或失败，仍用实时数据推演（K线相关规则跳过）
     var result = analyzePatterns(rt, sent, null);
     _paLastResult = result;
     renderPatternAnalysis(result);
