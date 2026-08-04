@@ -2180,7 +2180,7 @@ var NEWS_BEAR_KEYWORDS = {
   '暴跌': 3, '熔断': 3, '崩盘': 3, '重大利空': 3, '黑天鹅': 3,
   '处罚': 2, '违规': 2, '立案': 2, '退市': 2, '风险警示': 2,
   '限制': 2, '收紧': 2, '叫停': 2, '整顿': 2, '问责': 2,
-  '大跌': 2, '暴跌': 3, '跳水': 2, '重挫': 2, '大跌': 2,
+  '大跌': 2, '跳水': 2, '重挫': 2,
   '减持': 1, '净流出': 2, '熊市': 2, '恶化': 2,
   '违约': 2, '爆雷': 2, '质押': 1, '强平': 2,
   '不及预期': 2, '下滑': 1, '萎缩': 2, '衰退': 3,
@@ -2659,11 +2659,11 @@ function bindNaFilters() {
           html += '<div class="na-card na-' + factor.type + '">' +
             '<div class="na-card-row">' +
               '<span class="na-tag ' + tagClass[factor.type] + '">' + tagText[factor.type] + '</span>' +
-              '<span class="na-card-title">' + factor.title + '</span>' +
+              '<span class="na-card-title">' + escHTML(factor.title || '') + '</span>' +
               '<span class="na-impact">' + dotsHtml + '</span>' +
-              '<span class="na-card-time">' + timeStr + '</span>' +
+              '<span class="na-card-time">' + escHTML(timeStr) + '</span>' +
             '</div>' +
-            '<div class="na-card-desc">' + factor.desc + '</div>' +
+            '<div class="na-card-desc">' + escHTML(factor.desc || '') + '</div>' +
           '</div>';
         });
       }
@@ -2772,8 +2772,9 @@ function analyzeMarketFactors() {
   }
   
   // 4. 股债利差判断
-  var stockYield = grahamScore > 0 ? 100 / (14.3 + grahamScore) * 100 : 7;
-  var spread = stockYield - treasuryYield;
+  // getGrahamScore() 返回 盈利收益率/国债收益率 的比值
+  // 股债利差(百分点) = 盈利收益率 - 国债收益率 = 国债收益率 × (格雷厄姆指数 - 1)
+  var spread = treasuryYield * (grahamScore - 1);
   if (spread > 3) {
     factors.push({
       type: 'bull',
@@ -2852,9 +2853,14 @@ function analyzeMarketFactors() {
 function getGrahamScore() {
   var hs300 = BASE_DATA.indices.filter(function(i) { return i.code === 'sh000300'; })[0];
   var pe = hs300 ? hs300.pe : 14.3;
+  // 优先使用实时行情数据
+  if (typeof _lastRealtimeData !== 'undefined' && _lastRealtimeData && _lastRealtimeData['sh000300']) {
+    var rt300 = _lastRealtimeData['sh000300'];
+    if (rt300.pe && rt300.pe > 0 && rt300.pe < 100) pe = rt300.pe;
+  }
   var treasuryYield = TREASURY_10Y || 1.72;
-  var earningsYield = 100 / pe;
-  return earningsYield - treasuryYield;
+  var earningsYield = 100 / pe;        // 百分比形式，如 6.99%
+  return earningsYield / treasuryYield; // 格雷厄姆指数比值，如 6.99/1.72 ≈ 4.06
 }
 
 /**

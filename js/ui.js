@@ -362,11 +362,6 @@ function handleSearchInput(value) {
   
   if (_suggestTimer) Perf.clearTimeout(_suggestTimer);
   
-  if (!value || value.trim().length < 1) {
-    suggest.classList.remove('show');
-    return;
-  }
-  
   _suggestTimer = Perf.trackedSetTimeout(function() {
  // 双重检查：定时器触发时搜索可能已开始
  if (_searchInProgress) return;
@@ -433,8 +428,10 @@ function selectSuggestion(code, name, mktNum, secType, classify) {
   // 清除防抖定时器，防止选中后联想下拉框再次弹出
   if (_suggestTimer) { Perf.clearTimeout(_suggestTimer); _suggestTimer = null; }
   var input = document.getElementById('searchInput');
+  if (!input) return;
   input.value = code;
-  document.getElementById('searchSuggest').classList.remove('show');
+  var suggestEl = document.getElementById('searchSuggest');
+  if (suggestEl) suggestEl.classList.remove('show');
   updateSearchClearBtn();
   // 传递类型信息给searchStock
   _suggestMeta = {

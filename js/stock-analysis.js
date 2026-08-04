@@ -115,6 +115,7 @@ function backToSearch() {
 
 function searchStock() {
   var input = document.getElementById('searchInput');
+  if (!input) return;
   var keyword = input.value.trim();
   if (!keyword) { showToast('请输入股票代码或名称'); return; }
 
@@ -5515,7 +5516,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
         '<div class="sd-item"><span class="sd-item-val" style="color:var(--neon-cyan)">' + (d.pe > 0 ? d.pe.toFixed(1) : '—') + '</span><span class="sd-item-lbl">PE(TTM)</span></div>' +
         '<div class="sd-item"><span class="sd-item-val" style="color:var(--neon-cyan)">' + (d.pb > 0 ? d.pb.toFixed(2) : '—') + '</span><span class="sd-item-lbl">PB</span></div>' +
         '<div class="sd-item"><span class="sd-item-val">' + marketCapStr + '</span><span class="sd-item-lbl">总市值</span></div>' +
-        '<div class="sd-item"><span class="sd-item-val">' + (d.pe > 0 && d.eps ? (d.price / (d.pe > 0 ? d.price / d.pe : 0)).toFixed(0) : '—') + '</span><span class="sd-item-lbl">每股收益</span></div>' +
+        '<div class="sd-item"><span class="sd-item-val">' + (d.pe > 0 && d.price > 0 ? (d.price / d.pe).toFixed(2) : '—') + '</span><span class="sd-item-lbl">每股收益</span></div>' +
       '</div>' +
       '<div class="sd-tag-row">' +
         '<span class="sd-tag ' + valCls + '">估值：' + valSig + '</span>' +
