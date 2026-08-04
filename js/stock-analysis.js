@@ -3306,14 +3306,12 @@ function fetchSectorCapitalFlow() {
   } catch(e) {}
 
   // 东方财富行业板块资金流向API（push2delay支持CORS跨域）
-  // 注意：API单页最多返回100条，总数约496个行业，po=1降序只能取到正值板块
-  // 必须同时发po=0升序请求获取负值（流出）板块
+  // 优化：单请求获取全部板块（m:90+t:2约100个行业板块），避免双请求合并导致的数据不一致
+  // 旧方案问题：po=1(降序)+po=0(升序)双请求并行，两请求间行情波动导致同一板块mainNet值不一致，
+  //   合并去重时总是保留po=1版本，可能将实际流出的板块错误归入流入列表
   var fields = 'f2,f3,f4,f5,f6,f7,f8,f10,f12,f14,f15,f16,f17,f18,f62,f184,f66,f72,f78,f84';
-  var inflowUrl = 'https://push2delay.eastmoney.com/api/qt/clist/get' +
-    '?fid=f62&po=1&pz=100&pn=1&np=1&fltt=2&invt=2' +
-    '&fs=m:90+t:2&fields=' + fields;
-  var outflowUrl = 'https://push2delay.eastmoney.com/api/qt/clist/get' +
-    '?fid=f62&po=0&pz=100&pn=1&np=1&fltt=2&invt=2' +
+  var url = 'https://push2delay.eastmoney.com/api/qt/clist/get' +
+    '?fid=f62&po=1&pz=200&pn=1&np=1&fltt=2&invt=2' +
     '&fs=m:90+t:2&fields=' + fields;
 
   // 解析API返回的原始数据为items数组
@@ -3353,51 +3351,34 @@ function fetchSectorCapitalFlow() {
     return items;
   }
 
-  // 并行请求流入榜和流出榜
-  return Promise.all([
-    fetchWithTimeout(inflowUrl, { cache: 'no-store' }, 8000).then(function(res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    }),
-    fetchWithTimeout(outflowUrl, { cache: 'no-store' }, 8000).then(function(res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    })
-  ]).then(function(responses) {
-    var inflowItems = parseItems(responses[0]);
-    var outflowItems = parseItems(responses[1]);
-    if (inflowItems.length === 0 && outflowItems.length === 0) return null;
-
-    // 合并去重（两个请求可能有重叠的板块）
-    var seen = {};
-    var items = [];
-    inflowItems.forEach(function(d) {
-      if (!seen[d.name]) { seen[d.name] = true; items.push(d); }
-    });
-    outflowItems.forEach(function(d) {
-      if (!seen[d.name]) { seen[d.name] = true; items.push(d); }
-    });
+  // 单请求获取全部板块数据（消除双请求合并的数据不一致风险）
+  return fetchWithTimeout(url, { cache: 'no-store' }, 8000).then(function(res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }).then(function(resp) {
+    var items = parseItems(resp);
+    if (items.length === 0) return null;
 
     // 过滤子行业分类（Ⅱ/Ⅲ/Ⅳ/Ⅴ），仅保留一级行业，避免重复计算
     items = items.filter(function(d) {
       return d.name && !/[ⅡⅢⅣⅤ]/.test(d.name);
     });
 
-    // 按主力净流入排序（降序）
+    // 按主力净流入排序（降序：最大流入在前，最大流出在后）
     items.sort(function(a, b) {
       return b.mainNet - a.mainNet;
     });
 
+    // 严格分离流入/流出：mainNet > 0 为流入，mainNet < 0 为流出
     var inflow = items.filter(function(d) { return d.mainNet > 0; }).slice(0, 5);
     var outflowItemsNeg = items.filter(function(d) { return d.mainNet < 0; });
     var outflow;
     if (outflowItemsNeg.length > 0) {
-      // 有净流出板块：按升序排列（最负在前），取流出最大的5个
-      outflowItemsNeg.sort(function(a, b) { return a.mainNet - b.mainNet; });
-      outflow = outflowItemsNeg.slice(0, 5);
+      // 有净流出板块：outflowItemsNeg已按降序排列，取最后5个并反转（最大流出在前）
+      outflow = outflowItemsNeg.slice(-5).reverse();
     } else {
-      // 全线净流入时：取流入最少的5个
-      outflow = items.slice(-5).reverse();
+      // 全线净流入：无流出板块，outflow为空
+      outflow = [];
     }
 
     var totalMain = items.reduce(function(s, d) { return s + d.mainNet; }, 0);
@@ -3506,10 +3487,11 @@ function _fetchSectorCapitalFlowFallback() {
     var outflowItems = items.filter(function(d) { return d.mainNet < 0; });
     var outflow;
     if (outflowItems.length > 0) {
+      // 有净流出：取最负的5个（已降序，取最后5个反转）
       outflow = outflowItems.slice(-5).reverse();
     } else {
-      // 全线净流入时：取流入最少的5个作为"相对弱势"
-      outflow = items.slice(-5).reverse();
+      // 全线净流入：无流出板块
+      outflow = [];
     }
     var totalMain = items.reduce(function(s, d) { return s + d.mainNet; }, 0);
     var result = {
@@ -3843,7 +3825,7 @@ function renderMarketFlow(data) {
   var totalCls = data.totalMain >= 0 ? 'sig-red' : 'sig-green';
   var direction = data.totalMain >= 0 ? '净流入' : '净流出';
 
-  // 检测是否全线净流入（流出列表中的板块也为正）
+  // 检测是否全线净流入（流出列表为空或流出列表中无负值）
   var hasRealOutflow = data.outflow.length > 0 && data.outflow.some(function(d) { return d.mainNet < 0; });
   var outflowLabel = hasRealOutflow ? '流出' : '流入最少';
 
@@ -3856,11 +3838,10 @@ function renderMarketFlow(data) {
     if (data.inflow.length > 0) {
       summaryHtml += ' · 流入: <b class="sig-red">' + inflowNames + '</b>';
     }
-    if (data.outflow.length > 0) {
-      summaryHtml += ' · ' + outflowLabel + ': <b class="' + (hasRealOutflow ? 'sig-green' : 'sig-yellow') + '">' + outflowNames + '</b>';
-    }
-    if (!hasRealOutflow && data.outflow.length > 0) {
-      summaryHtml += ' <span style="color:var(--muted);font-size:0.48rem">（全线净流入，列出流入最少板块）</span>';
+    if (hasRealOutflow) {
+      summaryHtml += ' · 流出: <b class="sig-green">' + outflowNames + '</b>';
+    } else if (data.outflow.length === 0) {
+      summaryHtml += ' <span style="color:var(--neon-red);font-size:0.48rem">（全线净流入）</span>';
     }
     if (data.inflow.length === 0 && data.outflow.length === 0) {
       summaryHtml += ' <span style="color:var(--muted)">（各板块主力资金均为零）</span>';
@@ -3876,7 +3857,7 @@ function renderMarketFlow(data) {
   data.outflow.forEach(function(d) { if (Math.abs(d.mainNet) > maxAbs) maxAbs = Math.abs(d.mainNet); });
   if (maxAbs === 0) maxAbs = 1;
 
-  // 渲染流入前5
+  // 渲染流入前5（严格只显示 mainNet > 0 的板块）
   if (inflowEl) {
     var html = '';
     if (data.inflow.length === 0) {
@@ -3900,12 +3881,14 @@ function renderMarketFlow(data) {
             streakHtml = '<span class="mf-item-streak sig-green" title="近5日流出' + d.outflowDays5 + '天">连跌' + d.outflowDays5 + '天</span>';
           }
         }
+        // 流入列表：红色条 + 正数金额（加+号）
+        var amtStr = '+' + formatFlowAmount(d.mainNet * YUAN_FACTOR);
         html += '<div class="mf-item ' + (isUp ? 'up' : 'down') + '">' +
           '<span class="mf-item-name">' + d.name + '</span>' +
           sigHtml +
           streakHtml +
           '<span class="mf-item-change">' + (isUp ? '+' : '') + d.changePct.toFixed(2) + '%</span>' +
-          '<span class="mf-item-amount">' + formatFlowAmount(d.mainNet * YUAN_FACTOR) + '</span>' +
+          '<span class="mf-item-amount sig-red">' + amtStr + '</span>' +
           '</div>' +
           '<div class="mf-item-bar"><div class="mf-item-bar-fill bar-fill-red" style="width:' + barW + '%"></div></div>';
       });
@@ -3913,20 +3896,20 @@ function renderMarketFlow(data) {
     inflowEl.innerHTML = html;
   }
 
-  // 渲染流出前5
+  // 渲染流出前5（严格只显示 mainNet < 0 的板块）
   if (outflowEl) {
     var html2 = '';
     // 更新列标题
     var outflowTitleEl = outflowEl.parentElement.querySelector('.mf-col-title');
     if (outflowTitleEl) {
-      outflowTitleEl.innerHTML = (hasRealOutflow ? '流出前5' : '流入最少') + ' <span class="mf-arrow">↓</span>';
+      outflowTitleEl.innerHTML = (hasRealOutflow ? '流出前5' : '无流出') + ' <span class="mf-arrow">↓</span>';
     }
     if (data.outflow.length === 0) {
-      html2 = '<div class="mf-empty">今日无净流出板块</div>';
+      // 全线净流入时，流出列表显示提示而非填充正数板块
+      html2 = '<div class="mf-empty">全线净流入<br>无流出板块</div>';
     } else {
       data.outflow.forEach(function(d) {
         var isUp = d.changePct >= 0;
-        var isNetPositive = d.mainNet >= 0; // 相对弱势板块（仍为净流入）
         var barW = Math.round(Math.abs(d.mainNet) / maxAbs * 100);
         // 信号标签 + 连续天数
         var sigHtml = '';
@@ -3943,17 +3926,16 @@ function renderMarketFlow(data) {
             streakHtml = '<span class="mf-item-streak sig-green" title="近5日流出' + d.outflowDays5 + '天">连跌' + d.outflowDays5 + '天</span>';
           }
         }
-        // 相对弱势板块用黄色条，真实流出用绿色条
-        var barClass = isNetPositive ? 'bar-fill-yellow' : 'bar-fill-green';
-        var amountColor = isNetPositive ? 'var(--neon-yellow)' : '';
+        // 流出列表：绿色条 + 负数金额（保留负号）
+        var amtStr = formatFlowAmount(d.mainNet * YUAN_FACTOR);
         html2 += '<div class="mf-item ' + (isUp ? 'up' : 'down') + '">' +
           '<span class="mf-item-name">' + d.name + '</span>' +
           sigHtml +
           streakHtml +
           '<span class="mf-item-change">' + (isUp ? '+' : '') + d.changePct.toFixed(2) + '%</span>' +
-          '<span class="mf-item-amount" style="' + (amountColor ? 'color:' + amountColor : '') + '">' + formatFlowAmount(d.mainNet * YUAN_FACTOR) + '</span>' +
+          '<span class="mf-item-amount sig-green">' + amtStr + '</span>' +
           '</div>' +
-          '<div class="mf-item-bar"><div class="mf-item-bar-fill ' + barClass + '" style="width:' + barW + '%"></div></div>';
+          '<div class="mf-item-bar"><div class="mf-item-bar-fill bar-fill-green" style="width:' + barW + '%"></div></div>';
       });
     }
     outflowEl.innerHTML = html2;
