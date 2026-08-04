@@ -27,7 +27,8 @@ var PATTERN_RULES = [
 var _paLastResult = null;
 var _paAnalysisLock = false;
 var _paRetryCount = 0;
-var _paMaxRetries = 3;
+var _paMaxRetries = 5;
+var _paWasFallback = false;
 
 function runPatternAnalysis(forceRefresh) {
   var container = document.getElementById('paRulesList');
@@ -67,7 +68,7 @@ function runPatternAnalysis(forceRefresh) {
       setStatus('\u23f3 \u6570\u636e\u52a0\u8f7d\u4e2d(' + _paRetryCount + '/' + _paMaxRetries + ')', '');
       if (btn) { btn.disabled = false; btn.textContent = '\u27f3 \u63a8\u6f14'; }
       _paAnalysisLock = false;
-      Perf.trackedSetTimeout(function() { runPatternAnalysis(false); }, 3000);
+      Perf.trackedSetTimeout(function() { runPatternAnalysis(false); }, 2000);
       return;
     }
     // 重试耗尽，用基准数据兜底
@@ -78,6 +79,7 @@ function runPatternAnalysis(forceRefresh) {
     if (btn) { btn.disabled = false; btn.textContent = '\u27f3 \u63a8\u6f14'; }
     _paAnalysisLock = false;
     _paRetryCount = 0;
+    _paWasFallback = true;
     // 用空数据兜底渲染
     var fallbackResult = analyzePatterns({}, null, null);
     _paLastResult = fallbackResult;
@@ -87,6 +89,7 @@ function runPatternAnalysis(forceRefresh) {
 
   // 数据就绪，重置重试计数
   _paRetryCount = 0;
+  _paWasFallback = false;
   setStatus(isMarketHours ? '\ud83d\udfe2 \u76d8\u4e2d\u5b9e\u65f6\u6570\u636e' : '\ud83d\udd52 \u6536\u76d8\u6570\u636e\u63a8\u6f14', isMarketHours ? 'live' : 'closed');
 
   // 带超时的fetchKline（8秒超时）

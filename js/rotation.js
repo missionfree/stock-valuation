@@ -2661,7 +2661,7 @@ function runAnalysis(forceRefresh) {
       generateDailyReview(false);
       // 独立备份触发：确保盘口推演即使复盘失败也能启动
       Perf.trackedSetTimeout(function() {
-        if (typeof runPatternAnalysis === 'function' && !_paLastResult) runPatternAnalysis(false);
+        if (typeof runPatternAnalysis === 'function') runPatternAnalysis(false);
       }, 2000);
     }).catch(function(err) {
       console.warn('实时行情获取失败:', err.message);
@@ -2716,6 +2716,8 @@ function runAnalysis(forceRefresh) {
       renderMarketFlow(data);
       renderSectorCapitalAnalysis(data);
       generateDailyReview(false);
+      // 资金流向数据就绪后，刷新消息面分析（纳入实时资金因素）
+      renderNewsAnalysis();
     }).catch(function() {
       renderMarketFlow(null);
       renderSectorCapitalAnalysis(null);
@@ -2733,6 +2735,10 @@ function runAnalysis(forceRefresh) {
     }).then(function() {
       // 阶段3.5：刷新消息面分析（纳入情绪数据后更新）
       renderNewsAnalysis();
+      // 阶段3.6：所有数据就绪后，强制重新推演盘口（覆盖之前的兜底结果）
+      Perf.trackedSetTimeout(function() {
+        if (typeof runPatternAnalysis === 'function') runPatternAnalysis(true);
+      }, 500);
       _isFetching = false;
     }).catch(function(err) {
       console.warn('数据获取异常:', err);

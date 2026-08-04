@@ -8687,6 +8687,17 @@ html {
 .pa-data-status.closed { color: var(--neon-cyan); }
 .pa-data-status.fallback { color: #FFAE00; background: rgba(255,174,0,0.06); border-color: rgba(255,174,0,0.15); }
 
+/* === 响应式：小屏适配 === */
+@media (max-width: 480px) {
+  .pa-guide-bar { gap: 0.3rem 0.4rem; padding: 0.3rem 0.5rem; }
+  .pa-guide-item { font-size: 0.46rem; }
+  .pa-guide-num { width: 14px; height: 14px; font-size: 0.4rem; }
+  .pa-guide-dot { font-size: 0.5rem; }
+  .pa-footer-bar { padding: 0.3rem 0.5rem 0.4rem; }
+  .pa-data-status { font-size: 0.46rem; padding: 0.1rem 0.4rem; }
+  .pa-disclaimer { font-size: 0.44rem; }
+}
+
 /* === 主题适配 === */
 [data-theme="light"] .pattern-analysis-panel {
   background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(240,245,255,0.88));
@@ -8699,6 +8710,15 @@ html {
 [data-theme="light"] .pa-power-bull { background: linear-gradient(90deg, rgba(0,200,100,0.15), rgba(0,200,100,0.3)); }
 [data-theme="light"] .pa-power-bear { background: linear-gradient(90deg, rgba(220,50,80,0.3), rgba(220,50,80,0.15)); }
 [data-theme="light"] .pa-ss-num { color: #3B82F6; }
+[data-theme="light"] .pa-guide-bar { background: linear-gradient(135deg, rgba(59,130,246,0.05), rgba(16,185,129,0.03)); border-color: rgba(59,130,246,0.1); }
+[data-theme="light"] .pa-guide-item { color: #6B7280; }
+[data-theme="light"] .pa-guide-item b { color: #1F2937; }
+[data-theme="light"] .pa-guide-num { color: #3B82F6; background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.2); }
+[data-theme="light"] .pa-footer-bar { border-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .pa-data-status { background: rgba(59,130,246,0.05); border-color: rgba(59,130,246,0.1); color: #3B82F6; }
+[data-theme="light"] .pa-data-status.live { color: #059669; background: rgba(5,150,105,0.05); border-color: rgba(5,150,105,0.12); }
+[data-theme="light"] .pa-data-status.fallback { color: #D97706; background: rgba(217,119,6,0.05); border-color: rgba(217,119,6,0.12); }
+[data-theme="light"] .na-source-tag.realtime { color: #059669; background: rgba(5,150,105,0.06); border-color: rgba(5,150,105,0.12); }
 
 [data-theme="classical"] .pattern-analysis-panel {
   background: linear-gradient(145deg, rgba(255,254,250,0.92), rgba(245,240,230,0.88));
