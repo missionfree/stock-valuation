@@ -3976,7 +3976,7 @@ function renderMarketFlow(data) {
           sigHtml +
           streakHtml +
           '<span class="mf-item-change">' + (isUp ? '+' : '') + d.changePct.toFixed(2) + '%</span>' +
-          '<span class="mf-item-amount sig-red">' + amtStr + '</span>' +
+          '<span class="mf-item-amount ' + (isUp ? 'sig-red' : 'sig-green') + '">' + amtStr + '</span>' +
           '</div>' +
           '<div class="mf-item-bar"><div class="mf-item-bar-fill bar-fill-red" style="width:' + barW + '%"></div></div>';
       });
@@ -4021,7 +4021,7 @@ function renderMarketFlow(data) {
           sigHtml +
           streakHtml +
           '<span class="mf-item-change">' + (isUp ? '+' : '') + d.changePct.toFixed(2) + '%</span>' +
-          '<span class="mf-item-amount sig-green">' + amtStr + '</span>' +
+          '<span class="mf-item-amount ' + (isUp ? 'sig-red' : 'sig-green') + '">' + amtStr + '</span>' +
           '</div>' +
           '<div class="mf-item-bar"><div class="mf-item-bar-fill bar-fill-green" style="width:' + barW + '%"></div></div>';
       });

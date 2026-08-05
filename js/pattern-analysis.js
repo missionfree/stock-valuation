@@ -50,13 +50,20 @@ function runPatternAnalysis(forceRefresh) {
   var hasRt = rt && Object.keys(rt).length > 0;
   var hasHS300 = rt && rt['sh000300'] && (rt['sh000300'].price || rt['sh000300'].changePercent !== undefined);
 
-  // 判断盘中/收盘
+  // 判断盘中/收盘/休市
   var now = new Date();
   var hour = now.getHours();
   var minutes = now.getMinutes();
   var day = now.getDay();
   var isWeekend = (day === 0 || day === 6);
-  var isMarketHours = !isWeekend && ((hour === 9 && minutes >= 30) || (hour >= 10 && hour < 12) || (hour >= 13 && hour < 15));
+  // 盘中：9:30-15:00（含午休时段，午休仍属当日盘中）
+  var isMarketHours = !isWeekend && ((hour === 9 && minutes >= 30) || (hour >= 10 && hour < 15));
+  // 午休：11:30-13:00（盘中但数据不更新）
+  var isLunchBreak = !isWeekend && ((hour === 11 && minutes >= 30) || (hour === 12));
+  // 收盘后：15:00以后
+  var isAfterClose = !isWeekend && (hour >= 15);
+  // 休市：周末 或 开市前(9:30前)
+  var isPreMarket = !isWeekend && (hour < 9 || (hour === 9 && minutes < 30));
 
   // 数据未就绪：自动重试
   if (!hasRt || !hasHS300) {
@@ -90,7 +97,20 @@ function runPatternAnalysis(forceRefresh) {
   // 数据就绪，重置重试计数
   _paRetryCount = 0;
   _paWasFallback = false;
-  setStatus(isMarketHours ? '\ud83d\udfe2 \u76d8\u4e2d\u5b9e\u65f6\u6570\u636e' : '\ud83d\udd52 \u6536\u76d8\u6570\u636e\u63a8\u6f14', isMarketHours ? 'live' : 'closed');
+
+  // 三态状态标签
+  var marketStatus, statusClass;
+  if (isMarketHours) {
+    marketStatus = isLunchBreak ? '🟢 盘中推演（午休中）' : '🟢 盘中实时推演';
+    statusClass = 'live';
+  } else if (isAfterClose) {
+    marketStatus = '🕐 收盘数据推演';
+    statusClass = 'closed';
+  } else {
+    marketStatus = '🌙 休市数据推演';
+    statusClass = 'closed';
+  }
+  setStatus(marketStatus, statusClass);
 
   // 带超时的fetchKline（8秒超时）
   var klinePromise = new Promise(function(resolve, reject) {
@@ -113,7 +133,14 @@ function runPatternAnalysis(forceRefresh) {
     _paAnalysisLock = false;
   }).catch(function(err) {
     // K线超时或失败，仍用实时数据推演（K线相关规则跳过）
-    setStatus(isMarketHours ? '\ud83d\udfe2 \u76d8\u4e2d\u5b9e\u65f6(K\u7ebf\u8df3\u8fc7)' : '\ud83d\udd52 \u6536\u76d8\u6570\u636e(K\u7ebf\u8df3\u8fc7)', isMarketHours ? 'live' : 'closed');
+    var klineSkipSuffix = '(K线跳过)';
+    if (isMarketHours) {
+      setStatus((isLunchBreak ? '🟢 盘中推演（午休中）' : '🟢 盘中实时推演') + ' ' + klineSkipSuffix, 'live');
+    } else if (isAfterClose) {
+      setStatus('🕐 收盘数据推演 ' + klineSkipSuffix, 'closed');
+    } else {
+      setStatus('🌙 休市数据推演 ' + klineSkipSuffix, 'closed');
+    }
     var result = analyzePatterns(rt, sent, null);
     _paLastResult = result;
     renderPatternAnalysis(result);

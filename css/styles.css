@@ -3855,10 +3855,8 @@ body {
   font-size: 0.5rem; font-family: var(--font-mono); font-weight: 700;
   min-width: 3rem; text-align: right;
 }
-.mf-item.up .mf-item-change,
-.mf-item.up .mf-item-amount { color: var(--neon-red); }
-.mf-item.down .mf-item-change,
-.mf-item.down .mf-item-amount { color: var(--neon-green); }
+.mf-item.up .mf-item-change { color: var(--neon-red); }
+.mf-item.down .mf-item-change { color: var(--neon-green); }
 .mf-item-bar {
   width: 100%; height: 2px; border-radius: 1px; margin-top: 0.1rem;
   background: var(--rule); overflow: hidden;
