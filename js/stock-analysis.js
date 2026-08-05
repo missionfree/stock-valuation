@@ -6009,7 +6009,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
   }
 
   // 7. 业绩报告区块（仅A股非ETF个股，排除ST/*ST）
-  if (!d.isETF && isAShareQualified(d)) {
+  if (!d.isETF && typeof isAShareQualified === 'function' && isAShareQualified(d) && typeof renderEarningsReport === 'function') {
     // 初步渲染（不含异步数据），后续异步加载机构持股+R007
     html += renderEarningsReport(d, finData, flowData, null);
   }
@@ -7166,11 +7166,12 @@ function drawStockKline(klData, realtimePrice) {
   var n = klines.length;
   var dpr = window.devicePixelRatio || 1;
   var cw = canvas.parentElement.clientWidth - 24;
+  if (cw < 200 || !cw || isNaN(cw)) cw = Math.min(window.innerWidth - 48, 800);
   if (cw < 200) cw = 200;
 
-  // 布局：上方K线区70%，下方成交量30%
-  var priceH = Math.round(cw * 0.62);
-  var volH = Math.round(cw * 0.18);
+  // 布局：固定最小高度，避免窄屏压扁；限制最大高度避免过长
+  var priceH = Math.max(250, Math.min(500, Math.round(cw * 0.50)));
+  var volH = Math.max(70, Math.min(150, Math.round(priceH * 0.25)));
   var labelH = 16;
   var ch = priceH + volH + labelH + 8;
 
