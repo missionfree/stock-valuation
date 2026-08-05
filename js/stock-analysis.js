@@ -7169,9 +7169,9 @@ function drawStockKline(klData, realtimePrice) {
   if (cw < 200 || !cw || isNaN(cw)) cw = Math.min(window.innerWidth - 48, 800);
   if (cw < 200) cw = 200;
 
-  // 布局：固定最小高度，避免窄屏压扁；限制最大高度避免过长
-  var priceH = Math.max(250, Math.min(500, Math.round(cw * 0.50)));
-  var volH = Math.max(70, Math.min(150, Math.round(priceH * 0.25)));
+  // 布局：固定最小高度，避免窄屏压扁；宽屏适当增高保证可读性
+  var priceH = Math.max(280, Math.round(cw * 0.55));
+  var volH = Math.max(80, Math.round(priceH * 0.28));
   var labelH = 16;
   var ch = priceH + volH + labelH + 8;
 
