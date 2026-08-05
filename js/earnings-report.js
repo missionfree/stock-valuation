@@ -567,105 +567,252 @@ function renderEarningsReport(stockData, finData, flowData, extraData) {
   var t = _earningsThresholds;
 
   var html = '<div class="earnings-report" id="earningsReportSection">';
+
+  // ====== 顶部标题栏 ======
   html += '<div class="er-header">';
-  html += '<span class="er-title">📊 业绩报告分析</span>';
+  html += '<div class="er-header-left">';
+  html += '<span class="er-header-icon">📊</span>';
+  html += '<span class="er-title">业绩报告分析</span>';
+  html += '</div>';
+  html += '<div class="er-header-right">';
   html += '<span class="er-window' + (window_.active ? ' active' : '') + '">' + window_.label + '</span>';
   html += '<button class="er-settings-btn" onclick="toggleEarningsSettings()" title="自定义风险阈值">⚙</button>';
   html += '</div>';
-
-  // 风险预警模块
-  if (risks.length > 0) {
-    risks.forEach(function(risk) {
-      var bgClass = risk.color === 'red' ? 'er-alert-red' :
-                    risk.color === 'yellow' ? 'er-alert-yellow' :
-                    risk.color === 'green' ? 'er-alert-green' : 'er-alert-cyan';
-      html += '<div class="er-alert ' + bgClass + '">';
-      html += '<div class="er-alert-header">';
-      html += '<span class="er-alert-icon">' + risk.icon + '</span>';
-      html += '<span class="er-alert-title">' + risk.title + '</span>';
-      if (risk.level === 'high') html += '<span class="er-alert-level high">高风险</span>';
-      else if (risk.level === 'medium') html += '<span class="er-alert-level medium">中风险</span>';
-      else if (risk.level === 'positive') html += '<span class="er-alert-level positive">正面</span>';
-      html += '</div>';
-      html += '<div class="er-alert-conditions">触发条件：' + risk.conditionStr + '</div>';
-      html += '<div class="er-alert-action">' + risk.action + '</div>';
-      html += '<div class="er-alert-meta">';
-      html += '<span class="er-meta-item">历史回撤(近3年同期)：<b>' + risk.drawdown + '</b></span>';
-      html += '<span class="er-meta-item">数据来源：' + risk.dataSource + '</span>';
-      html += '</div>';
-      html += '<div class="er-alert-logic">计算逻辑：' + risk.calcLogic + '</div>';
-      html += '</div>';
-    });
-  } else {
-    if (window_.active) {
-      html += '<div class="er-alert er-alert-cyan">';
-      html += '<div class="er-alert-header">';
-      html += '<span class="er-alert-icon">ℹ️</span>';
-      html += '<span class="er-alert-title">当前窗口未触发风险条件</span>';
-      html += '</div>';
-      html += '<div class="er-alert-conditions">当前业绩披露窗口(' + window_.label + ')内，该股票未触发任何风险预警条件</div>';
-      html += '</div>';
-    } else {
-      html += '<div class="er-alert er-alert-cyan">';
-      html += '<div class="er-alert-header">';
-      html += '<span class="er-alert-icon">📅</span>';
-      html += '<span class="er-alert-title">非业绩披露窗口期</span>';
-      html += '</div>';
-      html += '<div class="er-alert-conditions">当前不在四大业绩披露窗口期内，风险预警规则未激活。下次窗口期请关注：';
-      html += getNextWindowInfo(new Date());
-      html += '</div>';
-      html += '</div>';
-    }
-  }
-
-  // 关键财务数据网格
-  if (finData) {
-    var profitColor = finData.profitYoY >= 0 ? 'var(--neon-green)' : 'var(--neon-red)';
-    var revenueColor = finData.revenueYoY >= 0 ? 'var(--neon-green)' : 'var(--neon-red)';
-    var reportDateStr = finData.reportDate ? finData.reportDate.substring(0, 10) : '—';
-    var reportTypeStr = finData.reportType || '';
-    var peStr = d.pe > 0 ? d.pe.toFixed(1) : '—';
-    var achievementRate = calcAnnualAchievementRate(finData);
-
-    html += '<div class="er-data-grid">';
-    html += '<div class="er-data-item"><span class="er-data-lbl">最新报告期</span><span class="er-data-val">' + reportDateStr + '</span></div>';
-    html += '<div class="er-data-item"><span class="er-data-lbl">报告类型</span><span class="er-data-val">' + (reportTypeStr || '—') + '</span></div>';
-    html += '<div class="er-data-item"><span class="er-data-lbl">净利润同比</span><span class="er-data-val" style="color:' + profitColor + '">' + (finData.profitYoY >= 0 ? '+' : '') + finData.profitYoY.toFixed(1) + '%</span></div>';
-    html += '<div class="er-data-item"><span class="er-data-lbl">营收同比</span><span class="er-data-val" style="color:' + revenueColor + '">' + (finData.revenueYoY >= 0 ? '+' : '') + finData.revenueYoY.toFixed(1) + '%</span></div>';
-    html += '<div class="er-data-item"><span class="er-data-lbl">PE(TTM)</span><span class="er-data-val">' + peStr + '</span></div>';
-    html += '<div class="er-data-item"><span class="er-data-lbl">全年达成率</span><span class="er-data-val">' + achievementRate.toFixed(1) + '%</span></div>';
-    html += '</div>';
-  }
-
-  // 机构持股数据
-  if (holdings && holdings.available) {
-    html += '<div class="er-holdings">';
-    html += '<span class="er-holdings-lbl">机构持仓变动：</span>';
-    var holdColor = holdings.northChange >= 0 ? 'var(--neon-green)' : 'var(--neon-red)';
-    html += '<span class="er-holdings-val" style="color:' + holdColor + '">' + (holdings.northChange >= 0 ? '+' : '') + holdings.northChange.toFixed(2) + '%</span>';
-    html += '</div>';
-  }
-
-  // R007利率
-  if (r007 !== null) {
-    html += '<div class="er-r007">';
-    html += '<span class="er-r007-lbl">R007利率：</span>';
-    var r007Color = r007 > t.r007Threshold ? 'var(--neon-red)' : 'var(--neon-green)';
-    html += '<span class="er-r007-val" style="color:' + r007Color + '">' + r007.toFixed(2) + '%</span>';
-    if (r007 > t.r007Threshold) {
-      html += '<span class="er-r007-warn"> ⚠ 流动性恶化</span>';
-    }
-    html += '</div>';
-  }
-
-  // 导出按钮
-  html += '<div class="er-actions">';
-  html += '<button class="er-export-btn" onclick="exportEarningsReport(\'' + (d.code || '').replace(/'/g, '') + '\', \'ths\')">导出至同花顺</button>';
-  html += '<button class="er-export-btn" onclick="exportEarningsReport(\'' + (d.code || '').replace(/'/g, '') + '\', \'eastmoney\')">导出至东方财富</button>';
   html += '</div>';
 
-  // 数据来源声明
-  html += '<div class="er-disclaimer">※ 数据来源：东方财富数据中心（替代Wind/iFinD），更新延迟≤24小时。所有建议基于规则引擎计算，非主观判断</div>';
+  // ====== 风险信号总览条 ======
+  var riskCount = risks.length;
+  var highCount = risks.filter(function(r) { return r.level === 'high'; }).length;
+  var mediumCount = risks.filter(function(r) { return r.level === 'medium'; }).length;
+  var positiveCount = risks.filter(function(r) { return r.level === 'positive'; }).length;
+
+  html += '<div class="er-signal-bar">';
+  html += '<div class="er-signal-item' + (highCount > 0 ? ' on' : '') + '">';
+  html += '<span class="er-signal-dot high"></span>';
+  html += '<span class="er-signal-num">' + highCount + '</span>';
+  html += '<span class="er-signal-lbl">高风险</span>';
+  html += '</div>';
+  html += '<div class="er-signal-item' + (mediumCount > 0 ? ' on' : '') + '">';
+  html += '<span class="er-signal-dot medium"></span>';
+  html += '<span class="er-signal-num">' + mediumCount + '</span>';
+  html += '<span class="er-signal-lbl">中风险</span>';
+  html += '</div>';
+  html += '<div class="er-signal-item' + (positiveCount > 0 ? ' on' : '') + '">';
+  html += '<span class="er-signal-dot positive"></span>';
+  html += '<span class="er-signal-num">' + positiveCount + '</span>';
+  html += '<span class="er-signal-lbl">正面信号</span>';
+  html += '</div>';
+  if (riskCount === 0) {
+    html += '<div class="er-signal-safe">';
+    html += '<span class="er-safe-icon">✓</span>';
+    html += '<span>暂无风险触发</span>';
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // ====== 风险预警卡片 ======
+  if (risks.length > 0) {
+    html += '<div class="er-risk-list">';
+    risks.forEach(function(risk, idx) {
+      var colorClass = risk.color === 'red' ? 'red' :
+                       risk.color === 'yellow' ? 'yellow' :
+                       risk.color === 'green' ? 'green' : 'cyan';
+      var severityPct = risk.level === 'high' ? 90 : risk.level === 'medium' ? 60 : 25;
+      var drawdownPct = 0;
+      var drawdownMatch = String(risk.drawdown).match(/([\d.]+)/);
+      if (drawdownMatch) drawdownPct = Math.min(100, parseFloat(drawdownMatch[1]));
+
+      html += '<div class="er-risk-card ' + colorClass + '">';
+      // 卡片头部
+      html += '<div class="er-risk-top">';
+      html += '<div class="er-risk-icon-wrap ' + colorClass + '"><span>' + risk.icon + '</span></div>';
+      html += '<div class="er-risk-info">';
+      html += '<div class="er-risk-title">' + risk.title + '</div>';
+      html += '<div class="er-risk-severity">';
+      if (risk.level === 'high') html += '<span class="er-sev-badge high">高风险</span>';
+      else if (risk.level === 'medium') html += '<span class="er-sev-badge medium">中风险</span>';
+      else if (risk.level === 'positive') html += '<span class="er-sev-badge positive">正面</span>';
+      html += '<div class="er-sev-track"><div class="er-sev-fill ' + colorClass + '" style="width:' + severityPct + '%"></div></div>';
+      html += '</div>'; // .er-risk-severity
+      html += '</div>'; // .er-risk-info
+      html += '</div>'; // .er-risk-top
+
+      // 触发条件（标签形式）
+      if (risk.conditions && risk.conditions.length > 0) {
+        html += '<div class="er-cond-chips">';
+        risk.conditions.forEach(function(cond) {
+          html += '<span class="er-cond-chip ' + colorClass + '">' + cond + '</span>';
+        });
+        html += '</div>';
+      }
+
+      // 操作建议
+      html += '<div class="er-action-box ' + colorClass + '">';
+      html += '<span class="er-action-arrow">▶</span>';
+      html += '<span class="er-action-text">' + risk.action + '</span>';
+      html += '</div>';
+
+      // 底部：回撤仪表 + 数据来源
+      html += '<div class="er-risk-footer">';
+      html += '<div class="er-drawdown-wrap">';
+      html += '<span class="er-dd-label">历史回撤</span>';
+      html += '<div class="er-dd-bar">';
+      html += '<div class="er-dd-fill ' + (drawdownPct > 25 ? 'red' : 'yellow') + '" style="width:' + drawdownPct + '%"></div>';
+      html += '</div>';
+      html += '<span class="er-dd-val">' + risk.drawdown + '</span>';
+      html += '</div>';
+      html += '<span class="er-source-tag" title="' + risk.dataSource + '">📊 ' + (risk.dataSource || '').replace(/东方财富/g, '东财').substring(0, 12) + '</span>';
+      html += '</div>';
+      html += '</div>'; // .er-risk-card
+    });
+    html += '</div>'; // .er-risk-list
+  } else {
+    // 无风险状态卡片
+    html += '<div class="er-safe-card">';
+    if (window_.active) {
+      html += '<div class="er-safe-icon-big">✅</div>';
+      html += '<div class="er-safe-title">当前窗口未触发风险</div>';
+      html += '<div class="er-safe-desc">' + window_.label + '内，该股票未触发任何风险预警条件</div>';
+    } else {
+      html += '<div class="er-safe-icon-big">📅</div>';
+      html += '<div class="er-safe-title">非业绩披露窗口期</div>';
+      html += '<div class="er-safe-desc">风险预警规则未激活，下一窗口：' + getNextWindowInfo(new Date()) + '</div>';
+    }
+    html += '</div>';
+  }
+
+  // ====== 财务数据仪表盘 ======
+  if (finData) {
+    var profitYoY = finData.profitYoY || 0;
+    var revenueYoY = finData.revenueYoY || 0;
+    var reportDateStr = finData.reportDate ? finData.reportDate.substring(0, 10) : '—';
+    var reportTypeStr = finData.reportType || '—';
+    var peStr = d.pe > 0 ? d.pe.toFixed(1) : '—';
+    var achievementRate = calcAnnualAchievementRate(finData);
+    var peLevel = d.pe > 0 ? (d.pe > 80 ? 'danger' : d.pe > 50 ? 'warn' : d.pe > 20 ? 'normal' : 'safe') : 'unknown';
+
+    html += '<div class="er-fin-dash">';
+    html += '<div class="er-fin-dash-title">关键财务指标</div>';
+    html += '<div class="er-fin-grid">';
+
+    // 报告期卡片
+    html += '<div class="er-fin-card">';
+    html += '<div class="er-fin-card-icon">📅</div>';
+    html += '<div class="er-fin-card-body">';
+    html += '<div class="er-fin-card-lbl">报告期</div>';
+    html += '<div class="er-fin-card-val">' + reportDateStr + '</div>';
+    html += '<div class="er-fin-card-sub">' + reportTypeStr + '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // 净利润同比卡片
+    var profitTrend = profitYoY >= 0 ? 'up' : 'down';
+    var profitCls = profitYoY >= 0 ? 'green' : 'red';
+    html += '<div class="er-fin-card ' + profitCls + '">';
+    html += '<div class="er-fin-card-icon">' + (profitYoY >= 0 ? '📈' : '📉') + '</div>';
+    html += '<div class="er-fin-card-body">';
+    html += '<div class="er-fin-card-lbl">净利润同比</div>';
+    html += '<div class="er-fin-card-val">' + (profitYoY >= 0 ? '+' : '') + profitYoY.toFixed(1) + '%</div>';
+    html += '<div class="er-fin-card-sub">' + (profitYoY >= 0 ? '↑ 增长' : '↓ 下降') + '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // 营收同比卡片
+    var revenueTrend = revenueYoY >= 0 ? 'up' : 'down';
+    var revenueCls = revenueYoY >= 0 ? 'green' : 'red';
+    html += '<div class="er-fin-card ' + revenueCls + '">';
+    html += '<div class="er-fin-card-icon">' + (revenueYoY >= 0 ? '📈' : '📉') + '</div>';
+    html += '<div class="er-fin-card-body">';
+    html += '<div class="er-fin-card-lbl">营收同比</div>';
+    html += '<div class="er-fin-card-val">' + (revenueYoY >= 0 ? '+' : '') + revenueYoY.toFixed(1) + '%</div>';
+    html += '<div class="er-fin-card-sub">' + (revenueYoY >= 0 ? '↑ 增长' : '↓ 下降') + '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // PE卡片
+    html += '<div class="er-fin-card ' + peLevel + '">';
+    html += '<div class="er-fin-card-icon">🔍</div>';
+    html += '<div class="er-fin-card-body">';
+    html += '<div class="er-fin-card-lbl">PE(TTM)</div>';
+    html += '<div class="er-fin-card-val">' + peStr + '</div>';
+    html += '<div class="er-fin-card-sub">';
+    if (peLevel === 'danger') html += '⚠ 估值偏高';
+    else if (peLevel === 'warn') html += '⚠ 关注估值';
+    else if (peLevel === 'normal') html += '○ 估值合理';
+    else if (peLevel === 'safe') html += '✓ 估值偏低';
+    else html += '— 无数据';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // 全年达成率卡片（带进度条）
+    var achColor = achievementRate >= 90 ? 'red' : achievementRate >= 70 ? 'yellow' : 'green';
+    html += '<div class="er-fin-card ' + achColor + '">';
+    html += '<div class="er-fin-card-icon">🎯</div>';
+    html += '<div class="er-fin-card-body">';
+    html += '<div class="er-fin-card-lbl">全年达成率</div>';
+    html += '<div class="er-fin-card-val">' + achievementRate.toFixed(1) + '%</div>';
+    html += '<div class="er-fin-card-progress">';
+    html += '<div class="er-fin-card-bar ' + achColor + '" style="width:' + Math.min(100, achievementRate) + '%"></div>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '</div>'; // .er-fin-grid
+    html += '</div>'; // .er-fin-dash
+  }
+
+  // ====== 机构持仓 & R007 可视化 ======
+  if ((holdings && holdings.available) || r007 !== null) {
+    html += '<div class="er-extra-row">';
+    var hasHoldings = holdings && holdings.available;
+    var hasR007 = r007 !== null;
+    var cardFlex = hasHoldings && hasR007 ? '1' : '1';
+
+    // 机构持仓卡片
+    if (hasHoldings) {
+      var holdPct = holdings.northChange;
+      var holdCls = holdPct >= 0 ? 'green' : 'red';
+      var holdBarWidth = Math.min(100, Math.abs(holdPct) * 10);
+      html += '<div class="er-extra-card ' + holdCls + '" style="flex:' + cardFlex + '">';
+      html += '<div class="er-extra-top">';
+      html += '<span class="er-extra-icon">🏦</span>';
+      html += '<span class="er-extra-lbl">机构持仓变动</span>';
+      html += '</div>';
+      html += '<div class="er-extra-val ' + holdCls + '">' + (holdPct >= 0 ? '+' : '') + holdPct.toFixed(2) + '%</div>';
+      html += '<div class="er-extra-bar">';
+      html += '<div class="er-extra-fill ' + holdCls + '" style="width:' + holdBarWidth + '%"></div>';
+      html += '</div>';
+      html += '<div class="er-extra-sub">' + (holdPct >= 0 ? '机构增持' : '机构减持') + '</div>';
+      html += '</div>';
+    }
+
+    // R007卡片
+    if (hasR007) {
+      var r007Cls = r007 > t.r007Threshold ? 'red' : 'green';
+      var r007BarWidth = Math.min(100, (r007 / 5) * 100);
+      var r007ThresholdPos = Math.min(100, (t.r007Threshold / 5) * 100);
+      html += '<div class="er-extra-card ' + r007Cls + '" style="flex:' + cardFlex + '">';
+      html += '<div class="er-extra-top">';
+      html += '<span class="er-extra-icon">💰</span>';
+      html += '<span class="er-extra-lbl">R007利率</span>';
+      if (r007 > t.r007Threshold) {
+        html += '<span class="er-extra-warn">⚠ 恶化</span>';
+      }
+      html += '</div>';
+      html += '<div class="er-extra-val ' + r007Cls + '">' + r007.toFixed(2) + '%</div>';
+      html += '<div class="er-extra-bar er-r007-bar">';
+      html += '<div class="er-extra-fill ' + r007Cls + '" style="width:' + r007BarWidth + '%"></div>';
+      html += '<div class="er-r007-threshold" style="left:' + r007ThresholdPos + '%" title="阈值' + t.r007Threshold + '%"></div>';
+      html += '</div>';
+      html += '<div class="er-extra-sub">阈值' + t.r007Threshold + '% · ' + (r007 > t.r007Threshold ? '流动性偏紧' : '流动性宽松') + '</div>';
+      html += '</div>';
+    }
+    html += '</div>'; // .er-extra-row
+  }
+
+  // ====== 数据来源声明 ======
+  html += '<div class="er-disclaimer">※ 数据来源：东方财富数据中心（替代Wind/iFinD），更新延迟≤24小时 · 规则引擎计算，非主观判断</div>';
 
   html += '</div>'; // .earnings-report
 
@@ -852,76 +999,8 @@ function refreshEarningsReport() {
 
 /**
  * ============================================================
- * 导出功能
- * ============================================================
- */
-
-/**
- * 导出业绩报告至交易终端API
- * @param {string} code - 股票代码
- * @param {string} platform - 平台 'ths'或'eastmoney'
- */
-function exportEarningsReport(code, platform) {
-  var stockData = _currentStockData;
-  var finData = _currentFinData;
-  if (!stockData) return;
-
-  var window_ = getEarningsWindow(new Date());
-  var risks = analyzeEarningsRisks(stockData, finData, _currentFlowData, window_, null, null);
-
-  // 构建导出数据
-  var exportData = {
-    stockCode: code,
-    stockName: stockData.name,
-    exportTime: new Date().toISOString(),
-    platform: platform,
-    earningsWindow: window_.label,
-    risks: risks.map(function(r) {
-      return {
-        type: r.title,
-        level: r.level,
-        action: r.action,
-        conditions: r.conditionStr,
-        drawdown: r.drawdown,
-        calcLogic: r.calcLogic
-      };
-    }),
-    financials: finData ? {
-      reportDate: finData.reportDate,
-      profitYoY: finData.profitYoY,
-      revenueYoY: finData.revenueYoY,
-      pe: stockData.pe
-    } : null
-  };
-
-  // 生成JSON文件下载
-  var blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = code + '_earnings_report_' + new Date().toISOString().slice(0, 10) + '.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  // 尝试调用交易终端API（同花顺/东方财富深度链接）
-  if (platform === 'ths') {
-    // 同花顺客户端协议
-    var thsLink = 'ths://stock/' + code;
-    window.open(thsLink, '_blank');
-  } else if (platform === 'eastmoney') {
-    // 东方财富客户端协议
-    var emLink = 'eastmoney://stock/' + code;
-    window.open(emLink, '_blank');
-  }
-}
-
-/**
- * ============================================================
  * 异步数据获取入口（在个股详情加载完成后调用）
- * ============================================================
- */
+ * ============================================================ */
 
 /**
  * 异步加载业绩报告附加数据（机构持股+R007）
