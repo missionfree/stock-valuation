@@ -25,6 +25,7 @@ var PATTERN_RULES = [
 ];
 
 var _paLastResult = null;
+var _paLastKline = null;
 var _paAnalysisLock = false;
 var _paRetryCount = 0;
 var _paMaxRetries = 5;
@@ -128,7 +129,9 @@ function runPatternAnalysis(forceRefresh) {
   klinePromise.then(function(klineData) {
     var result = analyzePatterns(rt, sent, klineData);
     _paLastResult = result;
+    _paLastKline = klineData;
     renderPatternAnalysis(result);
+    renderPaKlineChart(klineData, result);
     if (btn) { btn.disabled = false; btn.textContent = '\u27f3 \u63a8\u6f14'; }
     _paAnalysisLock = false;
   }).catch(function(err) {
@@ -143,10 +146,238 @@ function runPatternAnalysis(forceRefresh) {
     }
     var result = analyzePatterns(rt, sent, null);
     _paLastResult = result;
+    _paLastKline = null;
     renderPatternAnalysis(result);
+    renderPaKlineChart(null, result);
     if (btn) { btn.disabled = false; btn.textContent = '\u27f3 \u63a8\u6f14'; }
     _paAnalysisLock = false;
   });
+}
+
+/* ============================================================
+   K线图推演可视化
+   在盘口推演区域渲染沪深300近30日K线+MA+信号标记
+   ============================================================ */
+function renderPaKlineChart(klineData, result) {
+  var canvas = document.getElementById('paKlineCanvas');
+  var infoEl = document.getElementById('paKlineInfo');
+  if (!canvas) return;
+
+  // 适配高DPI屏幕
+  var dpr = window.devicePixelRatio || 1;
+  var cssW = canvas.clientWidth || canvas.parentElement.clientWidth - 20;
+  var cssH = 180;
+  canvas.width = cssW * dpr;
+  canvas.height = cssH * dpr;
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  // 无K线数据时显示提示
+  if (!klineData || !klineData.klines || klineData.klines.length === 0) {
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '12px ' + (getComputedStyle(document.body).fontFamily || 'sans-serif');
+    ctx.textAlign = 'center';
+    ctx.fillText('K线数据加载中或获取失败，口诀推演已用实时行情兜底', cssW / 2, cssH / 2);
+    if (infoEl) infoEl.textContent = '⚠️ K线数据缺失';
+    return;
+  }
+
+  var klines = klineData.klines;
+  var closes = klineData.closes || klines.map(function(k) { return parseFloat(k[2]) || 0; });
+
+  // 取最近30根
+  var displayCount = Math.min(30, klines.length);
+  var startIdx = klines.length - displayCount;
+  var displayKlines = klines.slice(startIdx);
+  var displayCloses = closes.slice(startIdx);
+
+  // 计算价格范围
+  var pMin = Infinity, pMax = -Infinity;
+  for (var i = 0; i < displayKlines.length; i++) {
+    var k = displayKlines[i];
+    var high = parseFloat(k[3]) || 0;
+    var low = parseFloat(k[4]) || 0;
+    if (high > pMax) pMax = high;
+    if (low < pMin && low > 0) pMin = low;
+  }
+  if (pMin === Infinity || pMax === -Infinity) {
+    if (infoEl) infoEl.textContent = '⚠️ K线数据异常';
+    return;
+  }
+  var pRange = pMax - pMin;
+  pMin -= pRange * 0.08;
+  pMax += pRange * 0.08;
+  pRange = pMax - pMin;
+
+  // 布局参数
+  var padL = 8, padR = 40, padT = 8, padB = 8;
+  var chartW = cssW - padL - padR;
+  var chartH = cssH - padT - padB;
+  var volH = chartH * 0.18; // 成交量子图高度
+  var priceH = chartH - volH - 4;
+  var candleW = chartW / displayCount;
+  var bodyW = Math.max(2, candleW * 0.6);
+
+  // 计算MA5和MA20
+  function calcMA(data, period) {
+    var ma = [];
+    for (var j = 0; j < data.length; j++) {
+      if (j < period - 1) { ma.push(null); continue; }
+      var sum = 0;
+      for (var m = 0; m < period; m++) sum += data[j - m];
+      ma.push(sum / period);
+    }
+    return ma;
+  }
+  // MA需要基于完整closes计算，然后截取显示部分
+  var ma5Full = calcMA(closes, 5);
+  var ma20Full = calcMA(closes, 20);
+  var ma5 = ma5Full.slice(startIdx);
+  var ma20 = ma20Full.slice(startIdx);
+
+  // 价格→Y坐标
+  function priceToY(p) {
+    return padT + priceH - (p - pMin) / pRange * priceH;
+  }
+
+  // 成交量范围
+  var vols = displayKlines.map(function(k) { return parseFloat(k[5]) || 0; });
+  var volMax = Math.max.apply(null, vols);
+  function volToY(v) {
+    return padT + priceH + 4 + volH - (v / volMax) * volH;
+  }
+
+  // 1. 绘制成交量柱
+  for (var vi = 0; vi < vols.length; vi++) {
+    var vx = padL + vi * candleW + candleW / 2;
+    var vy = volToY(vols[vi]);
+    var vBottom = padT + priceH + 4 + volH;
+    var kData = displayKlines[vi];
+    var kOpen = parseFloat(kData[1]) || 0;
+    var kClose = parseFloat(kData[2]) || 0;
+    var isUp = kClose >= kOpen;
+    ctx.fillStyle = isUp ? 'rgba(255,51,102,0.35)' : 'rgba(0,255,136,0.35)';
+    var vw = Math.max(1, bodyW * 0.7);
+    ctx.fillRect(vx - vw / 2, vy, vw, vBottom - vy);
+  }
+
+  // 2. 绘制MA线
+  function drawMA(maArr, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    var started = false;
+    for (var mi = 0; mi < maArr.length; mi++) {
+      if (maArr[mi] === null) continue;
+      var mx = padL + mi * candleW + candleW / 2;
+      var my = priceToY(maArr[mi]);
+      if (!started) { ctx.moveTo(mx, my); started = true; }
+      else ctx.lineTo(mx, my);
+    }
+    ctx.stroke();
+  }
+  drawMA(ma5, 'rgba(255,174,0,0.7)');
+  drawMA(ma20, 'rgba(0,200,255,0.7)');
+
+  // 3. 绘制K线
+  for (var ci = 0; ci < displayKlines.length; ci++) {
+    var ck = displayKlines[ci];
+    var cOpen = parseFloat(ck[1]) || 0;
+    var cClose = parseFloat(ck[2]) || 0;
+    var cHigh = parseFloat(ck[3]) || 0;
+    var cLow = parseFloat(ck[4]) || 0;
+    var cx = padL + ci * candleW + candleW / 2;
+    var isUpC = cClose >= cOpen;
+
+    var color = isUpC ? '#FF3366' : '#00FF88';
+    var fillColor = isUpC ? 'rgba(255,51,102,0.8)' : 'rgba(0,255,136,0.8)';
+
+    // 影线
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, priceToY(cHigh));
+    ctx.lineTo(cx, priceToY(cLow));
+    ctx.stroke();
+
+    // 实体
+    var bodyTop = priceToY(Math.max(cOpen, cClose));
+    var bodyBot = priceToY(Math.min(cOpen, cClose));
+    var bodyH = Math.max(1, bodyBot - bodyTop);
+    ctx.fillStyle = fillColor;
+    ctx.fillRect(cx - bodyW / 2, bodyTop, bodyW, bodyH);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(cx - bodyW / 2, bodyTop, bodyW, bodyH);
+  }
+
+  // 4. 信号标记（在最近一根K线上画箭头）
+  if (result && result.signals && result.signals.length > 0) {
+    var lastX = padL + (displayKlines.length - 1) * candleW + candleW / 2;
+    var lastK = displayKlines[displayKlines.length - 1];
+    var lastClose = parseFloat(lastK[2]) || 0;
+    var lastY = priceToY(lastClose);
+
+    // 找最强的信号
+    var strongest = result.signals.reduce(function(prev, cur) {
+      return (cur.confidence > prev.confidence) ? cur : prev;
+    });
+    var arrowColor = strongest.signal === 'bull' ? '#00FFC6' : '#FF3366';
+    var arrowY = strongest.signal === 'bull' ? lastY + 20 : lastY - 20;
+    var arrowDir = strongest.signal === 'bull' ? 1 : -1; // 1=up arrow, -1=down arrow
+
+    ctx.fillStyle = arrowColor;
+    ctx.beginPath();
+    if (arrowDir === 1) {
+      ctx.moveTo(lastX, arrowY - 6);
+      ctx.lineTo(lastX - 4, arrowY);
+      ctx.lineTo(lastX + 4, arrowY);
+    } else {
+      ctx.moveTo(lastX, arrowY + 6);
+      ctx.lineTo(lastX - 4, arrowY);
+      ctx.lineTo(lastX + 4, arrowY);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 5. 价格标签（右侧）
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(pMax.toFixed(0), padL + chartW + 4, padT + 8);
+  ctx.fillText(((pMax + pMin) / 2).toFixed(0), padL + chartW + 4, padT + priceH / 2);
+  ctx.fillText(pMin.toFixed(0), padL + chartW + 4, padT + priceH - 2);
+
+  // 6. 最新价格线
+  if (displayCloses.length > 0) {
+    var lastPrice = displayCloses[displayCloses.length - 1];
+    var lastPriceY = priceToY(lastPrice);
+    ctx.strokeStyle = 'rgba(255,174,0,0.3)';
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(padL, lastPriceY);
+    ctx.lineTo(padL + chartW, lastPriceY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 最新价格标签
+    ctx.fillStyle = 'rgba(255,174,0,0.8)';
+    ctx.font = '9px monospace';
+    ctx.fillText(lastPrice.toFixed(2), padL + chartW + 4, lastPriceY + 3);
+  }
+
+  // 更新信息文本
+  if (infoEl && displayCloses.length > 0) {
+    var lastC = displayCloses[displayCloses.length - 1];
+    var prevC = displayCloses.length > 1 ? displayCloses[displayCloses.length - 2] : lastC;
+    var chg = prevC > 0 ? ((lastC - prevC) / prevC * 100) : 0;
+    var ma5Val = ma5[ma5.length - 1];
+    var ma20Val = ma20[ma20.length - 1];
+    infoEl.textContent = '最新:' + lastC.toFixed(2) + ' (' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%)  MA5:' +
+      (ma5Val ? ma5Val.toFixed(1) : '—') + '  MA20:' + (ma20Val ? ma20Val.toFixed(1) : '—');
+  }
 }
 
 function analyzePatterns(rt, sent, klineData) {
@@ -390,6 +621,120 @@ function analyzePatterns(rt, sent, klineData) {
     }
   }
 
+  // ========== K线缺失时的兜底信号（确保各分类有信号，不卡50）==========
+  var hasKline = closes.length >= 4;
+  if (!hasKline) {
+    // 趋势兜底：用当日涨跌幅推断短期趋势方向
+    if (chgPct > 0.3) {
+      signals.push({ ruleId: 1, triggered: true, signal: 'bull', confidence: 0.35,
+        detail: '大盘今日涨' + chgPct.toFixed(2) + '%，短期趋势偏多（K线数据缺失，基于实时行情推断）' });
+    } else if (chgPct < -0.3) {
+      signals.push({ ruleId: 2, triggered: true, signal: 'bear', confidence: 0.35,
+        detail: '大盘今日跌' + chgPct.toFixed(2) + '%，短期趋势偏空（K线数据缺失，基于实时行情推断）' });
+    }
+    // 量价兜底：正常量能水平也有信号
+    if (avg20Amount > 0 && totalAmount > 0) {
+      var volRatioNorm = totalAmount / avg20Amount;
+      if (volRatioNorm >= 0.9 && volRatioNorm <= 1.1 && chgPct >= 0) {
+        signals.push({ ruleId: 7, triggered: true, signal: 'bull', confidence: 0.3,
+          detail: '成交量接近20日均量（量比' + volRatioNorm.toFixed(2) + '），涨势平稳' });
+      } else if (volRatioNorm >= 0.9 && volRatioNorm <= 1.1 && chgPct < 0) {
+        signals.push({ ruleId: 8, triggered: true, signal: 'bear', confidence: 0.3,
+          detail: '成交量接近20日均量（量比' + volRatioNorm.toFixed(2) + '），跌势平稳' });
+      }
+    }
+    // 位置兜底：用PE分位直接判断
+    if (pePct > 0) {
+      if (pePct >= 60) {
+        signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.35,
+          detail: 'PE分位' + pePct.toFixed(0) + '%（偏高），估值位置偏热' });
+      } else if (pePct <= 40) {
+        signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.35,
+          detail: 'PE分位' + pePct.toFixed(0) + '%（偏低），估值位置偏冷' });
+      } else {
+        // 中间位置也给弱信号
+        if (chgPct >= 0) {
+          signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.25,
+            detail: 'PE分位' + pePct.toFixed(0) + '%（中性），今日涨势温和' });
+        } else {
+          signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.25,
+            detail: 'PE分位' + pePct.toFixed(0) + '%（中性），今日跌势温和' });
+        }
+      }
+    }
+    // 突破兜底：用日内振幅判断
+    if (open > 0 && high > 0 && low > 0 && price > 0) {
+      var dayRange = (high - low) / Math.max(open, price) * 100;
+      var dayChgAbs = Math.abs(chgPct);
+      if (dayChgAbs > 1.0 && chgPct > 0) {
+        signals.push({ ruleId: 15, triggered: true, signal: 'bull', confidence: 0.35,
+          detail: '今日涨' + chgPct.toFixed(2) + '%且振幅' + dayRange.toFixed(1) + '%，有向上突破迹象' });
+      } else if (dayChgAbs > 1.0 && chgPct < 0) {
+        signals.push({ ruleId: 16, triggered: true, signal: 'bear', confidence: 0.35,
+          detail: '今日跌' + chgPct.toFixed(2) + '%且振幅' + dayRange.toFixed(1) + '%，有向下破位迹象' });
+      }
+    }
+  }
+
+  // ========== 分类兜底：确保每个分类至少有一个信号（不卡50）==========
+  var triggeredRuleIds = signals.map(function(s) { return s.ruleId; });
+  function catHasSignal(cat) {
+    var catRuleIds = PATTERN_RULES.filter(function(r) { return r.category === cat; }).map(function(r) { return r.id; });
+    return catRuleIds.some(function(rid) { return triggeredRuleIds.indexOf(rid) >= 0; });
+  }
+  // 趋势分类兜底
+  if (!catHasSignal('trend')) {
+    if (chgPct > 0.1) {
+      signals.push({ ruleId: 1, triggered: true, signal: 'bull', confidence: 0.3,
+        detail: '今日大盘涨' + chgPct.toFixed(2) + '%，趋势偏多（基础信号）' });
+    } else if (chgPct < -0.1) {
+      signals.push({ ruleId: 2, triggered: true, signal: 'bear', confidence: 0.3,
+        detail: '今日大盘跌' + chgPct.toFixed(2) + '%，趋势偏空（基础信号）' });
+    }
+  }
+  // 量价分类兜底
+  if (!catHasSignal('volume')) {
+    if (avg20Amount > 0 && totalAmount > 0) {
+      var volR = totalAmount / avg20Amount;
+      if (chgPct >= 0) {
+        signals.push({ ruleId: 7, triggered: true, signal: 'bull', confidence: 0.25,
+          detail: '量比' + volR.toFixed(2) + '，今日涨' + chgPct.toFixed(2) + '%（量价基础信号）' });
+      } else {
+        signals.push({ ruleId: 8, triggered: true, signal: 'bear', confidence: 0.25,
+          detail: '量比' + volR.toFixed(2) + '，今日跌' + chgPct.toFixed(2) + '%（量价基础信号）' });
+      }
+    }
+  }
+  // 位置分类兜底
+  if (!catHasSignal('position')) {
+    if (pePct >= 55) {
+      signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.3,
+        detail: 'PE分位' + pePct.toFixed(0) + '%（偏高区域），估值偏热（基础信号）' });
+    } else if (pePct <= 45) {
+      signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.3,
+        detail: 'PE分位' + pePct.toFixed(0) + '%（偏低区域），估值偏冷（基础信号）' });
+    } else if (chgPct >= 0) {
+      signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.2,
+        detail: 'PE分位' + pePct.toFixed(0) + '%（中性），今日偏强（基础信号）' });
+    } else {
+      signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.2,
+        detail: 'PE分位' + pePct.toFixed(0) + '%（中性），今日偏弱（基础信号）' });
+    }
+  }
+  // 突破分类兜底
+  if (!catHasSignal('breakout')) {
+    if (open > 0 && price > 0) {
+      var intradayRet = (price - open) / open * 100;
+      if (intradayRet > 0.5) {
+        signals.push({ ruleId: 15, triggered: true, signal: 'bull', confidence: 0.25,
+          detail: '日内涨' + intradayRet.toFixed(2) + '%，偏多运行（基础信号）' });
+      } else if (intradayRet < -0.5) {
+        signals.push({ ruleId: 16, triggered: true, signal: 'bear', confidence: 0.25,
+          detail: '日内跌' + intradayRet.toFixed(2) + '%，偏弱运行（基础信号）' });
+      }
+    }
+  }
+
   // Calculate composite score
   var bullScore = 0, bearScore = 0;
   var triggeredCount = signals.length;
@@ -404,7 +749,10 @@ function analyzePatterns(rt, sent, klineData) {
   var netScore = bullScore - bearScore;
   var compositeScore = 50;
   if (totalScore > 0) {
-    compositeScore = Math.round(50 + netScore / totalScore * 50);
+    // 信号覆盖率修正：触发信号少于8条时，分数向50收敛，避免少量信号导致极端分数
+    var coverageFactor = Math.min(1, triggeredCount / 8);
+    var rawScore = 50 + netScore / totalScore * 50;
+    compositeScore = Math.round(50 + (rawScore - 50) * coverageFactor);
     compositeScore = Math.max(0, Math.min(100, compositeScore));
   }
 

@@ -8508,6 +8508,74 @@ html {
   flex-shrink: 0;
 }
 
+/* === K线图推演 === */
+.pa-kline-section {
+  margin: 0.4rem 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(0,200,255,0.12);
+  border-radius: 0.5rem;
+  position: relative;
+}
+[data-theme="light"] .pa-kline-section {
+  background: rgba(0,0,0,0.02);
+  border-color: rgba(0,0,0,0.08);
+}
+.pa-kline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
+}
+.pa-kline-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--ink);
+  opacity: 0.9;
+}
+.pa-kline-info {
+  font-size: 0.52rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.pa-kline-canvas {
+  width: 100%;
+  height: 180px;
+  display: block;
+  border-radius: 0.3rem;
+  background: rgba(0,0,0,0.15);
+}
+[data-theme="light"] .pa-kline-canvas {
+  background: rgba(0,0,0,0.02);
+}
+.pa-kline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  font-size: 0.48rem;
+  color: var(--muted);
+}
+.pa-kl-item {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.pa-kl-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+}
+.pa-kl-dot.up { background: #FF3366; }
+.pa-kl-dot.down { background: #00FF88; }
+.pa-kl-dot.ma { background: #00C8FF; }
+.pa-kl-dot.signal { background: #FFAE00; border-radius: 50%; }
+[data-theme="light"] .pa-kl-dot.up { background: #DC2626; }
+[data-theme="light"] .pa-kl-dot.down { background: #059669; }
+[data-theme="light"] .pa-kl-dot.ma { background: #2563EB; }
+[data-theme="light"] .pa-kl-dot.signal { background: #D97706; }
+
 /* === 口诀列表 === */
 .pa-rules-list {
   padding: 0.3rem 0.5rem;

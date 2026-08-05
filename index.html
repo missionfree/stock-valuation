@@ -37,14 +37,14 @@
 <link rel="dns-prefetch" href="https://datacenter-web.eastmoney.com">
 <link rel="dns-prefetch" href="https://searchapi.eastmoney.com">
 <link rel="dns-prefetch" href="https://ifzq.gtimg.cn">
-<link rel="preload" href="js/config.js?v=20260805c" as="script">
-<link rel="preload" href="js/utils.js?v=20260805c" as="script">
+<link rel="preload" href="js/config.js?v=20260805d" as="script">
+<link rel="preload" href="js/utils.js?v=20260805d" as="script">
 <link rel="preconnect" href="https://qt.gtimg.cn" crossorigin>
 <link rel="preconnect" href="https://push2.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2delay.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2his.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://datacenter-web.eastmoney.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=20260805c">
+<link rel="stylesheet" href="css/styles.css?v=20260805d">
 
 </head>
 <body>
@@ -581,6 +581,21 @@
         </div>
       </div>
 
+      <!-- K线图推演可视化 -->
+      <div class="pa-kline-section" id="paKlineSection">
+        <div class="pa-kline-header">
+          <span class="pa-kline-title">📊 沪深300 K线推演图</span>
+          <span class="pa-kline-info" id="paKlineInfo">加载中...</span>
+        </div>
+        <canvas id="paKlineCanvas" class="pa-kline-canvas"></canvas>
+        <div class="pa-kline-legend">
+          <span class="pa-kl-item"><span class="pa-kl-dot up"></span>阳线（收≥开）</span>
+          <span class="pa-kl-item"><span class="pa-kl-dot down"></span>阴线（收＜开）</span>
+          <span class="pa-kl-item"><span class="pa-kl-dot ma"></span>MA5/MA20</span>
+          <span class="pa-kl-item"><span class="pa-kl-dot signal"></span>触发信号位</span>
+        </div>
+      </div>
+
       <!-- 口诀列表 -->
       <div class="pa-rules-list" id="paRulesList">
         <div class="pa-loading">⏳ 等待行情数据就绪后自动启动推演…</div>
@@ -966,14 +981,14 @@
 <!-- ==================== JavaScript 主逻辑 ==================== -->
 
 <!-- ==================== JavaScript Modules (deferred, ordered by dependency) ==================== -->
-<script defer src="js/performance.js?v=20260805c"></script>
-<script defer src="js/config.js?v=20260805c"></script>
-<script defer src="js/utils.js?v=20260805c"></script>
-<script defer src="js/render.js?v=20260805c"></script>
-<script defer src="js/stock-analysis.js?v=20260805c"></script>
-<script defer src="js/rotation.js?v=20260805c"></script>
-<script defer src="js/pattern-analysis.js?v=20260805c"></script>
-<script defer src="js/ui.js?v=20260805c"></script>
-<script defer src="js/app.js?v=20260805c"></script>
+<script defer src="js/performance.js?v=20260805d"></script>
+<script defer src="js/config.js?v=20260805d"></script>
+<script defer src="js/utils.js?v=20260805d"></script>
+<script defer src="js/render.js?v=20260805d"></script>
+<script defer src="js/stock-analysis.js?v=20260805d"></script>
+<script defer src="js/rotation.js?v=20260805d"></script>
+<script defer src="js/pattern-analysis.js?v=20260805d"></script>
+<script defer src="js/ui.js?v=20260805d"></script>
+<script defer src="js/app.js?v=20260805d"></script>
 </body>
 </html>
