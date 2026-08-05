@@ -175,14 +175,14 @@ body {
 .theme-dot.cyberpunk { background: linear-gradient(135deg, #ff00ff, #0d0015); }
 .theme-dot.ocean { background: linear-gradient(135deg, #00aaff, #001428); }
 .live-dot {
-  width: 6px; height: 6px; background: var(--neon-green);
+  width: 6px; height: 6px; background: var(--neon-red);
   border-radius: 50%; flex-shrink: 0;
-  box-shadow: 0 0 6px var(--neon-green), 0 0 12px rgba(0,200,83,0.3);
+  box-shadow: 0 0 6px var(--neon-red), 0 0 12px rgba(255,59,48,0.3);
   animation: liveBlink 1.5s infinite;
 }
 @keyframes liveBlink {
-  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--neon-green), 0 0 12px rgba(0,200,83,0.4); }
-  50% { opacity: 0.3; box-shadow: 0 0 3px var(--neon-green); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--neon-red), 0 0 12px rgba(255,59,48,0.4); }
+  50% { opacity: 0.3; box-shadow: 0 0 3px var(--neon-red); }
 }
 /* 跑马灯效果 */
 .marquee {
@@ -791,8 +791,8 @@ body {
 }
 /* —— 实时圆点 —— */
 [data-theme="light"] .live-dot {
-  box-shadow: 0 0 6px var(--neon-green);
-  background: var(--neon-green);
+  box-shadow: 0 0 6px var(--neon-red);
+  background: var(--neon-red);
 }
 /* —— 区块标题装饰条 —— */
 [data-theme="light"] .sec-title {
@@ -819,6 +819,10 @@ body {
 [data-theme="light"] .dash-card.hl-green {
   border-color: rgba(0,107,52,0.4) !important;
   background: linear-gradient(135deg, rgba(0,107,52,0.1), var(--bg2));
+}
+[data-theme="light"] .dash-card.hl-red {
+  border-color: rgba(180,30,25,0.4) !important;
+  background: linear-gradient(135deg, rgba(180,30,25,0.1), var(--bg2));
 }
 [data-theme="light"] .dash-card.hl-blue {
   border-color: rgba(0,60,120,0.4) !important;
@@ -999,10 +1003,10 @@ body {
 }
 /* —— 信号标签增强 —— */
 [data-theme="light"] .sig.under {
-  background: rgba(192,16,48,0.12);
-  color: var(--neon-red);
+  background: rgba(0,107,52,0.15);
+  color: var(--neon-green);
   font-weight: 700;
-  border: 1px solid rgba(192,16,48,0.3);
+  border: 1px solid rgba(0,107,52,0.3);
 }
 [data-theme="light"] .sig.mid {
   background: rgba(138,101,0,0.15);
@@ -1011,10 +1015,10 @@ body {
   border: 1px solid rgba(138,101,0,0.3);
 }
 [data-theme="light"] .sig.over {
-  background: rgba(0,107,52,0.15);
-  color: var(--neon-green);
+  background: rgba(192,16,48,0.12);
+  color: var(--neon-red);
   font-weight: 700;
-  border: 1px solid rgba(0,107,52,0.3);
+  border: 1px solid rgba(192,16,48,0.3);
 }
 /* —— 标签按钮增强 —— */
 [data-theme="light"] .sd-tag.green {
@@ -1515,8 +1519,8 @@ body {
 [data-theme="cyberpunk"] .app-header .sub { color: var(--muted); }
 [data-theme="cyberpunk"] .update-freq { color: var(--neon-cyan); }
 [data-theme="cyberpunk"] .live-dot {
-  background: var(--neon-green);
-  box-shadow: 0 0 8px var(--neon-green), 0 0 16px rgba(0,200,83,0.4);
+  background: var(--neon-red);
+  box-shadow: 0 0 8px var(--neon-red), 0 0 16px rgba(255,59,48,0.4);
 }
 [data-theme="cyberpunk"] .sec-title { color: var(--neon-cyan); }
 [data-theme="cyberpunk"] .sec-title::before {
@@ -1572,8 +1576,8 @@ body {
 [data-theme="ocean"] .app-header .sub { color: var(--muted); }
 [data-theme="ocean"] .update-freq { color: var(--neon-cyan); }
 [data-theme="ocean"] .live-dot {
-  background: var(--neon-green);
-  box-shadow: 0 0 8px var(--neon-green), 0 0 16px rgba(0,255,204,0.4);
+  background: var(--neon-red);
+  box-shadow: 0 0 8px var(--neon-red), 0 0 16px rgba(255,59,48,0.4);
 }
 [data-theme="ocean"] .sec-title { color: var(--neon-cyan); }
 [data-theme="ocean"] .sec-title::before {
@@ -2061,9 +2065,9 @@ body {
   display: inline-block; font-size: 0.5rem; font-weight: 700;
   padding: 1px 5px; border-radius: 2px; letter-spacing: 0.05em;
 }
-.sig.under { background: var(--neon-red-bg); color: var(--neon-red); text-shadow: var(--glow-red); }
+.sig.under { background: var(--neon-green-bg); color: var(--neon-green); text-shadow: var(--glow-green); }
 .sig.mid { background: var(--neon-yellow-bg); color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255,215,0,0.4); }
-.sig.over { background: var(--neon-green-bg); color: var(--neon-green); text-shadow: var(--glow-green); }
+.sig.over { background: var(--neon-red-bg); color: var(--neon-red); text-shadow: var(--glow-red); }
 
 /* ==================== 个股详情卡片（增强版） ==================== */
 .stock-detail {
@@ -3160,6 +3164,7 @@ body {
 .dash-card .d-tag.gray { background: rgba(74,85,104,0.15); color: var(--muted); }
 .dash-card .d-sub { font-size: 0.54rem; color: var(--muted); margin-top: 0.1rem; }
 .dash-card.hl-green { border-color: rgba(0,200,83,0.2); background: linear-gradient(135deg, rgba(0,200,83,0.04), var(--bg2)); }
+.dash-card.hl-red { border-color: rgba(255,59,48,0.2); background: linear-gradient(135deg, rgba(255,59,48,0.04), var(--bg2)); }
 .dash-card.hl-blue { border-color: rgba(0,229,255,0.2); background: linear-gradient(135deg, rgba(0,229,255,0.04), var(--bg2)); }
 
 /* 仓位建议进度条 */
@@ -3570,8 +3575,8 @@ body {
 
 /* 表格中风险信号单元格 */
 .rot-signal-sell {
-  color: var(--neon-red); font-weight: 700; font-size: 0.54rem;
-  text-shadow: 0 0 6px rgba(255,59,48,0.3);
+  color: var(--neon-green); font-weight: 700; font-size: 0.54rem;
+  text-shadow: 0 0 6px rgba(0,200,83,0.3);
 }
 .rot-signal-reduce {
   color: var(--neon-yellow); font-weight: 600; font-size: 0.54rem;
@@ -6081,6 +6086,10 @@ body {
   border-color: rgba(16,185,129,0.25) !important;
   background: linear-gradient(135deg, rgba(16,185,129,0.06), var(--glass-bg)) !important;
 }
+.dash-card.hl-red {
+  border-color: rgba(255,59,48,0.25) !important;
+  background: linear-gradient(135deg, rgba(255,59,48,0.06), var(--glass-bg)) !important;
+}
 .dash-card.hl-blue {
   border-color: rgba(59,130,246,0.25) !important;
   background: linear-gradient(135deg, rgba(59,130,246,0.06), var(--glass-bg)) !important;
@@ -6149,9 +6158,9 @@ body {
 .suggest-item:hover { background: rgba(59,130,246,0.08) !important; }
 
 /* 信号标签 */
-.sig.under { background: var(--neon-red-bg) !important; color: var(--neon-red) !important; text-shadow: none; }
+.sig.under { background: var(--neon-green-bg) !important; color: var(--neon-green) !important; text-shadow: none; }
 .sig.mid { background: var(--neon-yellow-bg) !important; color: var(--neon-yellow) !important; text-shadow: none; }
-.sig.over { background: var(--neon-green-bg) !important; color: var(--neon-green) !important; text-shadow: none; }
+.sig.over { background: var(--neon-red-bg) !important; color: var(--neon-red) !important; text-shadow: none; }
 
 /* 个股详情标签 */
 .sd-tag.green { background: var(--neon-green-bg) !important; color: var(--neon-green) !important; text-shadow: none; }
@@ -6323,8 +6332,8 @@ body {
 
 /* 实时圆点 */
 .live-dot {
-  background: var(--neon-green) !important;
-  box-shadow: 0 0 6px var(--neon-green) !important;
+  background: var(--neon-red) !important;
+  box-shadow: 0 0 6px var(--neon-red) !important;
 }
 
 /* 跑马灯/状态栏文字 */
@@ -6418,7 +6427,7 @@ body {
 }
 .live-dot {
   width: 7px !important; height: 7px !important;
-  box-shadow: 0 0 8px var(--neon-green), 0 0 16px rgba(16,185,129,0.4) !important;
+  box-shadow: 0 0 8px var(--neon-red), 0 0 16px rgba(255,59,48,0.4) !important;
 }
 .mode-toggle {
   border-radius: var(--radius-sm) !important;
@@ -8603,8 +8612,8 @@ html {
 .pa-kl-dot.down { background: #00C853; }
 .pa-kl-dot.ma { background: #00C8FF; }
 .pa-kl-dot.signal { background: #FFAE00; border-radius: 50%; }
-[data-theme="light"] .pa-kl-dot.up { background: #00C853; }
-[data-theme="light"] .pa-kl-dot.down { background: #FF3B30; }
+[data-theme="light"] .pa-kl-dot.up { background: #FF3B30; }
+[data-theme="light"] .pa-kl-dot.down { background: #00C853; }
 [data-theme="light"] .pa-kl-dot.ma { background: #58A6FF; }
 [data-theme="light"] .pa-kl-dot.signal { background: #FFAE00; }
 

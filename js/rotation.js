@@ -672,7 +672,7 @@ function renderRotationLine(containerId, lineData, lineType) {
       // 15日涨幅
       if (r.change15 !== null) {
         var cStr = (r.change15 >= 0 ? '+' : '') + r.change15.toFixed(1) + '%';
-        var cColor = r.change15 >= 0 ? '#00C853' : '#FF3B30';
+        var cColor = r.change15 >= 0 ? '#FF3B30' : '#00C853';
         chgHtml = '<span style="color:' + cColor + ';font-weight:600">' + cStr + '</span>';
       } else { chgHtml = '—'; }
 
@@ -693,7 +693,7 @@ function renderRotationLine(containerId, lineData, lineType) {
       } else if (r.signalCls === 'reduce') {
         sigHtml = '<span class="rot-signal-reduce">' + r.signal + '</span>';
       } else if (r.signalCls === 'buy') {
-        sigHtml = '<span style="color:var(--neon-green);font-size:0.52rem">' + r.signal + '</span>';
+        sigHtml = '<span style="color:var(--neon-red);font-size:0.52rem">' + r.signal + '</span>';
       } else if (r.signalCls === 'hold') {
         sigHtml = '<span style="color:var(--neon-yellow);font-size:0.52rem">' + r.signal + '</span>';
       } else {
@@ -1086,7 +1086,7 @@ function checkRotationSignalChange(attackData, defenseData) {
           '<span class="line-tag ' + lineCls + '">' + lineLabel + '</span>' +
           '<span class="old-pick">' + (ch.oldPick || '—') + '</span>' +
           '<span class="arrow">→</span>' +
-          '<span class="new-pick" style="color:var(--neon-red)">全线破位·转持现金</span>' +
+          '<span class="new-pick" style="color:var(--neon-green)">全线破位·转持现金</span>' +
         '</div>';
       } else if (ch.type === 'recover') {
         html += '<div class="rot-signal-change-item">' +
@@ -1094,7 +1094,7 @@ function checkRotationSignalChange(attackData, defenseData) {
           '<span class="old-pick">全线破位</span>' +
           '<span class="arrow">→</span>' +
           '<span class="new-pick">' + ch.newPick + '</span>' +
-          '<span style="color:var(--neon-green);font-size:0.52rem;margin-left:0.2rem">信号恢复·可上车</span>' +
+          '<span style="color:var(--neon-red);font-size:0.52rem;margin-left:0.2rem">信号恢复·可上车</span>' +
         '</div>';
       }
     });
@@ -1439,7 +1439,7 @@ function renderMomentumRotation(containerId, data) {
       } else if (r.signalCls === 'reduce') {
         sigHtml = '<span class="rot-signal-reduce">' + r.signal + '</span>';
       } else if (r.signalCls === 'buy') {
-        sigHtml = '<span style="color:var(--neon-green);font-size:0.52rem">' + r.signal + '</span>';
+        sigHtml = '<span style="color:var(--neon-red);font-size:0.52rem">' + r.signal + '</span>';
       } else if (r.signalCls === 'hold') {
         sigHtml = '<span style="color:var(--neon-yellow);font-size:0.52rem">' + r.signal + '</span>';
       } else {
@@ -1840,7 +1840,7 @@ function renderIndustrySignals(results) {
   sorted.forEach(function(r) {
     var info = getIndustryZone(r.score);
     var chgStr = r.change15 !== null ? ((r.change15 >= 0 ? '+' : '') + r.change15.toFixed(1) + '%') : '—';
-    var chgColor = r.change15 !== null && r.change15 >= 0 ? 'var(--neon-green, #00C853)' : 'var(--neon-red, #FF3B30)';
+    var chgColor = r.change15 !== null && r.change15 >= 0 ? 'var(--neon-red, #FF3B30)' : 'var(--neon-green, #00C853)';
     var errStyle = r.error ? 'opacity:0.5' : '';
     html += '<div class="sig-thermo-row" style="' + errStyle + '" title="' + getIndustryNote(r.name, r.score, r.change15, r.aboveMA60) + '">' +
       '<span class="st-name">' + r.name + '</span>' +
@@ -2694,7 +2694,7 @@ function runAnalysis(forceRefresh) {
         updateHeaderTime(false);
       }
     }),
-    fetchTreasuryYield()
+    fetchTreasuryYield().catch(function(err) { console.warn('[国债] Promise.all内捕获失败，使用默认值', err); })
   ]).then(function() {
     // 阶段1完成：渲染核心图表和解读
     drawHeatmap();

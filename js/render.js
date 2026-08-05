@@ -780,7 +780,7 @@ function _renderLeaderHTML(realtimeData) {
       pct = calcDynamicPct(sector.pct10, sector.pe, pe, sector.peMin, sector.peMax);
     }
     var valTag = pct < 20 ? '低估' : pct < 40 ? '偏低' : pct < 60 ? '适中' : pct < 80 ? '偏高' : '高估';
-    var valColor = pct < 30 ? 'var(--neon-green)' : pct < 70 ? 'var(--neon-yellow)' : 'var(--neon-red)';
+    var valColor = pct < 30 ? 'var(--neon-red)' : pct < 70 ? 'var(--neon-yellow)' : 'var(--neon-green)';
 
     html += '<div class="leader-row">';
     // 行业名+PE
@@ -1791,22 +1791,22 @@ function renderDashboard(realtimeData) {
   var grahamTag = grahamCard.querySelector('.d-tag');
   animateOdometer(grahamVal, graham.toFixed(2));
   if (graham >= 4.5) {
-    grahamVal.className = 'd-val t-green';
+    grahamVal.className = 'd-val t-red';
     grahamTag.textContent = '黄金买入区';
     grahamTag.className = 'd-tag green';
-    grahamCard.className = 'dash-card hl-green';
+    grahamCard.className = 'dash-card hl-red';
   } else if (graham >= 3.5) {
-    grahamVal.className = 'd-val t-green';
+    grahamVal.className = 'd-val t-red';
     grahamTag.textContent = '具备投资价值';
     grahamTag.className = 'd-tag green';
-    grahamCard.className = 'dash-card hl-green';
+    grahamCard.className = 'dash-card hl-red';
   } else if (graham >= 2.5) {
     grahamVal.className = 'd-val t-yellow';
     grahamTag.textContent = '适中区间';
     grahamTag.className = 'd-tag yellow';
     grahamCard.className = 'dash-card';
   } else {
-    grahamVal.className = 'd-val t-red';
+    grahamVal.className = 'd-val t-green';
     grahamTag.textContent = '风险偏高';
     grahamTag.className = 'd-tag red';
     grahamCard.className = 'dash-card';
@@ -1819,38 +1819,39 @@ function renderDashboard(realtimeData) {
   animateOdometer(sexyVal, sexy.toFixed(2));
   // 吸引力指数阈值校准（等权超额收益率口径）：
   // 低利率环境下sexy天然偏高，需提高阈值
-  // >3 绝对低位（绿），2~3 熊市低位（绿），1~2 适中（黄），0~1 偏高（橙），<0 泡沫（红）
+  // >3 绝对低位（红），2~3 熊市低位（红），1~2 适中（黄），0~1 偏高（橙），<0 泡沫（绿）
   if (sexy >= 2) {
-    sexyVal.style.color = '#00C853';
-    sexyVal.style.textShadow = '0 0 8px rgba(0,200,83,0.4)';
-    sexyCard.className = 'dash-card hl-blue';
+    sexyVal.style.color = '#FF3B30';
+    sexyVal.style.textShadow = '0 0 8px rgba(255,59,48,0.4)';
+    sexyCard.className = 'dash-card hl-red';
   } else if (sexy >= 1) {
     sexyVal.style.color = '#FFD700';
     sexyVal.style.textShadow = '0 0 8px rgba(255,215,0,0.4)';
     sexyCard.className = 'dash-card';
   } else {
-    sexyVal.style.color = '#FF3B30';
-    sexyVal.style.textShadow = '0 0 8px rgba(255,59,48,0.4)';
+    sexyVal.style.color = '#00C853';
+    sexyVal.style.textShadow = '0 0 8px rgba(0,200,83,0.4)';
     sexyCard.className = 'dash-card';
   }
   sexySub.textContent = (sexy >= 3 ? '绝对低位' : sexy >= 2 ? '熊市低位' : sexy >= 1 ? '适中区间' : sexy >= 0 ? '偏高区间' : '泡沫预警') + ' · 超额收益率·激进口径';
 
   // === 仓位建议：吸引力指数映射股票仓位百分比 ===
-  // 校准：低利率环境sexy偏高，映射区间上调
-  // sexy ≤ 0 → 0%股（全仓债券）
-  // 0 < sexy < 2.0 → stockPos% = sexy / 2.0 × 100（如1.5→75%）
-  // 2.0 ≤ sexy < 2.5 → 100%（满仓股票）
-  // sexy ≥ 2.5 → 超配
+  // 改用沪深300保守口径 sexyHS300 = graham - 1（与第一层"沪深300吸引力"一致）
+  // sexyHS300 ≤ 0 → 0%股（全仓债券）
+  // 0 < sexyHS300 < 1.5 → stockPos% = sexyHS300 / 1.5 × 100
+  // 1.5 ≤ sexyHS300 < 2.5 → 100%（满仓股票）
+  // sexyHS300 ≥ 2.5 → 超配
+  var sexyHS300 = graham - 1;
   var posBar = document.getElementById('dashSexyPos');
   if (posBar) {
     var stockPos, posLabel, isOverweight;
-    if (sexy <= 0) {
+    if (sexyHS300 <= 0) {
       stockPos = 0; isOverweight = false;
       posLabel = '仓位建议 0%股 · 全仓债券';
-    } else if (sexy < 2.0) {
-      stockPos = Math.round(sexy / 2.0 * 100); isOverweight = false;
+    } else if (sexyHS300 < 1.5) {
+      stockPos = Math.round(sexyHS300 / 1.5 * 100); isOverweight = false;
       posLabel = '仓位建议 ' + stockPos + '%股 / ' + (100 - stockPos) + '%债';
-    } else if (sexy < 2.5) {
+    } else if (sexyHS300 < 2.5) {
       stockPos = 100; isOverweight = false;
       posLabel = '仓位建议 100% · 满仓股票';
     } else {
@@ -1872,17 +1873,17 @@ function renderDashboard(realtimeData) {
   var spreadTag = spreadCard.querySelector('.d-tag');
   animateOdometer(spreadVal, spread.toFixed(2) + '%');
   if (spread >= 4) {
-    spreadVal.className = 'd-val t-green';
+    spreadVal.className = 'd-val t-red';
     spreadTag.textContent = '股票性价比高';
     spreadTag.className = 'd-tag green';
-    spreadCard.className = 'dash-card hl-green';
+    spreadCard.className = 'dash-card hl-red';
   } else if (spread >= 2) {
     spreadVal.className = 'd-val t-yellow';
     spreadTag.textContent = '股票略优';
     spreadTag.className = 'd-tag yellow';
     spreadCard.className = 'dash-card';
   } else {
-    spreadVal.className = 'd-val t-red';
+    spreadVal.className = 'd-val t-green';
     spreadTag.textContent = '债券更优';
     spreadTag.className = 'd-tag red';
     spreadCard.className = 'dash-card';
@@ -1897,17 +1898,17 @@ function renderDashboard(realtimeData) {
   var pct = hs300 ? calcDynamicPct(hs300.pct10, hs300.pe, peHS300, hs300.peMin, hs300.peMax) : 37;
   var pctRounded = pct;
   if (pct < 30) {
-    peVal.className = 'd-val t-green';
+    peVal.className = 'd-val t-red';
     peTag.textContent = '低估区间 · 分位' + pctRounded + '%';
     peTag.className = 'd-tag green';
-    peCard.className = 'dash-card hl-green';
+    peCard.className = 'dash-card hl-red';
   } else if (pct < 70) {
     peVal.className = 'd-val t-yellow';
     peTag.textContent = '适中区间 · 分位' + pctRounded + '%';
     peTag.className = 'd-tag yellow';
     peCard.className = 'dash-card';
   } else {
-    peVal.className = 'd-val t-red';
+    peVal.className = 'd-val t-green';
     peTag.textContent = '偏高区间 · 分位' + pctRounded + '%';
     peTag.className = 'd-tag red';
     peCard.className = 'dash-card';
@@ -2033,13 +2034,13 @@ function renderOverview(realtimeData) {
   var aiEl = document.getElementById('tier1AttractIdx');
   if (aiEl) {
     animateOdometer(aiEl, sexy.toFixed(2));
-    aiEl.style.color = sexy >= 2.0 ? '#00C853' : sexy >= 0.8 ? '#FFD700' : '#FF3B30';
+    aiEl.style.color = sexy >= 2.0 ? '#FF3B30' : sexy >= 0.8 ? '#FFD700' : '#00C853';
     aiEl.style.textShadow = '0 0 8px ' + aiEl.style.color + '55';
   }
-  // 仓位建议（沪深300保守口径）：sexy映射股票仓位，阈值比等权口径更高
+  // 仓位建议（沪深300保守口径）：sexy映射股票仓位，与仪表盘阈值统一（1.5/2.5）
   var stockPos, posText;
   if (sexy <= 0) { stockPos = 0; posText = '0%股·全仓债券'; }
-  else if (sexy < 2.0) { stockPos = Math.round(sexy / 2.0 * 100); posText = stockPos + '%股/' + (100-stockPos) + '%债'; }
+  else if (sexy < 1.5) { stockPos = Math.round(sexy / 1.5 * 100); posText = stockPos + '%股/' + (100-stockPos) + '%债'; }
   else if (sexy < 2.5) { stockPos = 100; posText = '100%·满仓'; }
   else { stockPos = 100; posText = '超配'; }
   var aiSubEl = document.getElementById('tier1AttractSub');
@@ -2071,7 +2072,7 @@ function renderOverview(realtimeData) {
     animateOdometer(peEl, peAllA.toFixed(1));
     // 动态计算全市场PE分位，用于颜色判定（统一精度工具）
     var csiAllPct = csiAll ? calcDynamicPct(csiAll.pct10, csiAll.pe, peAllA, csiAll.peMin, csiAll.peMax) : 42;
-    peEl.style.color = csiAllPct < 30 ? '#00C853' : csiAllPct < 70 ? '#FFD700' : '#FF3B30';
+    peEl.style.color = csiAllPct < 30 ? '#FF3B30' : csiAllPct < 70 ? '#FFD700' : '#00C853';
   }
   var dyEl = document.getElementById('tier1DivYield');
   if (dyEl) dyEl.textContent = '股息率 ' + dyAllA.toFixed(2) + '%';
@@ -2112,8 +2113,8 @@ function updateHeaderTime(success) {
   var dot = document.getElementById('liveDot');
   if (dot) {
     if (success) {
-      dot.style.background = '#00C853';
-      dot.style.boxShadow = '0 0 6px #00C853, 0 0 12px rgba(0,200,83,0.4)';
+      dot.style.background = '#FF3B30';
+      dot.style.boxShadow = '0 0 6px #FF3B30, 0 0 12px rgba(255,59,48,0.4)';
     } else {
       dot.style.background = '#00E5FF';
       dot.style.boxShadow = '0 0 6px #00E5FF, 0 0 12px rgba(0,229,255,0.3)';
