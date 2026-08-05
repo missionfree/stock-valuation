@@ -1389,16 +1389,48 @@ function fetchIndexMomentum() {
  * 综合获取市场情绪数据（带缓存）
  * 缓存策略：与行情一致，当天10:30后缓存有效
  */
-var SENTIMENT_CACHE_KEY = 'sentiment_cache_v7';
+var SENTIMENT_CACHE_KEY = 'sentiment_cache_v8';
 
 /**
  * 获取近20日全市场成交量（用于量能动态对比）
  * 数据源：腾讯日K线API（CORS），取上证+深证成交量
  * 返回今日成交量、昨日成交量、近20日平均成交量（单位：手）
  */
+
+/**
+ * 判断当前市场时间状态
+ * @returns {Object} { isTrading, isAfterClose, isBeforeOpen, elapsedMin, totalMin, projectionFactor }
+ *   projectionFactor: 盘中量能折算系数（elapsedMin→240min的放大倍数），非盘中返回1
+ */
+function getMarketTimeInfo() {
+  var now = new Date();
+  var day = now.getDay();
+  var isWeekday = day >= 1 && day <= 5;
+  var minutes = now.getHours() * 60 + now.getMinutes();
+  // 交易时段：9:30-11:30 (120min) + 13:00-15:00 (120min) = 240min
+  var isTrading = isWeekday && (
+    (minutes >= 570 && minutes < 690) ||  // 9:30-11:30
+    (minutes >= 780 && minutes < 900)     // 13:00-15:00
+  );
+  var isAfterClose = isWeekday && minutes >= 900; // 15:00后
+  var isBeforeOpen = !isAfterClose && (day === 0 || day === 6 || minutes < 570);
+  // 盘中已过交易分钟数（用于折算全日预估量能）
+  var elapsedMin = 0;
+  if (isTrading) {
+    if (minutes >= 570 && minutes < 690) {
+      elapsedMin = minutes - 570; // 上午
+    } else if (minutes >= 780 && minutes < 900) {
+      elapsedMin = 120 + (minutes - 780); // 下午（含上午120分钟）
+    }
+  }
+  var totalMin = 240;
+  // 折算系数：将盘中部分成交量放大为全日预估量
+  var projectionFactor = (isTrading && elapsedMin > 10) ? totalMin / elapsedMin : 1;
+  return { isTrading: isTrading, isAfterClose: isAfterClose, isBeforeOpen: isBeforeOpen, elapsedMin: elapsedMin, totalMin: totalMin, projectionFactor: projectionFactor };
+}
+
 function fetchPrevDayVolume() {
   var indices = ['sh000001', 'sz399001'];
-
   function fetchIndexVolume(code) {
     // 拉取25个交易日，确保有足够数据计算20日均量
     var url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' + code + ',day,,,25,qfq';
@@ -1411,8 +1443,23 @@ function fetchPrevDayVolume() {
         if (!klines || klines.length < 2) return null;
         // 腾讯K线格式：[日期, 开盘, 收盘, 最高, 最低, 成交量(手)]
         var vols = klines.map(function(k) { return parseFloat(k[5]) || 0; });
+        var dates = klines.map(function(k) { return k[0]; });
+
+        // 判断最新K线是否为今日，以及市场时间状态
+        var mktInfo = getMarketTimeInfo();
+        var now = new Date();
+        var todayStr = now.getFullYear() + '-' +
+          String(now.getMonth() + 1).padStart(2, '0') + '-' +
+          String(now.getDate()).padStart(2, '0');
+        var latestIsToday = dates[dates.length - 1] === todayStr;
+
+        // 休市前（含周末/节假日）：最新K线为今日但有部分/零星成交量，需跳过使用前一完整交易日
+        if (latestIsToday && mktInfo.isBeforeOpen) {
+          vols = vols.slice(0, -1);
+        }
+
         var todayVol = vols[vols.length - 1];
-        var prevVol = vols[vols.length - 2];
+        var prevVol = vols[vols.length - 2] || vols[vols.length - 1];
         // 近20日平均成交量（不含今日）
         var histVols = vols.slice(Math.max(0, vols.length - 21), vols.length - 1);
         var avg20 = histVols.length > 0
@@ -1525,11 +1572,14 @@ function fetchMarketSentiment(forceRefresh) {
     var estimatedPrevAmount = 0;
     var estimatedAvg20Amount = 0;
     if (volCompare && volCompare.prevVolume > 0 && volCompare.todayVolume > 0 && breadth.totalAmount > 0) {
-      var volRatio = volCompare.todayVolume / volCompare.prevVolume;
+      // 盘中量能折算：将部分成交量放大为全日预估量，避免盘中volRatio偏低
+      var mktInfo = getMarketTimeInfo();
+      var projectedTodayVol = volCompare.todayVolume * mktInfo.projectionFactor;
+      var volRatio = projectedTodayVol / volCompare.prevVolume;
       estimatedPrevAmount = breadth.totalAmount / volRatio;
       // 估算近20日平均成交额
       if (volCompare.avg20Volume > 0) {
-        var avg20Ratio = volCompare.todayVolume / volCompare.avg20Volume;
+        var avg20Ratio = projectedTodayVol / volCompare.avg20Volume;
         estimatedAvg20Amount = breadth.totalAmount / avg20Ratio;
       }
     }
