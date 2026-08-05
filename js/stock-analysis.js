@@ -6008,7 +6008,13 @@ function renderStockResult(stockData, finData, flowData, loading) {
     }
   }
 
-  // 7. 添加组合按钮
+  // 7. 业绩报告区块（仅A股非ETF个股，排除ST/*ST）
+  if (!d.isETF && isAShareQualified(d)) {
+    // 初步渲染（不含异步数据），后续异步加载机构持股+R007
+    html += renderEarningsReport(d, finData, flowData, null);
+  }
+
+  // 8. 添加组合按钮
   html += '<button class="sd-add-btn" onclick="addCurrentToPortfolio()">+ 添加到我的估值组合</button>';
 
   html += '</div>'; // .stock-detail
@@ -6043,6 +6049,11 @@ function renderStockResult(stockData, finData, flowData, loading) {
   // 如果K线图数据已加载，重新渲染（因为 renderStockResult 会覆盖整个区域）
   if (_currentKlineData) {
     renderKlineChart(_currentKlineData.klData, _currentKlineData.stockName, _currentKlineData.realtimePrice);
+  }
+
+  // 异步加载业绩报告附加数据（机构持股+R007利率）
+  if (!d.isETF && isAShareQualified(d)) {
+    loadEarningsReportExtras(d, finData, flowData);
   }
 
   // 穿透式特效已在 triggerSearchTransition 中完成视觉切换，无需额外滚动

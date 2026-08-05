@@ -8890,3 +8890,358 @@ html {
   .pa-radar-svg { width: 100px; height: 100px; }
   .pa-gauge-section, .pa-right-section { flex: 1; }
 }
+
+/* ============================================================
+   个股业绩报告模块样式
+   ============================================================ */
+.earnings-report {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg3);
+  border: 0.5px solid var(--rule);
+  border-radius: 4px;
+}
+
+.er-header {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+.er-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.er-window {
+  font-size: 0.48rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 2px;
+  background: var(--bg2);
+  color: var(--muted);
+}
+.er-window.active {
+  background: var(--neon-cyan-bg);
+  color: var(--neon-cyan);
+  border: 0.5px solid var(--neon-cyan);
+}
+.er-settings-btn {
+  margin-left: auto;
+  background: none;
+  border: 0.5px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.55rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+.er-settings-btn:hover {
+  background: var(--neon-cyan-bg);
+  color: var(--neon-cyan);
+}
+
+/* 风险预警卡片 */
+.er-alert {
+  padding: 0.4rem;
+  margin: 0.3rem 0;
+  border-radius: 3px;
+  border-left: 3px solid;
+}
+.er-alert-red {
+  background: var(--neon-red-bg);
+  border-left-color: var(--neon-red);
+}
+.er-alert-yellow {
+  background: var(--neon-yellow-bg);
+  border-left-color: var(--neon-yellow);
+}
+.er-alert-green {
+  background: var(--neon-green-bg);
+  border-left-color: var(--neon-green);
+}
+.er-alert-cyan {
+  background: var(--neon-cyan-bg);
+  border-left-color: var(--neon-cyan);
+}
+
+.er-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.2rem;
+}
+.er-alert-icon {
+  font-size: 0.6rem;
+}
+.er-alert-title {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1;
+}
+.er-alert-level {
+  font-size: 0.45rem;
+  padding: 0.05rem 0.25rem;
+  border-radius: 2px;
+  font-weight: 600;
+}
+.er-alert-level.high {
+  background: var(--neon-red);
+  color: #fff;
+}
+.er-alert-level.medium {
+  background: var(--neon-yellow);
+  color: #000;
+}
+.er-alert-level.positive {
+  background: var(--neon-green);
+  color: #fff;
+}
+.er-alert-conditions {
+  font-size: 0.5rem;
+  color: var(--ink);
+  opacity: 0.9;
+  margin-bottom: 0.15rem;
+  line-height: 1.5;
+}
+.er-alert-action {
+  font-size: 0.52rem;
+  color: var(--ink);
+  font-weight: 600;
+  padding: 0.15rem 0;
+  border-top: 0.5px solid var(--rule);
+  margin-top: 0.15rem;
+}
+.er-alert-meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.15rem;
+}
+.er-meta-item {
+  font-size: 0.45rem;
+  color: var(--muted);
+}
+.er-meta-item b {
+  color: var(--ink);
+}
+.er-alert-logic {
+  font-size: 0.42rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+  font-family: var(--font-mono, monospace);
+  opacity: 0.7;
+}
+
+/* 财务数据网格 */
+.er-data-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 0.5px solid var(--rule);
+}
+.er-data-item {
+  background: var(--bg2);
+  padding: 0.25rem;
+  border-radius: 2px;
+  text-align: center;
+}
+.er-data-lbl {
+  display: block;
+  font-size: 0.42rem;
+  color: var(--muted);
+  margin-bottom: 0.1rem;
+}
+.er-data-val {
+  display: block;
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: var(--ink);
+  font-family: var(--font-mono, monospace);
+}
+
+/* 机构持仓 & R007 */
+.er-holdings, .er-r007 {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.5rem;
+  margin-top: 0.2rem;
+  padding: 0.15rem 0;
+}
+.er-holdings-lbl, .er-r007-lbl {
+  color: var(--muted);
+}
+.er-holdings-val, .er-r007-val {
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+}
+.er-r007-warn {
+  font-size: 0.45rem;
+  color: var(--neon-red);
+  font-weight: 600;
+}
+
+/* 导出按钮 */
+.er-actions {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 0.5px solid var(--rule);
+}
+.er-export-btn {
+  flex: 1;
+  padding: 0.3rem;
+  font-size: 0.5rem;
+  background: var(--neon-cyan-bg);
+  border: 0.5px solid var(--neon-cyan);
+  border-radius: 3px;
+  color: var(--neon-cyan);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.er-export-btn:hover {
+  background: var(--neon-cyan);
+  color: #000;
+}
+.er-export-btn:active {
+  transform: scale(0.97);
+}
+
+/* 免责声明 */
+.er-disclaimer {
+  font-size: 0.42rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+/* 设置面板 */
+.er-settings-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  display: none;
+}
+.er-settings-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+}
+.er-settings-content {
+  position: relative;
+  margin: 3vh auto;
+  width: 90%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg2);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 6px;
+  box-shadow: 0 0 30px rgba(0, 200, 255, 0.2);
+}
+.er-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem;
+  border-bottom: 0.5px solid var(--rule);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.er-settings-close {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+.er-settings-body {
+  padding: 0.5rem 0.6rem;
+}
+.er-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 0.5px solid var(--rule);
+}
+.er-setting-row label {
+  font-size: 0.55rem;
+  color: var(--ink);
+}
+.er-setting-row input {
+  width: 80px;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.55rem;
+  text-align: right;
+  background: var(--bg3);
+  border: 0.5px solid var(--rule);
+  border-radius: 3px;
+  color: var(--ink);
+  font-family: var(--font-mono, monospace);
+}
+.er-setting-row input:focus {
+  outline: none;
+  border-color: var(--neon-cyan);
+}
+.er-settings-footer {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  border-top: 0.5px solid var(--rule);
+}
+.er-settings-reset, .er-settings-save {
+  flex: 1;
+  padding: 0.4rem;
+  font-size: 0.55rem;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 0.5px solid;
+}
+.er-settings-reset {
+  background: var(--bg3);
+  border-color: var(--muted);
+  color: var(--muted);
+}
+.er-settings-save {
+  background: var(--neon-cyan-bg);
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  font-weight: 600;
+}
+.er-settings-save:hover {
+  background: var(--neon-cyan);
+  color: #000;
+}
+
+/* 响应式 */
+@media (max-width: 480px) {
+  .er-data-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .er-alert-meta {
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+}
+@media (max-width: 360px) {
+  .er-data-grid {
+    grid-template-columns: 1fr;
+  }
+  .er-actions {
+    flex-direction: column;
+  }
+}
