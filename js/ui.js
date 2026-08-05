@@ -1660,12 +1660,12 @@ function calcPortfolioTemperature() {
  * 根据温度返回标签和颜色
  */
 function getTempLabel(temp) {
-  if (temp < 25) return { label: '冰点', color: '#00FFC6' };
+  if (temp < 25) return { label: '冰点', color: '#00C853' };
   if (temp < 40) return { label: '偏冷', color: '#00C8FF' };
   if (temp < 55) return { label: '温和', color: '#7FD858' };
   if (temp < 70) return { label: '偏热', color: '#FFAE00' };
   if (temp < 85) return { label: '过热', color: '#FF6B6B' };
-  return { label: '极热', color: '#FF3366' };
+  return { label: '极热', color: '#FF3B30' };
 }
 
 /**
@@ -1854,9 +1854,9 @@ function renderPortfolioAnalysis() {
     if (data.unknownCount > 0) html += '<div class="pa-structure-seg unknown" style="width:' + unknownPct + '%" title="未知 ' + data.unknownCount + '只"></div>';
     html += '</div>';
     html += '<div class="pa-structure-legend">';
-    html += '<span class="pa-legend-item"><span class="pa-legend-dot" style="background:#00FFC6"></span>低位 ' + data.lowCount + '只</span>';
+    html += '<span class="pa-legend-item"><span class="pa-legend-dot" style="background:#00C853"></span>低位 ' + data.lowCount + '只</span>';
     html += '<span class="pa-legend-item"><span class="pa-legend-dot" style="background:#FFAE00"></span>中位 ' + data.midCount + '只</span>';
-    html += '<span class="pa-legend-item"><span class="pa-legend-dot" style="background:#FF3366"></span>高位 ' + data.highCount + '只</span>';
+    html += '<span class="pa-legend-item"><span class="pa-legend-dot" style="background:#FF3B30"></span>高位 ' + data.highCount + '只</span>';
     if (data.unknownCount > 0) html += '<span class="pa-legend-item"><span class="pa-legend-dot" style="background:var(--muted)"></span>待分析 ' + data.unknownCount + '只</span>';
     html += '</div>';
     html += '</div>';
@@ -1986,7 +1986,7 @@ function renderPortfolio() {
           var m = sig.metrics;
           var parts = [];
           if (m.position) {
-            var posColor = m.position === '低位' ? 'rgba(0,229,136,0.7)' : (m.position === '高位' ? 'rgba(255,71,87,0.7)' : 'rgba(128,128,128,0.6)');
+            var posColor = m.position === '低位' ? 'rgba(0,200,83,0.7)' : (m.position === '高位' ? 'rgba(255,59,48,0.7)' : 'rgba(158,158,158,0.6)');
             parts.push('<span style="color:' + posColor + ';font-weight:600">' + m.position + '</span>');
           }
           if (m.pe) parts.push('<span class="metric-pe">PE ' + m.pe + '</span>');

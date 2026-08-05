@@ -1821,16 +1821,16 @@ function renderDashboard(realtimeData) {
   // 低利率环境下sexy天然偏高，需提高阈值
   // >3 绝对低位（绿），2~3 熊市低位（绿），1~2 适中（黄），0~1 偏高（橙），<0 泡沫（红）
   if (sexy >= 2) {
-    sexyVal.style.color = '#00FF88';
-    sexyVal.style.textShadow = '0 0 8px rgba(0,255,136,0.4)';
+    sexyVal.style.color = '#00C853';
+    sexyVal.style.textShadow = '0 0 8px rgba(0,200,83,0.4)';
     sexyCard.className = 'dash-card hl-blue';
   } else if (sexy >= 1) {
     sexyVal.style.color = '#FFD700';
     sexyVal.style.textShadow = '0 0 8px rgba(255,215,0,0.4)';
     sexyCard.className = 'dash-card';
   } else {
-    sexyVal.style.color = '#FF3366';
-    sexyVal.style.textShadow = '0 0 8px rgba(255,51,102,0.4)';
+    sexyVal.style.color = '#FF3B30';
+    sexyVal.style.textShadow = '0 0 8px rgba(255,59,48,0.4)';
     sexyCard.className = 'dash-card';
   }
   sexySub.textContent = (sexy >= 3 ? '绝对低位' : sexy >= 2 ? '熊市低位' : sexy >= 1 ? '适中区间' : sexy >= 0 ? '偏高区间' : '泡沫预警') + ' · 超额收益率·激进口径';
@@ -2033,7 +2033,7 @@ function renderOverview(realtimeData) {
   var aiEl = document.getElementById('tier1AttractIdx');
   if (aiEl) {
     animateOdometer(aiEl, sexy.toFixed(2));
-    aiEl.style.color = sexy >= 2.0 ? '#00FF88' : sexy >= 0.8 ? '#FFD700' : '#FF3366';
+    aiEl.style.color = sexy >= 2.0 ? '#00C853' : sexy >= 0.8 ? '#FFD700' : '#FF3B30';
     aiEl.style.textShadow = '0 0 8px ' + aiEl.style.color + '55';
   }
   // 仓位建议（沪深300保守口径）：sexy映射股票仓位，阈值比等权口径更高
@@ -2071,7 +2071,7 @@ function renderOverview(realtimeData) {
     animateOdometer(peEl, peAllA.toFixed(1));
     // 动态计算全市场PE分位，用于颜色判定（统一精度工具）
     var csiAllPct = csiAll ? calcDynamicPct(csiAll.pct10, csiAll.pe, peAllA, csiAll.peMin, csiAll.peMax) : 42;
-    peEl.style.color = csiAllPct < 30 ? '#00FF88' : csiAllPct < 70 ? '#FFD700' : '#FF3366';
+    peEl.style.color = csiAllPct < 30 ? '#00C853' : csiAllPct < 70 ? '#FFD700' : '#FF3B30';
   }
   var dyEl = document.getElementById('tier1DivYield');
   if (dyEl) dyEl.textContent = '股息率 ' + dyAllA.toFixed(2) + '%';
@@ -2112,8 +2112,8 @@ function updateHeaderTime(success) {
   var dot = document.getElementById('liveDot');
   if (dot) {
     if (success) {
-      dot.style.background = '#00FF88';
-      dot.style.boxShadow = '0 0 6px #00FF88, 0 0 12px rgba(0,255,136,0.4)';
+      dot.style.background = '#00C853';
+      dot.style.boxShadow = '0 0 6px #00C853, 0 0 12px rgba(0,200,83,0.4)';
     } else {
       dot.style.background = '#00E5FF';
       dot.style.boxShadow = '0 0 6px #00E5FF, 0 0 12px rgba(0,229,255,0.3)';
@@ -2136,6 +2136,9 @@ var _naFilter = 'all';
 var _naFactors = [];
 // 全局存储新闻数据
 var _naNewsData = [];
+// 新闻数据加载错误状态
+var _naErrorState = null; // null=正常, string=错误信息
+var _naLastErrorTime = null; // 最后一次错误时间
 
 /* ============================================================
    消息面新闻数据：实时从东方财富7x24快讯API获取
@@ -2458,7 +2461,23 @@ function startNewsAutoRefresh() {
   _newsRefreshTimer = Perf.setInterval(function() {
     if (document.hidden) return;
     fetchLatestNews(true).then(function(news) {
+      // 成功获取数据，清除错误状态
+      _naErrorState = null;
+      _naLastErrorTime = null;
       updateNewsData(news);
+    }).catch(function(err) {
+      // 自动刷新失败，设置错误状态但不打断用户
+      var errMsg = '网络请求失败';
+      if (err && err.message) {
+        if (err.message.indexOf('超时') > -1) {
+          errMsg = '请求超时，网络连接较慢或数据源不可达';
+        } else {
+          errMsg = err.message;
+        }
+      }
+      _naErrorState = errMsg;
+      _naLastErrorTime = new Date();
+      if (__DEBUG__) console.log('[新闻自动刷新] 失败:', errMsg);
     });
   }, NEWS_CACHE_TTL);
   if (__DEBUG__) console.log('[新闻刷新] 已启动，间隔15分钟');
@@ -2537,7 +2556,16 @@ function renderNewsAnalysis() {
    // 更新数据来源标签
    var sourceEl = document.getElementById('naDataSource');
    if (sourceEl) {
-     sourceEl.textContent = _newsDataSource || (_naNewsData.length > 0 ? '缓存数据' : '加载中...');
+     if (_naErrorState && _naNewsData.length === 0) {
+       sourceEl.textContent = '⚠️ 加载失败';
+       sourceEl.style.color = 'var(--neon-red)';
+     } else if (_naErrorState && _naNewsData.length > 0) {
+       sourceEl.textContent = '⚠️ 刷新失败·显示缓存';
+       sourceEl.style.color = 'var(--neon-yellow)';
+     } else {
+       sourceEl.textContent = _newsDataSource || (_naNewsData.length > 0 ? '缓存数据' : '加载中...');
+       sourceEl.style.color = '';
+     }
    }
 
    // 根据筛选条件过滤所有项目
@@ -2549,7 +2577,16 @@ function renderNewsAnalysis() {
    // 渲染消息卡片
    var html = '';
    if (filtered.length === 0) {
-     if (_naNewsData.length === 0) {
+     if (_naErrorState) {
+       // 数据加载失败，显示明确错误提示
+       var errTimeStr = _naLastErrorTime ? _naLastErrorTime.toLocaleTimeString('zh-CN') : '';
+       html = '<div class="na-error">' +
+         '<span class="na-error-icon">⚠️</span>' +
+         '<strong>快讯数据加载失败</strong>' +
+         '<span class="na-error-detail">' + _naErrorState + (errTimeStr ? '（' + errTimeStr + '）' : '') + '</span>' +
+         '<span class="na-error-retry" onclick="refreshNewsAnalysis()">点击重试</span>' +
+         '</div>';
+     } else if (_naNewsData.length === 0) {
        html = '<div class="na-empty">正在获取实时快讯...</div>';
      } else {
        html = '<div class="na-empty">暂无相关因素</div>';
@@ -3032,18 +3069,49 @@ function refreshNewsAnalysis() {
 
   // 强制刷新：忽略缓存，直接请求API
   fetchLatestNews(true).then(function(news) {
+    // 成功获取数据，清除错误状态
+    _naErrorState = null;
+    _naLastErrorTime = null;
+    
     if (news && news.length > 0) {
       updateNewsData(news);
     } else {
-      // API返回空数据，仍然渲染已有数据+市场分析
+      // API返回空数据
+      if (_naNewsData.length === 0) {
+        _naErrorState = 'API返回空数据，可能是数据源暂时不可用';
+        _naLastErrorTime = new Date();
+      }
       renderNewsAnalysis();
     }
     if (btn) {
       btn.classList.remove('spinning');
       btn.textContent = '🔄';
     }
-  }).catch(function() {
+  }).catch(function(err) {
+    // 数据加载失败，设置错误状态并显示明确错误提示
+    var errMsg = '网络请求失败';
+    if (err && err.message) {
+      if (err.message.indexOf('超时') > -1) {
+        errMsg = '请求超时（8秒），网络连接较慢或数据源不可达';
+      } else if (err.message.indexOf('JSONP') > -1 || err.message.indexOf('回调') > -1) {
+        errMsg = 'JSONP回调失败，数据源格式可能已变更';
+      } else {
+        errMsg = err.message;
+      }
+    }
+    _naErrorState = errMsg;
+    _naLastErrorTime = new Date();
+    
+    // 更新数据来源标签
+    var sourceEl = document.getElementById('naDataSource');
+    if (sourceEl) {
+      sourceEl.textContent = '⚠️ 加载失败';
+      sourceEl.style.color = 'var(--neon-red)';
+    }
+    
+    // 渲染错误提示（如果有缓存数据则同时显示缓存数据）
     renderNewsAnalysis();
+    
     if (btn) {
       btn.classList.remove('spinning');
       btn.textContent = '🔄';

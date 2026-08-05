@@ -672,7 +672,7 @@ function renderRotationLine(containerId, lineData, lineType) {
       // 15日涨幅
       if (r.change15 !== null) {
         var cStr = (r.change15 >= 0 ? '+' : '') + r.change15.toFixed(1) + '%';
-        var cColor = r.change15 >= 0 ? '#FF3366' : '#00FF88';
+        var cColor = r.change15 >= 0 ? '#00C853' : '#FF3B30';
         chgHtml = '<span style="color:' + cColor + ';font-weight:600">' + cStr + '</span>';
       } else { chgHtml = '—'; }
 
@@ -950,7 +950,7 @@ function updateRotation() {
   if (nextDateEl) {
     var rebInfo = getNextRebalanceInfo();
     var urgencyColor = rebInfo.daysLeft <= 3 ? 'var(--neon-red)' : rebInfo.daysLeft <= 7 ? 'var(--neon-yellow)' : 'var(--neon-yellow)';
-    var urgencyShadow = rebInfo.daysLeft <= 3 ? '0 0 8px rgba(255,51,102,0.4)' : '0 0 8px rgba(255,215,0,0.3)';
+    var urgencyShadow = rebInfo.daysLeft <= 3 ? '0 0 8px rgba(255,59,48,0.4)' : '0 0 8px rgba(255,215,0,0.3)';
     nextDateEl.innerHTML = '距下次调仓还有 <b style="font-size:0.85rem;color:' + urgencyColor + ';text-shadow:' + urgencyShadow + '">' + rebInfo.daysLeft + '</b> 天 · ' + rebInfo.text +
       '<div style="font-size:0.52rem;color:var(--muted);font-weight:400;margin-top:0.2rem;letter-spacing:0">每周一调仓 · 信号变化自动提醒 · 不错过趋势启动</div>';
   }
@@ -1840,7 +1840,7 @@ function renderIndustrySignals(results) {
   sorted.forEach(function(r) {
     var info = getIndustryZone(r.score);
     var chgStr = r.change15 !== null ? ((r.change15 >= 0 ? '+' : '') + r.change15.toFixed(1) + '%') : '—';
-    var chgColor = r.change15 !== null && r.change15 >= 0 ? 'var(--neon-red, #FF3366)' : 'var(--neon-green, #00FF88)';
+    var chgColor = r.change15 !== null && r.change15 >= 0 ? 'var(--neon-green, #00C853)' : 'var(--neon-red, #FF3B30)';
     var errStyle = r.error ? 'opacity:0.5' : '';
     html += '<div class="sig-thermo-row" style="' + errStyle + '" title="' + getIndustryNote(r.name, r.score, r.change15, r.aboveMA60) + '">' +
       '<span class="st-name">' + r.name + '</span>' +
@@ -2726,8 +2726,28 @@ function runAnalysis(forceRefresh) {
       renderNewsAnalysis();
       // 并行获取动态新闻（不阻塞主流程）
       fetchLatestNews(false).then(function(news) {
+        // 成功获取数据，清除错误状态
+        _naErrorState = null;
+        _naLastErrorTime = null;
         updateNewsData(news);
         startNewsAutoRefresh(); // 启动新闻自动刷新
+      }).catch(function(err) {
+        // 初始加载失败，设置错误状态
+        var errMsg = '网络请求失败';
+        if (err && err.message) {
+          if (err.message.indexOf('超时') > -1) {
+            errMsg = '请求超时（8秒），网络连接较慢或数据源不可达';
+          } else if (err.message.indexOf('JSONP') > -1 || err.message.indexOf('回调') > -1) {
+            errMsg = 'JSONP回调失败，数据源格式可能已变更';
+          } else {
+            errMsg = err.message;
+          }
+        }
+        _naErrorState = errMsg;
+        _naLastErrorTime = new Date();
+        if (typeof __DEBUG__ !== 'undefined' && __DEBUG__) console.log('[新闻初始加载] 失败:', errMsg);
+        renderNewsAnalysis(); // 渲染错误提示
+        startNewsAutoRefresh(); // 仍然启动自动刷新，后续可能恢复
       });
     }).then(function() {
       // 阶段3：市场情绪数据（最后获取，优先级最低，且自带缓存策略）
