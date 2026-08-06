@@ -1141,10 +1141,10 @@ body {
 }
 /* —— 信号区域操作标签 —— */
 [data-theme="light"] .zone-action.buy {
-  background: rgba(0,107,52,0.15);
-  color: var(--neon-green);
+  background: rgba(192,16,48,0.12);
+  color: var(--neon-red);
   font-weight: 700;
-  border: 1px solid rgba(0,107,52,0.3);
+  border: 1px solid rgba(192,16,48,0.3);
 }
 [data-theme="light"] .zone-action.hold {
   background: rgba(138,101,0,0.15);
@@ -1159,10 +1159,10 @@ body {
   border: 1px solid rgba(184,69,0,0.3);
 }
 [data-theme="light"] .zone-action.sell {
-  background: rgba(192,16,48,0.12);
-  color: var(--neon-red);
+  background: rgba(0,107,52,0.15);
+  color: var(--neon-green);
   font-weight: 700;
-  border: 1px solid rgba(192,16,48,0.3);
+  border: 1px solid rgba(0,107,52,0.3);
 }
 /* —— 轮动矩阵 —— */
 [data-theme="light"] .rot-matrix th {
@@ -3002,9 +3002,9 @@ body {
   padding: 1px 5px; border-radius: 2px; letter-spacing: 0.03em;
   display: inline-block;
 }
-.bottom-signal.buy { background: var(--neon-green-bg); color: var(--neon-green); }
+.bottom-signal.buy { background: var(--neon-red-bg); color: var(--neon-red); }
 .bottom-signal.watch { background: var(--neon-yellow-bg); color: var(--neon-yellow); }
-.bottom-signal.wait { background: var(--neon-red-bg); color: var(--neon-red); }
+.bottom-signal.wait { background: var(--neon-green-bg); color: var(--neon-green); }
 .bottom-empty { text-align: center; padding: 0.8rem; color: var(--muted); font-size: 0.68rem; }
 
 /* ==================== 行业龙头股 ==================== */
@@ -3175,7 +3175,7 @@ body {
 }
 .pos-bar-fill {
   height: 100%; border-radius: 2px;
-  background: linear-gradient(90deg, var(--neon-red) 0%, var(--neon-yellow) 40%, var(--neon-green) 75%, var(--neon-cyan) 100%);
+  background: linear-gradient(90deg, var(--neon-green) 0%, var(--neon-yellow) 50%, var(--neon-red) 100%);
   transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
   box-shadow: 0 0 6px currentColor;
 }
@@ -3183,7 +3183,7 @@ body {
   font-size: 0.52rem; color: var(--muted); margin-top: 0.2rem;
   font-weight: 600; letter-spacing: 0.03em;
 }
-.pos-bar-label.overweight { color: #00E5FF; text-shadow: 0 0 6px rgba(0,229,255,0.4); }
+.pos-bar-label.overweight { color: var(--neon-red); text-shadow: 0 0 6px rgba(255,59,48,0.4); }
 
 /* ==================== 行业信号（温度计概览） ==================== */
 .sig-summary-bar {
@@ -3265,10 +3265,10 @@ body {
   border-radius: 2px; margin-left: 0.3rem; letter-spacing: 0.03em;
   border: 0.5px solid currentColor;
 }
-.zone-action.buy { background: var(--neon-green-bg); color: var(--neon-green); text-shadow: var(--glow-green); }
+.zone-action.buy { background: var(--neon-red-bg); color: var(--neon-red); text-shadow: var(--glow-red); }
 .zone-action.hold { background: var(--neon-yellow-bg); color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255,215,0,0.4); }
 .zone-action.keep { background: rgba(255,107,53,0.1); color: var(--accent2); text-shadow: 0 0 8px rgba(255,107,53,0.4); }
-.zone-action.sell { background: var(--neon-red-bg); color: var(--neon-red); text-shadow: var(--glow-red); }
+.zone-action.sell { background: var(--neon-green-bg); color: var(--neon-green); text-shadow: var(--glow-green); }
 .sig-row {
   display: flex; align-items: center; gap: 0.4rem;
   padding: 0.28rem 0; border-top: 0.5px solid rgba(0,229,255,0.05);
@@ -5642,8 +5642,8 @@ body {
 .portfolio-signal-summary .pss-title { font-weight: 700; color: var(--neon-cyan); margin-bottom: 0.2rem; }
 .portfolio-signal-summary .pss-item { display: inline-flex; align-items: center; gap: 0.15rem; margin-right: 0.4rem; }
 .portfolio-signal-summary .pss-num { font-weight: 700; font-family: var(--font-mono); }
-.portfolio-signal-summary .pss-num.sell { color: var(--neon-red); }
-.portfolio-signal-summary .pss-num.buy { color: var(--neon-green); }
+.portfolio-signal-summary .pss-num.sell { color: var(--neon-green); }
+.portfolio-signal-summary .pss-num.buy { color: var(--neon-red); }
 .portfolio-signal-summary .pss-num.watch { color: var(--neon-yellow); }
 .portfolio-signal-summary .pss-num.normal { color: var(--muted); }
 .pi-signal-badge {
@@ -5651,12 +5651,12 @@ body {
   border-radius: 1px; margin-left: 0.2rem; white-space: nowrap;
 }
 .pi-signal-badge.sell {
-  color: var(--neon-red); background: rgba(255,71,87,0.12);
-  border: 0.5px solid rgba(255,71,87,0.3);
+  color: var(--neon-green); background: rgba(0,200,83,0.12);
+  border: 0.5px solid rgba(0,200,83,0.3);
 }
 .pi-signal-badge.buy {
-  color: var(--neon-green); background: rgba(0,229,136,0.12);
-  border: 0.5px solid rgba(0,229,136,0.3);
+  color: var(--neon-red); background: rgba(255,59,48,0.12);
+  border: 0.5px solid rgba(255,59,48,0.3);
 }
 .pi-signal-badge.watch {
   color: var(--neon-yellow); background: rgba(255,215,0,0.12);
@@ -5670,8 +5670,8 @@ body {
   font-size: 0.5rem; color: var(--muted); margin-top: 0.15rem;
   line-height: 1.3; padding-left: 0.1rem;
 }
-.pi-signal-detail.sell { color: rgba(255,71,87,0.7); }
-.pi-signal-detail.buy { color: rgba(0,229,136,0.7); }
+.pi-signal-detail.sell { color: rgba(0,200,83,0.7); }
+.pi-signal-detail.buy { color: rgba(255,59,48,0.7); }
 .pi-signal-detail.watch { color: rgba(255,215,0,0.7); }
 .pi-metrics {
   font-size: 0.48rem; color: var(--muted); margin-top: 0.1rem;
@@ -5682,8 +5682,8 @@ body {
 .pi-metrics .metric-pb { color: rgba(0,229,136,0.5); }
 .pi-metrics .metric-turnover { color: rgba(255,215,0,0.5); }
 .portfolio-item.has-signal { border-left: 2px solid; padding-left: 0.35rem; }
-.portfolio-item.has-signal.sell { border-left-color: var(--neon-red); }
-.portfolio-item.has-signal.buy { border-left-color: var(--neon-green); }
+.portfolio-item.has-signal.sell { border-left-color: var(--neon-green); }
+.portfolio-item.has-signal.buy { border-left-color: var(--neon-red); }
 .portfolio-item.has-signal.watch { border-left-color: var(--neon-yellow); }
 .portfolio-btn.analyze {
   background: rgba(0,229,136,0.08); color: var(--neon-green);
@@ -5795,10 +5795,10 @@ body {
   padding: 0.4rem 0.5rem; border-radius: 2px; margin-bottom: 0.3rem;
   font-size: 0.56rem; line-height: 1.5;
 }
-.pa-advice.sell { background: rgba(255,59,48,0.06); border-left: 2px solid var(--neon-red); color: rgba(255,150,170,0.9); }
-.pa-advice.buy { background: rgba(0,255,198,0.06); border-left: 2px solid var(--neon-green); color: rgba(120,255,200,0.9); }
+.pa-advice.sell { background: rgba(0,200,83,0.06); border-left: 2px solid var(--neon-green); color: rgba(120,255,200,0.9); }
+.pa-advice.buy { background: rgba(255,59,48,0.06); border-left: 2px solid var(--neon-red); color: rgba(255,150,170,0.9); }
 .pa-advice.watch { background: rgba(255,174,0,0.06); border-left: 2px solid var(--neon-yellow); color: rgba(255,200,100,0.9); }
-.pa-advice.hold { background: rgba(0,200,255,0.04); border-left: 2px solid var(--neon-cyan); color: rgba(150,200,230,0.9); }
+.pa-advice.hold { background: rgba(255,215,0,0.04); border-left: 2px solid var(--neon-yellow); color: rgba(255,200,100,0.9); }
 .pa-advice-title { font-weight: 700; margin-bottom: 0.15rem; font-size: 0.6rem; }
 .pa-advice-stocks { font-size: 0.5rem; opacity: 0.8; }
 .pa-advice-stocks .stock-tag {
@@ -6306,10 +6306,10 @@ body {
 .advice-risk { background: var(--neon-red-bg) !important; color: var(--neon-red) !important; text-shadow: none; }
 
 /* 信号区域操作标签 */
-.zone-action.buy { background: var(--neon-green-bg) !important; color: var(--neon-green) !important; text-shadow: none; }
+.zone-action.buy { background: var(--neon-red-bg) !important; color: var(--neon-red) !important; text-shadow: none; }
 .zone-action.hold { background: var(--neon-yellow-bg) !important; color: var(--neon-yellow) !important; text-shadow: none; }
 .zone-action.keep { background: rgba(251,146,60,0.12) !important; color: var(--accent2) !important; text-shadow: none; }
-.zone-action.sell { background: var(--neon-red-bg) !important; color: var(--neon-red) !important; text-shadow: none; }
+.zone-action.sell { background: var(--neon-green-bg) !important; color: var(--neon-green) !important; text-shadow: none; }
 
 /* 热力图 */
 .heatmap-cell { border: 1px solid rgba(120,140,180,0.08) !important; }

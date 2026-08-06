@@ -565,12 +565,12 @@ function getPctColor(pct) {
   var red = getSignalColor('red');
   var yellow = getSignalColor('yellow');
   var green = getSignalColor('green');
-  // 估值分位：低=便宜=绿色(安全)，高=贵=红色(风险)
-  if (pct < 20) return green;
-  if (pct < 40) return blendHex(green, yellow, 0.5);
+  // 估值分位（A股惯例）：低=便宜=红色(买入机会)，高=贵=绿色(风险)
+  if (pct < 20) return red;
+  if (pct < 40) return blendHex(red, yellow, 0.5);
   if (pct < 60) return yellow;
-  if (pct < 80) return blendHex(yellow, red, 0.5);
-  return red;
+  if (pct < 80) return blendHex(yellow, green, 0.5);
+  return green;
 }
 
 function getSignal(pct) {

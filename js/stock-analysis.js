@@ -3334,7 +3334,7 @@ function renderDailyReviewContent(container, rt, sent, flow) {
   html += '</div>';
   // 仓位进度条
   html += '<div class="review-pos-bar-track" style="margin-top:0.4rem;height:8px;background:rgba(120,140,180,0.1);border-radius:4px;overflow:hidden">';
-  html += '<div class="review-pos-bar-fill" style="width:' + Math.min(stockPosReview, 100) + '%;height:100%;background:linear-gradient(90deg,var(--neon-yellow),var(--neon-red));border-radius:4px;transition:width 0.5s"></div>';
+  html += '<div class="review-pos-bar-fill" style="width:' + Math.min(stockPosReview, 100) + '%;height:100%;background:linear-gradient(90deg,var(--neon-green),var(--neon-yellow),var(--neon-red));border-radius:4px;transition:width 0.5s"></div>';
   html += '</div>';
   html += '<div style="font-size:0.56rem;color:var(--muted);margin-top:0.3rem">' + posAdviceReview + '</div>';
   html += '<div style="font-size:0.5rem;color:var(--muted);opacity:0.6;margin-top:0.2rem">基于沪深300 PE(' + peHS300Review.toFixed(1) + ') ÷ 国债收益率(' + treasuryReview.toFixed(2) + '%)计算，非投资建议</div>';
@@ -5214,10 +5214,10 @@ function assessStock(stockData, finData) {
   // 综合评级
   score = Math.max(0, Math.min(100, score));
   var level, levelColor;
-  if (score >= 75) { level = '★ 强烈关注'; levelColor = getSignalColor('green'); }
-  else if (score >= 60) { level = '☆ 值得关注'; levelColor = blendHex(getSignalColor('green'), getSignalColor('yellow'), 0.5); }
+  if (score >= 75) { level = '★ 强烈关注'; levelColor = getSignalColor('red'); }
+  else if (score >= 60) { level = '☆ 值得关注'; levelColor = blendHex(getSignalColor('red'), getSignalColor('yellow'), 0.5); }
   else if (score >= 40) { level = '○ 中性观望'; levelColor = getSignalColor('yellow'); }
-  else { level = '△ 谨慎对待'; levelColor = getSignalColor('red'); }
+  else { level = '△ 谨慎对待'; levelColor = getSignalColor('green'); }
 
   return {
     score: score,
@@ -5484,10 +5484,10 @@ function assessETF(stockData, klineData, etfDetail, navData) {
   // ========== 综合评级 ==========
   totalScore = Math.max(0, Math.min(100, totalScore));
   var level, levelColor;
-  if (totalScore >= 75) { level = '★ 强烈推荐'; levelColor = getSignalColor('green'); }
-  else if (totalScore >= 60) { level = '☆ 值得关注'; levelColor = blendHex(getSignalColor('green'), getSignalColor('yellow'), 0.5); }
+  if (totalScore >= 75) { level = '★ 强烈推荐'; levelColor = getSignalColor('red'); }
+  else if (totalScore >= 60) { level = '☆ 值得关注'; levelColor = blendHex(getSignalColor('red'), getSignalColor('yellow'), 0.5); }
   else if (totalScore >= 40) { level = '○ 中性观望'; levelColor = getSignalColor('yellow'); }
-  else { level = '△ 谨慎对待'; levelColor = getSignalColor('red'); }
+  else { level = '△ 谨慎对待'; levelColor = getSignalColor('green'); }
 
   return {
     score: totalScore,
@@ -5796,8 +5796,8 @@ function renderStockResult(stockData, finData, flowData, loading) {
     '<div class="sd-assess-bars">' +
       '<div class="sd-assess-bar">' +
         '<div class="sd-assess-bar-lbl">估值</div>' +
-        '<div class="sd-assess-bar-track"><div class="sd-assess-bar-fill" style="width:' + valScore + '%;background:#00E5FF;color:#00E5FF"></div></div>' +
-        '<div class="sd-assess-bar-val" style="color:#00E5FF">' + valScore + '</div>' +
+        '<div class="sd-assess-bar-track"><div class="sd-assess-bar-fill" style="width:' + valScore + '%;background:' + (valScore >= 60 ? '#FF3B30' : valScore >= 40 ? '#FFD700' : '#00C853') + ';color:' + (valScore >= 60 ? '#FF3B30' : valScore >= 40 ? '#FFD700' : '#00C853') + '"></div></div>' +
+        '<div class="sd-assess-bar-val" style="color:' + (valScore >= 60 ? '#FF3B30' : valScore >= 40 ? '#FFD700' : '#00C853') + '">' + valScore + '</div>' +
       '</div>' +
       '<div class="sd-assess-bar">' +
         '<div class="sd-assess-bar-lbl">基本面</div>' +
@@ -6340,7 +6340,7 @@ function generateWatchlistRecommendation(profile, finData, stockData, outlook) {
   } else if (score >= 45) {
     title = '中性，持续观察';
     icon = '○';
-    color = '#00E5FF';
+    color = '#FFD700';
   } else {
     title = '暂不建议纳入';
     icon = '×';
@@ -6833,7 +6833,7 @@ function renderMAAnalysis(maData) {
   var signalColor = {
     buy: '#FF3B30',
     caution: '#FFD700',
-    hold: '#00E5FF',
+    hold: '#FFD700',
     watch: '#FFD700',
     sell: '#00C853'
   };

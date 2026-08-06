@@ -1697,15 +1697,15 @@ function calcIndustryScore(change15, aboveMA60, change5, maxDrawdown) {
 
 /**
  * 根据温度分获取区间信息（四区制：可抄底/观望/持有/回避）
- * - 可抄底(≤30)：跌幅大/破位 → 🟢 可抄底（等右侧确认）
+ * - 可抄底(≤30)：跌幅大/破位 → 🔴 可抄底（等右侧确认）
  * - 观望区(31~50)：低位横盘 → 🟡 观望（等催化不追高）
  * - 持有区(51~70)：温和上涨 → 🟠 持有（趋势中不追）
- * - 回避区(>70)：热门/急涨/拥挤 → 🔴 回避（过热别追）
+ * - 回避区(>70)：热门/急涨/拥挤 → 🟢 回避（过热别追）
  */
 function getIndustryZone(score) {
   if (score <= 30) return {
-    zone: '可抄底区', color: getSignalColor('green'),
-    action: '🟢 可抄底', actionCls: 'buy', note: '等右侧确认'
+    zone: '可抄底区', color: getSignalColor('red'),
+    action: '🔴 可抄底', actionCls: 'buy', note: '等右侧确认'
   };
   if (score <= 50) return {
     zone: '观望区', color: getSignalColor('yellow'),
@@ -1716,8 +1716,8 @@ function getIndustryZone(score) {
     action: '🟠 持有', actionCls: 'keep', note: '趋势中不追'
   };
   return {
-    zone: '回避区', color: getSignalColor('red'),
-    action: '🔴 回避', actionCls: 'sell', note: '过热别追'
+    zone: '回避区', color: getSignalColor('green'),
+    action: '🟢 回避', actionCls: 'sell', note: '过热别追'
   };
 }
 

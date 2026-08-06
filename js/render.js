@@ -416,16 +416,16 @@ function drawPEBar(realtimeData) {
     var histMinW = (idx.peMin / maxPE) * chartW;
     var histMaxW = (idx.peMax / maxPE) * chartW;
     var bandA = peLight ? 0.18 : 0.06;
-    // 绿色带（低估区 0-25%）
+    // 红色带（低估区 0-25%，A股惯例：低=便宜=红色=买入机会）
     var greenEndW = histMinW + (histMaxW - histMinW) * 0.25;
-    ctx.fillStyle = hexToRgba(getSignalColor('green'), bandA);
+    ctx.fillStyle = hexToRgba(getSignalColor('red'), bandA);
     ctx.fillRect(chartX + histMinW, y, greenEndW - histMinW, barH);
     // 黄色带（适中区 25-75%）
     var yellowEndW = histMinW + (histMaxW - histMinW) * 0.75;
     ctx.fillStyle = hexToRgba(getSignalColor('yellow'), bandA * 0.85);
     ctx.fillRect(chartX + greenEndW, y, yellowEndW - greenEndW, barH);
-    // 红色带（高估区 75-100%）
-    ctx.fillStyle = hexToRgba(getSignalColor('red'), bandA);
+    // 绿色带（高估区 75-100%，A股惯例：高=贵=绿色=风险）
+    ctx.fillStyle = hexToRgba(getSignalColor('green'), bandA);
     ctx.fillRect(chartX + yellowEndW, y, histMaxW - yellowEndW, barH);
 
     // 历史PE区间边界虚线
@@ -448,11 +448,11 @@ function drawPEBar(realtimeData) {
     ctx.fill();
 
     // 重画历史色带（在背景条之上，因为roundRect覆盖了）
-    ctx.fillStyle = hexToRgba(getSignalColor('green'), bandA);
+    ctx.fillStyle = hexToRgba(getSignalColor('red'), bandA);
     ctx.fillRect(chartX + histMinW, y + 1, greenEndW - histMinW, barH - 2);
     ctx.fillStyle = hexToRgba(getSignalColor('yellow'), bandA * 0.85);
     ctx.fillRect(chartX + greenEndW, y + 1, yellowEndW - greenEndW, barH - 2);
-    ctx.fillStyle = hexToRgba(getSignalColor('red'), bandA);
+    ctx.fillStyle = hexToRgba(getSignalColor('green'), bandA);
     ctx.fillRect(chartX + yellowEndW, y + 1, histMaxW - yellowEndW, barH - 2);
 
     // 数据条（霓虹渐变 + 发光）
@@ -2108,15 +2108,15 @@ function updateHeaderTime(success) {
   var suffix = ' | DATA STREAM ACTIVE | 沪深港估值终端 v3.0';
   var el = document.getElementById('updateTime');
   el.textContent = prefix + ' ' + timeStr + suffix;
-  // 实时数据时增加绿色发光，基准数据时为青色
+  // 实时数据时红色发光（在线），基准数据时黄色（降级模式）
   var dot = document.getElementById('liveDot');
   if (dot) {
     if (success) {
       dot.style.background = '#FF3B30';
       dot.style.boxShadow = '0 0 6px #FF3B30, 0 0 12px rgba(255,59,48,0.4)';
     } else {
-      dot.style.background = '#00E5FF';
-      dot.style.boxShadow = '0 0 6px #00E5FF, 0 0 12px rgba(0,229,255,0.3)';
+      dot.style.background = '#FFD700';
+      dot.style.boxShadow = '0 0 6px #FFD700, 0 0 12px rgba(255,215,0,0.3)';
     }
   }
   // 更新第一层数据来源标签
