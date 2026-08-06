@@ -2017,6 +2017,9 @@ function renderOverview(realtimeData) {
   var psEl = document.getElementById('tier1PriceStrength');
   if (psEl) {
     animateOdometer(psEl, priceStrength + '%');
+    // 综合回报率着色：>8%红色(强/投资划算)，6~8%黄色(中)，<6%绿色(弱/不划算)
+    psEl.style.color = priceStrength > 8 ? '#FF3B30' : priceStrength > 6 ? '#FFD700' : '#00C853';
+    psEl.style.textShadow = '0 0 8px ' + psEl.style.color + '55';
     var psTag = document.getElementById('tier1PriceStrengthTag');
     if (psTag) {
       if (priceStrength > 8) {

@@ -2390,7 +2390,7 @@ body {
 }
 .sd-vps-item-tag.red { background: rgba(255,59,48,0.15); color: #FF3B30; }
 .sd-vps-item-tag.green { background: rgba(0,200,83,0.12); color: #00C853; }
-.sd-vps-item-tag.yellow { background: rgba(255,215,0,0.12); color: #FFD700; }
+.sd-vps-item-tag.yellow { background: rgba(255,174,0,0.12); color: var(--neon-yellow, #FFAE00); }
 .sd-vps-item-tag.cyan { background: rgba(0,229,255,0.12); color: #00E5FF; }
 .sd-vps-item-desc {
   font-size: 0.5rem; color: var(--muted); line-height: 1.5;
@@ -4280,7 +4280,7 @@ body {
 }
 .review-summary-bar.bar-neutral {
   background: rgba(255, 215, 0, 0.10);
-  border-left: 3px solid #FFD700;
+  border-left: 3px solid var(--neon-yellow, #FFAE00);
 }
 
 /* ===== 李大霄老师行情研判 ===== */
@@ -4317,8 +4317,8 @@ body {
 .dv-title {
   font-size: 0.7rem;
   font-weight: 700;
-  color: #FFD700;
-  text-shadow: 0 0 8px rgba(255,215,0,0.4);
+  color: var(--neon-yellow, #FFAE00);
+  text-shadow: 0 0 8px rgba(255,174,0,0.4);
 }
 .dv-content {
   position: relative;
@@ -4458,8 +4458,12 @@ body {
 }
 .review-section-body .hl-red { color: var(--neon-red, #FF3B30); font-weight: 600; }
 .review-section-body .hl-green { color: var(--neon-green, #00C853); font-weight: 600; }
-.review-section-body .hl-yellow { color: #FFD700; font-weight: 600; }
+.review-section-body .hl-yellow { color: var(--neon-yellow, #FFAE00); font-weight: 600; }
 .review-section-body .hl-cyan { color: var(--neon-cyan, #00BFFF); font-weight: 600; }
+/* 全局hl-颜色类（A股惯例：涨红跌绿中性黄） */
+.hl-red { color: var(--neon-red, #FF3B30) !important; font-weight: 600; }
+.hl-green { color: var(--neon-green, #00C853) !important; font-weight: 600; }
+.hl-yellow { color: var(--neon-yellow, #FFAE00) !important; font-weight: 600; }
 /* 指数表现网格 */
 .review-index-grid {
   display: grid;
@@ -4547,7 +4551,7 @@ body {
 }
 .review-tag.tag-red { background: rgba(255,59,48,0.15); color: var(--neon-red, #FF3B30); }
 .review-tag.tag-green { background: rgba(0,200,83,0.15); color: var(--neon-green, #00C853); }
-.review-tag.tag-yellow { background: rgba(255,215,0,0.15); color: #FFD700; }
+.review-tag.tag-yellow { background: rgba(255,174,0,0.15); color: var(--neon-yellow, #FFAE00); }
 .review-tag.tag-cyan { background: rgba(0,191,255,0.15); color: var(--neon-cyan, #00BFFF); }
 
 /* === 板块资金面分析 === */
@@ -4842,9 +4846,9 @@ body {
   display: inline-block; font-size: 0.52rem; font-weight: 700;
   padding: 1px 6px; border-radius: 2px; letter-spacing: 0.05em;
 }
-.price-strength-tag.strong { background: var(--neon-green-bg); color: var(--neon-green); text-shadow: var(--glow-green); }
+.price-strength-tag.strong { background: var(--neon-red-bg); color: var(--neon-red); text-shadow: var(--glow-red); }
 .price-strength-tag.medium { background: var(--neon-yellow-bg); color: var(--neon-yellow); }
-.price-strength-tag.weak { background: var(--neon-red-bg); color: var(--neon-red); text-shadow: var(--glow-red); }
+.price-strength-tag.weak { background: var(--neon-green-bg); color: var(--neon-green); text-shadow: var(--glow-green); }
 
 
 
@@ -6970,7 +6974,7 @@ blockquote, .market-quote, .quote-block {
 /* 情绪颜色等级 */
 .sent-extreme-fear { color: #00C853; }
 .sent-fear { color: #66CC44; }
-.sent-neutral { color: #FFD700; }
+.sent-neutral { color: var(--neon-yellow, #FFAE00); }
 .sent-greed { color: #FF9944; }
 .sent-extreme-greed { color: #FF3B30; }
 
@@ -7100,7 +7104,7 @@ blockquote, .market-quote, .quote-block {
 }
 .warning-level.lv-medium {
   background: rgba(255,215,0,0.2);
-  color: #FFD700;
+  color: var(--neon-yellow, #FFAE00);
 }
 .warning-level.lv-low {
   background: rgba(102,204,68,0.2);
@@ -7286,7 +7290,7 @@ blockquote, .market-quote, .quote-block {
 }
 .position-tag.marked {
   background: rgba(245, 158, 11, 0.25);
-  color: #FFD700;
+  color: var(--neon-yellow, #FFAE00);
 }
 
 /* --- 模块三：防误操作三层校验 --- */
@@ -8451,11 +8455,11 @@ html {
   margin-top: -0.3rem;
   transition: all 0.3s ease;
 }
-.pa-gauge-tag.pa-tag-bull { background: rgba(0,255,198,0.15); color: var(--neon-green); box-shadow: 0 0 8px rgba(0,255,198,0.15); }
+.pa-gauge-tag.pa-tag-bull { background: rgba(255,59,48,0.15); color: var(--neon-red); box-shadow: 0 0 8px rgba(255,59,48,0.15); }
 .pa-gauge-tag.pa-tag-bull-weak { background: rgba(255,174,0,0.12); color: var(--neon-yellow); }
 .pa-gauge-tag.pa-tag-neutral { background: rgba(0,200,255,0.12); color: var(--neon-cyan); }
 .pa-gauge-tag.pa-tag-bear-weak { background: rgba(255,174,0,0.12); color: var(--neon-yellow); }
-.pa-gauge-tag.pa-tag-bear { background: rgba(255,59,48,0.15); color: var(--neon-red); box-shadow: 0 0 8px rgba(255,59,48,0.15); }
+.pa-gauge-tag.pa-tag-bear { background: rgba(0,200,83,0.15); color: var(--neon-green); box-shadow: 0 0 8px rgba(0,200,83,0.15); }
 
 /* 多空力量对比条 */
 .pa-power-bar {
@@ -8676,8 +8680,8 @@ html {
   background: rgba(0,200,255,0.06);
   border-radius: 4px;
 }
-.pa-rule-bull .pa-rule-num { color: var(--neon-green); background: rgba(0,255,198,0.1); }
-.pa-rule-bear .pa-rule-num { color: var(--neon-red); background: rgba(255,59,48,0.1); }
+.pa-rule-bull .pa-rule-num { color: var(--neon-red); background: rgba(255,59,48,0.1); }
+.pa-rule-bear .pa-rule-num { color: var(--neon-green); background: rgba(0,200,83,0.1); }
 .pa-rule-icon { font-size: 0.65rem; }
 .pa-rule-body { flex: 1; min-width: 0; }
 .pa-rule-header {
@@ -8701,8 +8705,8 @@ html {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.pa-badge-bull { background: rgba(0,255,198,0.15); color: var(--neon-green); }
-.pa-badge-bear { background: rgba(255,59,48,0.15); color: var(--neon-red); }
+.pa-badge-bull { background: rgba(255,59,48,0.15); color: var(--neon-red); }
+.pa-badge-bear { background: rgba(0,200,83,0.15); color: var(--neon-green); }
 .pa-badge-idle { background: rgba(107,125,153,0.1); color: var(--muted); }
 .pa-rule-meta {
   display: flex;
