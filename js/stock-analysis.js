@@ -122,6 +122,13 @@ function searchStock() {
   // 设置搜索进行中标志，阻止联想异步回调干扰
   _searchInProgress = true;
 
+  // 安全超时：30秒后强制重置搜索标志，防止异常情况下搜索功能被永久锁死
+  if (window._searchSafetyTimer) Perf.clearTimeout(window._searchSafetyTimer);
+  window._searchSafetyTimer = Perf.trackedSetTimeout(function() {
+    _searchInProgress = false;
+    window._searchSafetyTimer = null;
+  }, 30000);
+
   // 清除搜索联想防抖定时器，防止结果已显示后联想下拉框弹出导致页面跳回搜索框
   if (_suggestTimer) { Perf.clearTimeout(_suggestTimer); _suggestTimer = null; }
   var suggestEl = document.getElementById('searchSuggest');

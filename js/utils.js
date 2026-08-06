@@ -430,8 +430,58 @@ function fetchEastmoneyBatch(tencentCodes) {
 }
 
 /**
+ * 腾讯搜索联想（smartbox API，作为东方财富的备用源）
+ * 数据格式: v_hint="sh~510300~沪深300ETF华泰柏瑞~hs300etfhtbr~ETF^sz~159915~..."
+ * @param {string} keyword - 代码或名称
+ * @returns {Promise} resolve(东方财富兼容格式) 或 null
+ */
+function tencentSuggest(keyword) {
+  var url = 'https://smartbox.gtimg.cn/s3/?q=' + encodeURIComponent(keyword) + '&t=all';
+  return jsonpLoad(url, 4000).then(function() {
+    var raw = window['v_hint'];
+    if (!raw || typeof raw !== 'string') return null;
+    var items = raw.split('^');
+    var results = [];
+    items.forEach(function(item) {
+      var f = item.split('~');
+      if (f.length < 5) return;
+      var mkt = f[0]; // sh/sz/hk
+      var code = f[1];
+      var name = f[2];
+      var type = f[4]; // ETF/ZS/LOF/空
+      // 转换为东方财富兼容格式
+      var mktNum = mkt === 'sh' ? '1' : (mkt === 'sz' ? '0' : (mkt === 'hk' ? '116' : ''));
+      if (mktNum !== '1' && mktNum !== '0' && mktNum !== '116') return; // 只保留沪深港
+      var isETF = type === 'ETF' || type === 'LOF';
+      var isIndex = type === 'ZS';
+      results.push({
+        Code: code,
+        Name: name,
+        MktNum: mktNum,
+        Classify: isETF ? 'Fund' : (isIndex ? 'Index' : 'AStock'),
+        SecurityType: isETF ? '8' : (isIndex ? '5' : (mkt === 'sh' ? '1' : '2')),
+        SecurityTypeName: isETF ? '基金' : (isIndex ? '指数' : '股票'),
+        QuoteID: mktNum + '.' + code,
+        _isETF: isETF,
+        _isIndex: isIndex
+      });
+    });
+    if (results.length === 0) return null;
+    // 包装为东方财富兼容的响应结构
+    return {
+      QuotationCodeTable: {
+        Data: results,
+        Status: 0,
+        Message: '成功(腾讯源)',
+        TotalCount: results.length
+      }
+    };
+  }).catch(function() { return null; });
+}
+
+/**
  * 东方财富：搜索接口（suggest API，支持代码和名称模糊搜索）
- * 数据源 searchapi.eastmoney.com 可用，push2.eastmoney.com 不可用
+ * 主源: searchapi.eastmoney.com | 备源: 腾讯smartbox
  * @param {string} keyword - 代码或名称
  * @returns {Promise} resolve({Code, Name, MktNum, QuoteID}) 或 null
  */
@@ -453,6 +503,16 @@ function emSuggest(keyword) {
     });
     // 返回完整的API响应（含过滤后的Data数组），供联想下拉框和searchStock共用
     data.QuotationCodeTable.Data = filtered;
+    return data;
+  }).catch(function(err) {
+    // 东方财富suggest失败，降级到腾讯smartbox
+    console.warn('东方财富suggest失败，降级腾讯smartbox:', err.message);
+    return tencentSuggest(keyword);
+  }).then(function(data) {
+    // 东方财富返回空数据时也降级到腾讯
+    if (!data || !data.QuotationCodeTable || !data.QuotationCodeTable.Data || data.QuotationCodeTable.Data.length === 0) {
+      return tencentSuggest(keyword);
+    }
     return data;
   });
 }
