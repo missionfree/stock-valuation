@@ -3292,7 +3292,8 @@ function renderDailyReviewContent(container, rt, sent, flow) {
     html += '</div></div>';
   }
 
-  // --- 仓位推荐（基于沪深300吸引力指数） ---
+  // --- 仓位推荐（基于沪深300吸引力指数，稳健策略） ---
+  // 原则：任何情况下不建议100%满仓或加杠杆，最高80%股，始终保留债券仓位作为安全垫
   var hs300Review = rt['sh000300'];
   var peHS300Review = hs300Review && hs300Review.pe ? hs300Review.pe : 14.3;
   var treasuryReview = (typeof TREASURY_10Y !== 'undefined' && TREASURY_10Y > 0) ? TREASURY_10Y : 1.72;
@@ -3304,21 +3305,26 @@ function renderDailyReviewContent(container, rt, sent, flow) {
     posLabelReview = '0%股 / 100%债';
     posColorReview = 'hl-green';
     posAdviceReview = '股票收益率低于国债，权益资产缺乏吸引力，建议回避股市';
-  } else if (sexyHS300Review < 1.5) {
-    stockPosReview = Math.round(sexyHS300Review / 1.5 * 100);
+  } else if (sexyHS300Review < 1) {
+    stockPosReview = Math.round(sexyHS300Review * 30);
     posLabelReview = stockPosReview + '%股 / ' + (100 - stockPosReview) + '%债';
     posColorReview = 'hl-yellow';
-    posAdviceReview = '股票性价比一般，建议股债均衡偏债配置';
-  } else if (sexyHS300Review < 2.5) {
-    stockPosReview = 100;
-    posLabelReview = '100%股 / 0%债';
+    posAdviceReview = '股票性价比偏低，建议以债券为主，少量配置股票';
+  } else if (sexyHS300Review < 2) {
+    stockPosReview = 30 + Math.round((sexyHS300Review - 1) * 20);
+    posLabelReview = stockPosReview + '%股 / ' + (100 - stockPosReview) + '%债';
+    posColorReview = 'hl-yellow';
+    posAdviceReview = '股票性价比适中，建议股债均衡配置';
+  } else if (sexyHS300Review < 3) {
+    stockPosReview = 50 + Math.round((sexyHS300Review - 2) * 15);
+    posLabelReview = stockPosReview + '%股 / ' + (100 - stockPosReview) + '%债';
     posColorReview = 'hl-red';
-    posAdviceReview = '股票性价比显著优于债券，建议满仓权益资产';
+    posAdviceReview = '股票性价比较好，建议偏股配置，但保留一定债券仓位';
   } else {
-    stockPosReview = 100;
-    posLabelReview = '100%股 / 0%债（超配·可加杠杆）';
+    stockPosReview = 80;
+    posLabelReview = '80%股 / 20%债';
     posColorReview = 'hl-red';
-    posAdviceReview = '沪深300吸引力' + sexyHS300Review.toFixed(2) + '，处于历史深度价值区域，建议100%权益甚至适度加杠杆';
+    posAdviceReview = '沪深300吸引力' + sexyHS300Review.toFixed(2) + '，处于深度价值区域，建议重仓权益，但保留20%债券作为安全垫';
   }
   html += '<div class="review-section review-position-section">';
   html += '<div class="review-section-title"><span class="rs-icon">💼</span> 仓位推荐</div>';

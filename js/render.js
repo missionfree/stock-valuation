@@ -1847,15 +1847,18 @@ function renderDashboard(realtimeData) {
     if (sexyHS300 <= 0) {
       stockPos = 0; isOverweight = false;
       posLabel = '仓位建议 0%股 / 100%债';
-    } else if (sexyHS300 < 1.5) {
-      stockPos = Math.round(sexyHS300 / 1.5 * 100); isOverweight = false;
+    } else if (sexyHS300 < 1) {
+      stockPos = Math.round(sexyHS300 * 30); isOverweight = false;
       posLabel = '仓位建议 ' + stockPos + '%股 / ' + (100 - stockPos) + '%债';
-    } else if (sexyHS300 < 2.5) {
-      stockPos = 100; isOverweight = false;
-      posLabel = '仓位建议 100%股 / 0%债';
+    } else if (sexyHS300 < 2) {
+      stockPos = 30 + Math.round((sexyHS300 - 1) * 20); isOverweight = false;
+      posLabel = '仓位建议 ' + stockPos + '%股 / ' + (100 - stockPos) + '%债';
+    } else if (sexyHS300 < 3) {
+      stockPos = 50 + Math.round((sexyHS300 - 2) * 15); isOverweight = false;
+      posLabel = '仓位建议 ' + stockPos + '%股 / ' + (100 - stockPos) + '%债';
     } else {
-      stockPos = 100; isOverweight = true;
-      posLabel = '仓位建议 100%股 / 0%债（超配）';
+      stockPos = 80; isOverweight = false;
+      posLabel = '仓位建议 80%股 / 20%债';
     }
     var posFill = posBar.querySelector('.pos-bar-fill');
     var posLabelEl = posBar.querySelector('.pos-bar-label');
@@ -2039,14 +2042,15 @@ function renderOverview(realtimeData) {
     aiEl.style.color = sexy >= 2.0 ? '#FF3B30' : sexy >= 0.8 ? '#FFD700' : '#00C853';
     aiEl.style.textShadow = '0 0 8px ' + aiEl.style.color + '55';
   }
-  // 仓位建议（沪深300保守口径）：sexy映射股票仓位，与仪表盘阈值统一（1.5/2.5）
+  // 仓位建议（沪深300保守口径，稳健策略）：最高80%股，始终保留债券仓位
   var stockPos, posText;
   if (sexy <= 0) { stockPos = 0; posText = '0%股/100%债'; }
-  else if (sexy < 1.5) { stockPos = Math.round(sexy / 1.5 * 100); posText = stockPos + '%股/' + (100-stockPos) + '%债'; }
-  else if (sexy < 2.5) { stockPos = 100; posText = '100%股/0%债'; }
-  else { stockPos = 100; posText = '100%股/0%债(超配)'; }
+  else if (sexy < 1) { stockPos = Math.round(sexy * 30); posText = stockPos + '%股/' + (100-stockPos) + '%债'; }
+  else if (sexy < 2) { stockPos = 30 + Math.round((sexy - 1) * 20); posText = stockPos + '%股/' + (100-stockPos) + '%债'; }
+  else if (sexy < 3) { stockPos = 50 + Math.round((sexy - 2) * 15); posText = stockPos + '%股/' + (100-stockPos) + '%债'; }
+  else { stockPos = 80; posText = '80%股/20%债'; }
   var aiSubEl = document.getElementById('tier1AttractSub');
-  if (aiSubEl) aiSubEl.textContent = posText + ' · 超额收益率·保守口径·>2.5超配';
+  if (aiSubEl) aiSubEl.textContent = posText + ' · 超额收益率·保守口径·稳健策略';
   
   // 估值星级 = 沪深300盈利收益率 ÷ 国债收益率，星越多说明股票越便宜
   // 校准：与仪表盘格雷厄姆指数阈值一致
@@ -2084,9 +2088,9 @@ function renderOverview(realtimeData) {
   if (conclEl) {
     var conclusion = '';
     if (sexy >= 3) {
-      conclusion = '<b>市场总览：</b>沪深300吸引力' + sexy.toFixed(2) + '，绝对低位。建议<b>超配权益</b>，大盘蓝筹股历史上类似情境无一例外都是市场底部，超额收益中枢年化8-12%。';
+      conclusion = '<b>市场总览：</b>沪深300吸引力' + sexy.toFixed(2) + '，深度价值区域。建议<b>' + posText + '</b>，大盘蓝筹股历史上类似情境多为市场底部，但需保留债券仓位防范不确定性。';
     } else if (sexy >= 2) {
-      conclusion = '<b>市场总览：</b>沪深300吸引力' + sexy.toFixed(2) + '，熊市低位。建议<b>' + posText + '</b>，大盘股具备较好投资价值。';
+      conclusion = '<b>市场总览：</b>沪深300吸引力' + sexy.toFixed(2) + '，偏低估。建议<b>' + posText + '</b>，大盘股具备较好投资价值。';
     } else if (sexy >= 1.5) {
       conclusion = '<b>市场总览：</b>沪深300吸引力' + sexy.toFixed(2) + '，偏低估。建议<b>' + posText + '</b>，结构性机会为主。';
     } else if (sexy >= 0.8) {
