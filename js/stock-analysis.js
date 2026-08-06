@@ -4067,16 +4067,16 @@ function renderMarketFlow(data) {
             streakHtml = '<span class="mf-item-streak sig-green" title="近5日流出' + d.outflowDays5 + '天">连跌' + d.outflowDays5 + '天</span>';
           }
         }
-        // 流入列表：绿色条 + 正数金额（加+号）
+        // 流入列表：红色条 + 正数金额（加+号），涨红跌绿
         var amtStr = '+' + formatFlowAmount(d.mainNet * YUAN_FACTOR);
         html += '<div class="mf-item ' + (isUp ? 'up' : 'down') + '">' +
           '<span class="mf-item-name">' + d.name + '</span>' +
           sigHtml +
           streakHtml +
           '<span class="mf-item-change">' + (isUp ? '+' : '') + d.changePct.toFixed(2) + '%</span>' +
-          '<span class="mf-item-amount ' + (isUp ? 'sig-red' : 'sig-green') + '">' + amtStr + '</span>' +
+          '<span class="mf-item-amount sig-red">' + amtStr + '</span>' +
           '</div>' +
-          '<div class="mf-item-bar"><div class="mf-item-bar-fill bar-fill-green" style="width:' + barW + '%"></div></div>';
+          '<div class="mf-item-bar"><div class="mf-item-bar-fill bar-fill-red" style="width:' + barW + '%"></div></div>';
       });
     }
     inflowEl.innerHTML = html;
@@ -4112,16 +4112,16 @@ function renderMarketFlow(data) {
             streakHtml = '<span class="mf-item-streak sig-green" title="近5日流出' + d.outflowDays5 + '天">连跌' + d.outflowDays5 + '天</span>';
           }
         }
-        // 流出列表：红色条 + 负数金额（保留负号）
+        // 流出列表：绿色条 + 负数金额（保留负号），涨红跌绿
         var amtStr = formatFlowAmount(d.mainNet * YUAN_FACTOR);
         html2 += '<div class="mf-item ' + (isUp ? 'up' : 'down') + '">' +
           '<span class="mf-item-name">' + d.name + '</span>' +
           sigHtml +
           streakHtml +
           '<span class="mf-item-change">' + (isUp ? '+' : '') + d.changePct.toFixed(2) + '%</span>' +
-          '<span class="mf-item-amount ' + (isUp ? 'sig-red' : 'sig-green') + '">' + amtStr + '</span>' +
+          '<span class="mf-item-amount sig-green">' + amtStr + '</span>' +
           '</div>' +
-          '<div class="mf-item-bar"><div class="mf-item-bar-fill bar-fill-red" style="width:' + barW + '%"></div></div>';
+          '<div class="mf-item-bar"><div class="mf-item-bar-fill bar-fill-green" style="width:' + barW + '%"></div></div>';
       });
     }
     outflowEl.innerHTML = html2;
