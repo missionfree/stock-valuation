@@ -3301,7 +3301,7 @@ function renderDailyReviewContent(container, rt, sent, flow) {
   var stockPosReview, posLabelReview, posColorReview, posAdviceReview;
   if (sexyHS300Review <= 0) {
     stockPosReview = 0;
-    posLabelReview = '0%股 · 全仓债券';
+    posLabelReview = '0%股 / 100%债';
     posColorReview = 'hl-green';
     posAdviceReview = '股票收益率低于国债，权益资产缺乏吸引力，建议回避股市';
   } else if (sexyHS300Review < 1.5) {
@@ -3311,14 +3311,14 @@ function renderDailyReviewContent(container, rt, sent, flow) {
     posAdviceReview = '股票性价比一般，建议股债均衡偏债配置';
   } else if (sexyHS300Review < 2.5) {
     stockPosReview = 100;
-    posLabelReview = '100% · 满仓股票';
+    posLabelReview = '100%股 / 0%债';
     posColorReview = 'hl-red';
     posAdviceReview = '股票性价比显著优于债券，建议满仓权益资产';
   } else {
     stockPosReview = 100;
-    posLabelReview = '超配 · 加杠杆';
+    posLabelReview = '100%股 / 0%债（超配·可加杠杆）';
     posColorReview = 'hl-red';
-    posAdviceReview = '沪深300吸引力' + sexyHS300Review.toFixed(2) + '，处于历史深度价值区域，建议超配权益甚至适度加杠杆';
+    posAdviceReview = '沪深300吸引力' + sexyHS300Review.toFixed(2) + '，处于历史深度价值区域，建议100%权益甚至适度加杠杆';
   }
   html += '<div class="review-section review-position-section">';
   html += '<div class="review-section-title"><span class="rs-icon">💼</span> 仓位推荐</div>';

@@ -1846,16 +1846,16 @@ function renderDashboard(realtimeData) {
     var stockPos, posLabel, isOverweight;
     if (sexyHS300 <= 0) {
       stockPos = 0; isOverweight = false;
-      posLabel = '仓位建议 0%股 · 全仓债券';
+      posLabel = '仓位建议 0%股 / 100%债';
     } else if (sexyHS300 < 1.5) {
       stockPos = Math.round(sexyHS300 / 1.5 * 100); isOverweight = false;
       posLabel = '仓位建议 ' + stockPos + '%股 / ' + (100 - stockPos) + '%债';
     } else if (sexyHS300 < 2.5) {
       stockPos = 100; isOverweight = false;
-      posLabel = '仓位建议 100% · 满仓股票';
+      posLabel = '仓位建议 100%股 / 0%债';
     } else {
       stockPos = 100; isOverweight = true;
-      posLabel = '仓位建议 超配';
+      posLabel = '仓位建议 100%股 / 0%债（超配）';
     }
     var posFill = posBar.querySelector('.pos-bar-fill');
     var posLabelEl = posBar.querySelector('.pos-bar-label');
@@ -2041,10 +2041,10 @@ function renderOverview(realtimeData) {
   }
   // 仓位建议（沪深300保守口径）：sexy映射股票仓位，与仪表盘阈值统一（1.5/2.5）
   var stockPos, posText;
-  if (sexy <= 0) { stockPos = 0; posText = '0%股·全仓债券'; }
+  if (sexy <= 0) { stockPos = 0; posText = '0%股/100%债'; }
   else if (sexy < 1.5) { stockPos = Math.round(sexy / 1.5 * 100); posText = stockPos + '%股/' + (100-stockPos) + '%债'; }
-  else if (sexy < 2.5) { stockPos = 100; posText = '100%·满仓'; }
-  else { stockPos = 100; posText = '超配'; }
+  else if (sexy < 2.5) { stockPos = 100; posText = '100%股/0%债'; }
+  else { stockPos = 100; posText = '100%股/0%债(超配)'; }
   var aiSubEl = document.getElementById('tier1AttractSub');
   if (aiSubEl) aiSubEl.textContent = posText + ' · 超额收益率·保守口径·>2.5超配';
   
