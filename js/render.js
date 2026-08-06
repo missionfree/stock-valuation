@@ -1775,6 +1775,7 @@ function renderDashboard(realtimeData) {
   var earningsYieldAllA_eq = 1 / Math.max(1, peAllA_eq);      // 全市场等权盈利收益率
   var sexy = earningsYieldAllA_eq / treasuryDecimal - 1;      // 性感指数（等权口径，超额收益率）
   if (!isFinite(sexy)) sexy = 0;
+  var sexyHS300 = graham - 1;  // 沪深300吸引力（保守口径，与仓位建议一致）
   var earningsYieldAllA = 1 / Math.max(1, peAllA);            // 市值加权盈利收益率（用于股债利差）
   var spread = earningsYieldAllA * 100 - TREASURY_10Y;        // 股债利差(百分点，市值加权口径)
   if (isNaN(spread)) spread = 0;
@@ -1793,12 +1794,12 @@ function renderDashboard(realtimeData) {
   if (graham >= 4.5) {
     grahamVal.className = 'd-val t-red';
     grahamTag.textContent = '黄金买入区';
-    grahamTag.className = 'd-tag green';
+    grahamTag.className = 'd-tag red';
     grahamCard.className = 'dash-card hl-red';
   } else if (graham >= 3.5) {
     grahamVal.className = 'd-val t-red';
     grahamTag.textContent = '具备投资价值';
-    grahamTag.className = 'd-tag green';
+    grahamTag.className = 'd-tag red';
     grahamCard.className = 'dash-card hl-red';
   } else if (graham >= 2.5) {
     grahamVal.className = 'd-val t-yellow';
@@ -1808,23 +1809,22 @@ function renderDashboard(realtimeData) {
   } else {
     grahamVal.className = 'd-val t-green';
     grahamTag.textContent = '风险偏高';
-    grahamTag.className = 'd-tag red';
+    grahamTag.className = 'd-tag green';
     grahamCard.className = 'dash-card';
   }
 
-  // === 市场吸引力指数（激进口径，含小盘股，超额收益率 = 盈利收益率/国债 − 1） ===
+  // === 沪深300吸引力指数（保守口径，与仓位建议同口径） ===
   var sexyCard = document.getElementById('dashSexy');
   var sexyVal = sexyCard.querySelector('.d-val');
   var sexySub = sexyCard.querySelector('.d-sub');
-  animateOdometer(sexyVal, sexy.toFixed(2));
-  // 吸引力指数阈值校准（等权超额收益率口径）：
-  // 低利率环境下sexy天然偏高，需提高阈值
-  // >3 绝对低位（红），2~3 熊市低位（红），1~2 适中（黄），0~1 偏高（橙），<0 泡沫（绿）
-  if (sexy >= 2) {
+  animateOdometer(sexyVal, sexyHS300.toFixed(2));
+  // 沪深300吸引力阈值（与第一层核心指标一致）：
+  // >3 绝对低位（红），2~3 熊市低位（红），1~2 适中（黄），0~1 偏高（黄），<0 泡沫（绿）
+  if (sexyHS300 >= 2) {
     sexyVal.style.color = '#FF3B30';
     sexyVal.style.textShadow = '0 0 8px rgba(255,59,48,0.4)';
     sexyCard.className = 'dash-card hl-red';
-  } else if (sexy >= 1) {
+  } else if (sexyHS300 >= 1) {
     sexyVal.style.color = '#FFD700';
     sexyVal.style.textShadow = '0 0 8px rgba(255,215,0,0.4)';
     sexyCard.className = 'dash-card';
@@ -1833,7 +1833,7 @@ function renderDashboard(realtimeData) {
     sexyVal.style.textShadow = '0 0 8px rgba(0,200,83,0.4)';
     sexyCard.className = 'dash-card';
   }
-  sexySub.textContent = (sexy >= 3 ? '绝对低位' : sexy >= 2 ? '熊市低位' : sexy >= 1 ? '适中区间' : sexy >= 0 ? '偏高区间' : '泡沫预警') + ' · 超额收益率·激进口径';
+  sexySub.textContent = (sexyHS300 >= 3 ? '绝对低位' : sexyHS300 >= 2 ? '熊市低位' : sexyHS300 >= 1 ? '适中区间' : sexyHS300 >= 0 ? '偏高区间' : '泡沫预警') + ' · 超额收益率·沪深300保守口径';
 
   // === 仓位建议：吸引力指数映射股票仓位百分比 ===
   // 改用沪深300保守口径 sexyHS300 = graham - 1（与第一层"沪深300吸引力"一致）
@@ -1841,7 +1841,6 @@ function renderDashboard(realtimeData) {
   // 0 < sexyHS300 < 1.5 → stockPos% = sexyHS300 / 1.5 × 100
   // 1.5 ≤ sexyHS300 < 2.5 → 100%（满仓股票）
   // sexyHS300 ≥ 2.5 → 超配
-  var sexyHS300 = graham - 1;
   var posBar = document.getElementById('dashSexyPos');
   if (posBar) {
     var stockPos, posLabel, isOverweight;
@@ -1875,7 +1874,7 @@ function renderDashboard(realtimeData) {
   if (spread >= 4) {
     spreadVal.className = 'd-val t-red';
     spreadTag.textContent = '股票性价比高';
-    spreadTag.className = 'd-tag green';
+    spreadTag.className = 'd-tag red';
     spreadCard.className = 'dash-card hl-red';
   } else if (spread >= 2) {
     spreadVal.className = 'd-val t-yellow';
@@ -1885,7 +1884,7 @@ function renderDashboard(realtimeData) {
   } else {
     spreadVal.className = 'd-val t-green';
     spreadTag.textContent = '债券更优';
-    spreadTag.className = 'd-tag red';
+    spreadTag.className = 'd-tag green';
     spreadCard.className = 'dash-card';
   }
 
@@ -1900,7 +1899,7 @@ function renderDashboard(realtimeData) {
   if (pct < 30) {
     peVal.className = 'd-val t-red';
     peTag.textContent = '低估区间 · 分位' + pctRounded + '%';
-    peTag.className = 'd-tag green';
+    peTag.className = 'd-tag red';
     peCard.className = 'dash-card hl-red';
   } else if (pct < 70) {
     peVal.className = 'd-val t-yellow';
@@ -1910,7 +1909,7 @@ function renderDashboard(realtimeData) {
   } else {
     peVal.className = 'd-val t-green';
     peTag.textContent = '偏高区间 · 分位' + pctRounded + '%';
-    peTag.className = 'd-tag red';
+    peTag.className = 'd-tag green';
     peCard.className = 'dash-card';
   }
 

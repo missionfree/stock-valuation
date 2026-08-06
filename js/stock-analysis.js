@@ -3292,6 +3292,54 @@ function renderDailyReviewContent(container, rt, sent, flow) {
     html += '</div></div>';
   }
 
+  // --- 仓位推荐（基于沪深300吸引力指数） ---
+  var hs300Review = rt['sh000300'];
+  var peHS300Review = hs300Review && hs300Review.pe ? hs300Review.pe : 14.3;
+  var treasuryReview = (typeof TREASURY_10Y !== 'undefined' && TREASURY_10Y > 0) ? TREASURY_10Y : 1.72;
+  var grahamReview = (1 / peHS300Review) / (treasuryReview / 100);
+  var sexyHS300Review = grahamReview - 1;
+  var stockPosReview, posLabelReview, posColorReview, posAdviceReview;
+  if (sexyHS300Review <= 0) {
+    stockPosReview = 0;
+    posLabelReview = '0%股 · 全仓债券';
+    posColorReview = 'hl-green';
+    posAdviceReview = '股票收益率低于国债，权益资产缺乏吸引力，建议回避股市';
+  } else if (sexyHS300Review < 1.5) {
+    stockPosReview = Math.round(sexyHS300Review / 1.5 * 100);
+    posLabelReview = stockPosReview + '%股 / ' + (100 - stockPosReview) + '%债';
+    posColorReview = 'hl-yellow';
+    posAdviceReview = '股票性价比一般，建议股债均衡偏债配置';
+  } else if (sexyHS300Review < 2.5) {
+    stockPosReview = 100;
+    posLabelReview = '100% · 满仓股票';
+    posColorReview = 'hl-red';
+    posAdviceReview = '股票性价比显著优于债券，建议满仓权益资产';
+  } else {
+    stockPosReview = 100;
+    posLabelReview = '超配 · 加杠杆';
+    posColorReview = 'hl-red';
+    posAdviceReview = '沪深300吸引力' + sexyHS300Review.toFixed(2) + '，处于历史深度价值区域，建议超配权益甚至适度加杠杆';
+  }
+  html += '<div class="review-section review-position-section">';
+  html += '<div class="review-section-title"><span class="rs-icon">💼</span> 仓位推荐</div>';
+  html += '<div class="review-section-body">';
+  html += '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem">';
+  html += '<span style="font-size:0.6rem;color:var(--muted)">沪深300吸引力</span>';
+  html += '<strong class="' + posColorReview + '" style="font-size:0.9rem">' + sexyHS300Review.toFixed(2) + '</strong>';
+  html += '<span style="font-size:0.6rem;color:var(--muted)">· 格雷厄姆指数 ' + grahamReview.toFixed(2) + '</span>';
+  html += '</div>';
+  html += '<div style="display:flex;align-items:center;gap:0.5rem">';
+  html += '<span style="font-size:0.64rem;color:var(--muted)">建议仓位</span>';
+  html += '<strong class="' + posColorReview + '" style="font-size:1.1rem">' + posLabelReview + '</strong>';
+  html += '</div>';
+  // 仓位进度条
+  html += '<div class="review-pos-bar-track" style="margin-top:0.4rem;height:8px;background:rgba(120,140,180,0.1);border-radius:4px;overflow:hidden">';
+  html += '<div class="review-pos-bar-fill" style="width:' + Math.min(stockPosReview, 100) + '%;height:100%;background:linear-gradient(90deg,var(--neon-yellow),var(--neon-red));border-radius:4px;transition:width 0.5s"></div>';
+  html += '</div>';
+  html += '<div style="font-size:0.56rem;color:var(--muted);margin-top:0.3rem">' + posAdviceReview + '</div>';
+  html += '<div style="font-size:0.5rem;color:var(--muted);opacity:0.6;margin-top:0.2rem">基于沪深300 PE(' + peHS300Review.toFixed(1) + ') ÷ 国债收益率(' + treasuryReview.toFixed(2) + '%)计算，非投资建议</div>';
+  html += '</div></div>';
+
   // --- 第五节：明日策略建议 ---
   html += '<div class="review-strategy">';
   html += '<div class="review-strategy-title">🎯 明日操作策略建议</div>';
