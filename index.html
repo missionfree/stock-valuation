@@ -974,6 +974,20 @@
 <!-- Toast -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<!-- ETF推荐弹窗 -->
+<div class="etf-recommend-modal" id="etfRecommendModal" style="display:none">
+  <div class="etf-recommend-overlay" onclick="closeEtfRecommendModal()"></div>
+  <div class="etf-recommend-panel">
+    <div class="etf-recommend-header">
+      <h3 id="etfRecommendTitle">ETF推荐</h3>
+      <button class="etf-recommend-close" onclick="closeEtfRecommendModal()">×</button>
+    </div>
+    <div class="etf-recommend-body" id="etfRecommendBody">
+      <div class="etf-recommend-loading">加载中...</div>
+    </div>
+  </div>
+</div>
+
 <!-- 滑动切换提示器 -->
 <div class="swipe-hint" id="swipeHint">
   <span class="swipe-arrow">‹</span>

@@ -3007,6 +3007,96 @@ body {
 .bottom-signal.wait { background: var(--neon-green-bg); color: var(--neon-green); }
 .bottom-empty { text-align: center; padding: 0.8rem; color: var(--muted); font-size: 0.68rem; }
 
+/* ==================== ETF推荐弹窗 ==================== */
+.etf-recommend-modal {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+}
+.etf-recommend-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+}
+.etf-recommend-panel {
+  position: relative; z-index: 1;
+  width: 90%; max-width: 480px; max-height: 85vh;
+  background: var(--bg2); border-radius: 8px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.etf-recommend-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem 1rem; background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+.etf-recommend-header h3 {
+  margin: 0; font-size: 0.9rem; color: var(--ink);
+}
+.etf-recommend-close {
+  background: none; border: none; color: var(--muted);
+  font-size: 1.2rem; cursor: pointer; padding: 0.2rem 0.5rem;
+}
+.etf-recommend-close:hover { color: var(--ink); }
+.etf-recommend-body {
+  padding: 0.75rem; overflow-y: auto; flex: 1;
+}
+.etf-recommend-loading {
+  text-align: center; padding: 2rem; color: var(--muted);
+}
+.etf-recommend-source {
+  font-size: 0.7rem; color: var(--muted); margin-bottom: 0.5rem;
+  padding: 0.4rem 0.5rem; background: var(--bg3); border-radius: 4px;
+}
+.etf-recommend-source strong { color: var(--neon-cyan); }
+.etf-recommend-intro {
+  font-size: 0.72rem; color: var(--ink); line-height: 1.5;
+  margin-bottom: 0.75rem; padding: 0.5rem; background: var(--bg3);
+  border-radius: 4px; border-left: 3px solid var(--neon-cyan);
+}
+.etf-recommend-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.etf-recommend-card {
+  padding: 0.6rem 0.7rem; background: var(--bg3); border-radius: 6px;
+  border: 0.5px solid var(--border); cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.etf-recommend-card:hover {
+  border-color: var(--neon-cyan); background: var(--bg4);
+}
+.etf-recommend-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0.3rem;
+}
+.etf-recommend-card-name {
+  font-size: 0.78rem; font-weight: 700; color: var(--ink);
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.etf-recommend-card-name .tag {
+  font-size: 0.5rem; padding: 1px 4px; border-radius: 2px;
+  font-weight: 600;
+}
+.etf-recommend-card-name .tag.trend { background: var(--neon-red-bg); color: var(--neon-red); }
+.etf-recommend-card-name .tag.bottom { background: var(--neon-cyan-bg); color: var(--neon-cyan); }
+.etf-recommend-card-name .tag.same { background: var(--neon-yellow-bg); color: var(--neon-yellow); }
+.etf-recommend-card-name .tag.similar { background: var(--neon-green-bg); color: var(--neon-green); }
+.etf-recommend-card-code {
+  font-size: 0.6rem; color: var(--muted); font-family: var(--font-mono);
+}
+.etf-recommend-card-reason {
+  font-size: 0.65rem; color: var(--muted); line-height: 1.4;
+}
+.etf-recommend-card-reason strong { color: var(--ink); }
+.etf-recommend-footer {
+  margin-top: 0.75rem; padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.6rem; color: var(--muted); text-align: center;
+  line-height: 1.5;
+}
+.etf-recommend-footer a { color: var(--neon-cyan); cursor: pointer; }
+.etf-recommend-empty {
+  text-align: center; padding: 1.5rem; color: var(--muted); font-size: 0.72rem;
+}
+
 /* ==================== 行业龙头股 ==================== */
 .leader-box {
   background: var(--bg2); border: 0.5px solid rgba(0,229,255,0.08);

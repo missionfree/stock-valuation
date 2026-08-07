@@ -2067,7 +2067,7 @@ function renderTrendLeaders(results) {
     var maDirIcon = t.maTrendPct > 0 ? '↑' : '↓';
     var maDirColor = t.maTrendPct > 0 ? 'var(--neon-red)' : 'var(--neon-green)';
 
-    html += '<div class="trend-card' + top1Cls + '">' +
+    html += '<div class="trend-card' + top1Cls + '" onclick="showEtfRecommend(\'' + r.code + '\', \'' + r.name + '\', \'' + r.category + '\', \'right\')" style="cursor:pointer" title="点击查看ETF推荐">' +
       '<div class="trend-rank ' + rankCls + '">' + rank + '</div>' +
       '<div class="trend-info">' +
         '<div class="trend-name">' + r.name + alignTag + strongTag + '</div>' +
@@ -2328,7 +2328,7 @@ function renderBottomPick(results) {
     var ma60DistStr = b.ma60 !== null ? (b.ma60Dist >= 0 ? '+' : '') + b.ma60Dist.toFixed(1) + '%' : '—';
     var ma60Color = b.nearMA60 ? 'var(--neon-cyan)' : 'var(--muted)';
 
-    html += '<div class="bottom-card' + top1Cls + '">' +
+    html += '<div class="bottom-card' + top1Cls + '" onclick="showEtfRecommend(\'' + r.code + '\', \'' + r.name + '\', \'' + r.category + '\', \'left\')" style="cursor:pointer" title="点击查看ETF推荐">' +
       '<div class="bottom-rank ' + rankCls + '">' + rank + '</div>' +
       '<div class="bottom-info">' +
         '<div class="bottom-name">' + r.name + tagsHtml + '</div>' +
@@ -2897,5 +2897,346 @@ function fetchKlineOnly() {
     btn.innerHTML = '获取K线数据';
     _isKlineFetching = false;
   });
+}
+
+/* ============================================================
+   十一·六D、ETF推荐弹窗功能
+   点击趋势右侧或左侧抄底ETF卡片时，推荐相关ETF并说明原因
+   ============================================================ */
+
+/**
+ * ETF推荐知识库：按类别和特点分组
+ */
+var ETF_RECOMMEND_DB = {
+  industries: [
+    { name: '半导体ETF', code: 'sh512480', keywords: ['芯片', '半导体', 'AI硬件'], reason: 'AI算力核心器件，国产替代主线' },
+    { name: '算力ETF', code: 'sz159820', keywords: ['算力', '云计算', '数据中心'], reason: '算力需求爆发，AI基础设施' },
+    { name: '机器人ETF', code: 'sh562500', keywords: ['机器人', '工业自动化', '人形机器人'], reason: '人形机器人产业化加速' },
+    { name: 'AI应用ETF', code: 'sh515980', keywords: ['AI', '大模型', '应用'], reason: 'AI应用落地，商业化加速' },
+    { name: 'CPO光通信ETF', code: 'sh515880', keywords: ['光通信', 'CPO', '光纤'], reason: '算力互联核心器件' },
+    { name: '消费ETF', code: 'sz159928', keywords: ['消费', '食品饮料', '内需'], reason: '促消费政策受益，内需核心资产' },
+    { name: '医药ETF', code: 'sh512010', keywords: ['医药', '医疗', '创新药'], reason: '人口老龄化刚需，估值低位' },
+    { name: '创新药ETF', code: 'sz159992', keywords: ['创新药', '生物医药', 'CXO'], reason: '创新药械出海加速' },
+    { name: '电力ETF', code: 'sz159611', keywords: ['电力', '公用事业', '绿电'], reason: '电改受益，稳定现金流' },
+    { name: '特高压ETF', code: 'sh562350', keywords: ['特高压', '电网', '电力设备'], reason: '电网投资加码，新能源外送' },
+    { name: '有色ETF', code: 'sh512400', keywords: ['有色', '铜', '铝', '稀土'], reason: '资源品通胀受益' },
+    { name: '军工ETF', code: 'sh512660', keywords: ['军工', '国防', '航天'], reason: '国防预算增长确定性高' },
+    { name: '新能源ETF', code: 'sh516160', keywords: ['新能源', '光伏', '储能'], reason: '能源转型长期主线' },
+    { name: '芯片ETF', code: 'sh512760', keywords: ['芯片', '半导体设备', '国产替代'], reason: '半导体设备国产替代加速' },
+    { name: '黄金ETF', code: 'sh518880', keywords: ['黄金', '贵金属', '避险'], reason: '避险资产，对冲风险' },
+  ],
+  broad: [
+    { name: '沪深300ETF', code: 'sh510300', keywords: ['大盘', '蓝筹', '核心资产'], reason: 'A股核心资产，估值低位' },
+    { name: '创业板ETF', code: 'sz159915', keywords: ['创业板', '成长', '科技'], reason: '成长股代表，弹性大' },
+    { name: '中证500ETF', code: 'sh510500', keywords: ['中盘', '中小盘'], reason: '中小盘代表，估值适中' },
+    { name: '科创50ETF', code: 'sh588000', keywords: ['科创板', '硬科技'], reason: '硬科技龙头集合' },
+    { name: '纳指ETF', code: 'sh513100', keywords: ['美股', '纳斯达克', '科技'], reason: '全球科技龙头' },
+    { name: '恒生科技ETF', code: 'sh513130', keywords: ['港股', '互联网', '科技'], reason: '港股科技估值修复' },
+    { name: '中概互联ETF', code: 'sh513050', keywords: ['中概股', '互联网', '中国科技'], reason: '中国互联网龙头' },
+  ],
+  defense: [
+    { name: '红利低波ETF', code: 'sh512890', keywords: ['红利', '低波', '高股息'], reason: '高股息防御，年金险偏好' },
+    { name: '银行ETF', code: 'sh512800', keywords: ['银行', '金融', '低估值'], reason: '低估值高股息' },
+    { name: '证券ETF', code: 'sh512880', keywords: ['证券', '券商', '资本市场'], reason: '资本市场改革受益' },
+    { name: '煤炭ETF', code: 'sh515220', keywords: ['煤炭', '能源', '高股息'], reason: '高股息周期品' },
+    { name: '基建ETF', code: 'sh516950', keywords: ['基建', '建筑', '稳增长'], reason: '稳增长政策受益' },
+    { name: '房地产ETF', code: 'sh512200', keywords: ['房地产', '地产链'], reason: '政策松动博弈' },
+    { name: '食品饮料ETF', code: 'sh515170', keywords: ['食品', '饮料', '消费'], reason: '消费核心资产' },
+  ],
+  bond_commodity: [
+    { name: '十年国债ETF', code: 'sh511260', keywords: ['国债', '债券', '利率'], reason: '利率下行受益' },
+    { name: '企业债ETF', code: 'sh511210', keywords: ['信用债', '企业债'], reason: '信用利差收窄' },
+    { name: '石油ETF', code: 'sh161129', keywords: ['石油', '原油', '大宗商品'], reason: '通胀受益，风险资产' },
+  ]
+};
+
+/**
+ * 显示ETF推荐弹窗
+ */
+function showEtfRecommend(code, name, category, side) {
+  var modal = document.getElementById('etfRecommendModal');
+  var titleEl = document.getElementById('etfRecommendTitle');
+  var bodyEl = document.getElementById('etfRecommendBody');
+  if (!modal || !titleEl || !bodyEl) return;
+  
+  titleEl.textContent = name + ' - 相关ETF推荐';
+  bodyEl.innerHTML = '<div class="etf-recommend-loading">分析中...</div>';
+  modal.style.display = 'flex';
+  
+  setTimeout(function() {
+    var recommendations = generateEtfRecommendations(code, name, category, side);
+    renderEtfRecommendations(bodyEl, recommendations, side);
+  }, 100);
+}
+
+/**
+ * 生成ETF推荐列表
+ */
+function generateEtfRecommendations(code, name, category, side) {
+  var recs = [];
+  var sourceEtf = null;
+  
+  var allEtfs = [].concat(
+    ETF_RECOMMEND_DB.industries,
+    ETF_RECOMMEND_DB.broad,
+    ETF_RECOMMEND_DB.defense,
+    ETF_RECOMMEND_DB.bond_commodity
+  );
+  
+  for (var i = 0; i < allEtfs.length; i++) {
+    if (allEtfs[i].code === code) {
+      sourceEtf = allEtfs[i];
+      break;
+    }
+  }
+  
+  // 同类ETF
+  var sameCategory = getSameCategoryEtfs(code, sourceEtf);
+  recs = recs.concat(sameCategory);
+  
+  // 互补ETF
+  var similarEtfs = getSimilarEtfs(code, sourceEtf, side);
+  recs = recs.concat(similarEtfs);
+  
+  // 趋势方向相关
+  if (side === 'right') {
+    var trendEtfs = getTrendRelatedEtfs(code, sourceEtf);
+    recs = recs.concat(trendEtfs);
+  } else {
+    var bottomEtfs = getBottomRelatedEtfs(code, sourceEtf);
+    recs = recs.concat(bottomEtfs);
+  }
+  
+  // 去重
+  var seen = {};
+  recs = recs.filter(function(r) {
+    if (seen[r.code]) return false;
+    seen[r.code] = true;
+    return true;
+  });
+  
+  return recs.slice(0, 6);
+}
+
+function getSameCategoryEtfs(code, sourceEtf) {
+  if (!sourceEtf) return [];
+  var recs = [];
+  var keywords = sourceEtf.keywords || [];
+  
+  var allEtfs = [].concat(
+    ETF_RECOMMEND_DB.industries,
+    ETF_RECOMMEND_DB.broad,
+    ETF_RECOMMEND_DB.defense,
+    ETF_RECOMMEND_DB.bond_commodity
+  );
+  
+  allEtfs.forEach(function(etf) {
+    if (etf.code === code) return;
+    var hasCommonKeyword = keywords.some(function(kw) {
+      return etf.keywords.some(function(ek) {
+        return ek.indexOf(kw) >= 0 || kw.indexOf(ek) >= 0;
+      });
+    });
+    if (hasCommonKeyword) {
+      recs.push({
+        name: etf.name,
+        code: etf.code,
+        tag: '同类',
+        tagClass: 'same',
+        reason: '同属' + keywords[0] + '赛道，配置逻辑相近'
+      });
+    }
+  });
+  return recs;
+}
+
+function getSimilarEtfs(code, sourceEtf, side) {
+  if (!sourceEtf) return [];
+  var recs = [];
+  var complementMap = {
+    'sh512480': [{ name: 'AI应用ETF', code: 'sh515980', reason: 'AI硬件+应用形成完整产业链' }],
+    'sh515980': [{ name: '半导体ETF', code: 'sh512480', reason: 'AI应用需要芯片算力支撑' }],
+    'sh562500': [{ name: 'AI应用ETF', code: 'sh515980', reason: '机器人+AI应用协同发展' }],
+    'sz159820': [{ name: 'AI应用ETF', code: 'sh515980', reason: '算力是AI应用的基础' }],
+    'sh512660': [{ name: '半导体ETF', code: 'sh512480', reason: '军工电子化趋势' }],
+    'sz159928': [{ name: '食品饮料ETF', code: 'sh515170', reason: '消费全产业链覆盖' }],
+    'sh512010': [{ name: '创新药ETF', code: 'sz159992', reason: '医药全产业链配置' }],
+    'sh518880': [{ name: '红利低波ETF', code: 'sh512890', reason: '避险+高股息双重防御' }],
+    'sh512890': [{ name: '黄金ETF', code: 'sh518880', reason: '高股息+黄金双重保障' }],
+  };
+  
+  if (complementMap[code]) {
+    complementMap[code].forEach(function(item) {
+      recs.push({
+        name: item.name,
+        code: item.code,
+        tag: '互补',
+        tagClass: 'similar',
+        reason: item.reason
+      });
+    });
+  }
+  
+  if (ETF_RECOMMEND_DB.broad.some(function(e) { return e.code === code; })) {
+    var hotIndustries = getHotIndustries();
+    hotIndustries.slice(0, 2).forEach(function(etf) {
+      if (etf.code !== code) {
+        recs.push({
+          name: etf.name,
+          code: etf.code,
+          tag: '轮动',
+          tagClass: 'similar',
+          reason: '当前市场热点轮动方向'
+        });
+      }
+    });
+  }
+  return recs;
+}
+
+function getTrendRelatedEtfs(code, sourceEtf) {
+  var recs = [];
+  var keywords = sourceEtf ? sourceEtf.keywords : [];
+  var trendTargets = {
+    'AI硬件': { name: '算力ETF', code: 'sz159820', reason: 'AI行情主线延续，算力需求持续爆发' },
+    'AI应用': { name: 'AI应用ETF', code: 'sh515980', reason: 'AI应用商业化加速，估值修复' },
+    '半导体': { name: '芯片ETF', code: 'sh512760', reason: '国产替代加速，设备先行' },
+    '成长': { name: '创业板ETF', code: 'sz159915', reason: '成长风格占优，弹性更大' },
+    '大盘': { name: '沪深300ETF', code: 'sh510300', reason: '核心资产估值修复' },
+  };
+  
+  keywords.forEach(function(kw) {
+    for (var key in trendTargets) {
+      if (kw.indexOf(key) >= 0 || key.indexOf(kw) >= 0) {
+        var t = trendTargets[key];
+        recs.push({
+          name: t.name,
+          code: t.code,
+          tag: '趋势',
+          tagClass: 'trend',
+          reason: t.reason
+        });
+        delete trendTargets[key];
+      }
+    }
+  });
+  
+  if (recs.length === 0) {
+    recs.push({
+      name: '创业板ETF',
+      code: 'sz159915',
+      tag: '趋势',
+      tagClass: 'trend',
+      reason: '成长风格有望延续，弹性较大'
+    });
+  }
+  return recs;
+}
+
+function getBottomRelatedEtfs(code, sourceEtf) {
+  var recs = [];
+  var keywords = sourceEtf ? sourceEtf.keywords : [];
+  var bottomTargets = {
+    '消费': { name: '消费ETF', code: 'sz159928', reason: '消费已超跌，估值接近历史低位' },
+    '医药': { name: '医药ETF', code: 'sh512010', reason: '医药调整充分，逢低布局' },
+    '新能源': { name: '新能源ETF', code: 'sh516160', reason: '新能源超跌，长期逻辑仍在' },
+    '半导体': { name: '半导体ETF', code: 'sh512480', reason: '半导体周期底部，国产替代加速' },
+    '黄金': { name: '红利低波ETF', code: 'sh512890', reason: '防御为主，等待右侧信号' },
+  };
+  
+  keywords.forEach(function(kw) {
+    for (var key in bottomTargets) {
+      if (kw.indexOf(key) >= 0 || key.indexOf(kw) >= 0) {
+        var t = bottomTargets[key];
+        recs.push({
+          name: t.name,
+          code: t.code,
+          tag: '左侧',
+          tagClass: 'bottom',
+          reason: t.reason
+        });
+        delete bottomTargets[key];
+      }
+    }
+  });
+  
+  if (recs.length === 0) {
+    recs.push({
+      name: '红利低波ETF',
+      code: 'sh512890',
+      tag: '左侧',
+      tagClass: 'bottom',
+      reason: '高股息防御，等待市场企稳'
+    });
+    recs.push({
+      name: '黄金ETF',
+      code: 'sh518880',
+      tag: '左侧',
+      tagClass: 'bottom',
+      reason: '避险资产，控制风险'
+    });
+  }
+  return recs;
+}
+
+function getHotIndustries() {
+  return [
+    { name: 'AI应用ETF', code: 'sh515980' },
+    { name: '算力ETF', code: 'sz159820' },
+    { name: '机器人ETF', code: 'sh562500' },
+    { name: '半导体ETF', code: 'sh512480' }
+  ];
+}
+
+function renderEtfRecommendations(container, recommendations, side) {
+  if (!recommendations || recommendations.length === 0) {
+    container.innerHTML = '<div class="etf-recommend-empty">暂无相关推荐</div>';
+    return;
+  }
+  
+  var introText = side === 'right'
+    ? '以下ETF与当前趋势方向一致或存在轮动机会，可作为右侧跟进备选'
+    : '以下ETF与当前超跌标的同属一类或具备互补属性，可作为左侧分批布局备选';
+  
+  var html = '';
+  html += '<div class="etf-recommend-source">点击ETF卡片可查看详情 · <strong>' + recommendations.length + '</strong>个推荐</div>';
+  html += '<div class="etf-recommend-intro">' + introText + '</div>';
+  html += '<div class="etf-recommend-list">';
+  
+  recommendations.forEach(function(rec) {
+    html += '<div class="etf-recommend-card" onclick="searchStockByCode(\'' + rec.code + '\')">';
+    html += '<div class="etf-recommend-card-header">';
+    html += '<div class="etf-recommend-card-name">';
+    html += rec.name;
+    html += '<span class="tag ' + rec.tagClass + '">' + rec.tag + '</span>';
+    html += '</div>';
+    html += '<div class="etf-recommend-card-code">' + rec.code + '</div>';
+    html += '</div>';
+    html += '<div class="etf-recommend-card-reason"><strong>推荐理由：</strong>' + rec.reason + '</div>';
+    html += '</div>';
+  });
+  
+  html += '</div>';
+  html += '<div class="etf-recommend-footer">';
+  html += '※ 投资有风险，入市需谨慎';
+  html += '</div>';
+  
+  container.innerHTML = html;
+}
+
+function searchStockByCode(code) {
+  closeEtfRecommendModal();
+  var searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.value = code;
+    searchStock();
+  }
+}
+
+function closeEtfRecommendModal() {
+  var modal = document.getElementById('etfRecommendModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
 }
 
