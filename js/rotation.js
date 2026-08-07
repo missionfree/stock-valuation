@@ -2067,7 +2067,7 @@ function renderTrendLeaders(results) {
     var maDirIcon = t.maTrendPct > 0 ? '↑' : '↓';
     var maDirColor = t.maTrendPct > 0 ? 'var(--neon-red)' : 'var(--neon-green)';
 
-    html += '<div class="trend-card' + top1Cls + '" onclick="showEtfRecommend(\'' + r.code + '\', \'' + r.name + '\', \'' + r.category + '\', \'right\')" style="cursor:pointer" title="点击查看ETF推荐">' +
+    html += '<div class="trend-card' + top1Cls + '" onclick="showEtfRecommend(\'' + r.code + '\', \'' + escapeHtmlAttr(r.name) + '\', \'' + escapeHtmlAttr(r.category) + '\', \'right\')" style="cursor:pointer" title="点击查看ETF推荐">' +
       '<div class="trend-rank ' + rankCls + '">' + rank + '</div>' +
       '<div class="trend-info">' +
         '<div class="trend-name">' + r.name + alignTag + strongTag + '</div>' +
@@ -2328,7 +2328,7 @@ function renderBottomPick(results) {
     var ma60DistStr = b.ma60 !== null ? (b.ma60Dist >= 0 ? '+' : '') + b.ma60Dist.toFixed(1) + '%' : '—';
     var ma60Color = b.nearMA60 ? 'var(--neon-cyan)' : 'var(--muted)';
 
-    html += '<div class="bottom-card' + top1Cls + '" onclick="showEtfRecommend(\'' + r.code + '\', \'' + r.name + '\', \'' + r.category + '\', \'left\')" style="cursor:pointer" title="点击查看ETF推荐">' +
+    html += '<div class="bottom-card' + top1Cls + '" onclick="showEtfRecommend(\'' + r.code + '\', \'' + escapeHtmlAttr(r.name) + '\', \'' + escapeHtmlAttr(r.category) + '\', \'left\')" style="cursor:pointer" title="点击查看ETF推荐">' +
       '<div class="bottom-rank ' + rankCls + '">' + rank + '</div>' +
       '<div class="bottom-info">' +
         '<div class="bottom-name">' + r.name + tagsHtml + '</div>' +
@@ -2949,6 +2949,14 @@ var ETF_RECOMMEND_DB = {
     { name: '石油ETF', code: 'sh161129', keywords: ['石油', '原油', '大宗商品'], reason: '通胀受益，风险资产' },
   ]
 };
+
+/**
+ * HTML属性转义（用于onclick内的字符串）
+ */
+function escapeHtmlAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/'/g, "\\'").replace(/"/g, '"').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 /**
  * 显示ETF推荐弹窗
