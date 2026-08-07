@@ -419,8 +419,7 @@ function formatDate(date) {
 }
 
 /**
- * 从东方财富快讯API获取最新政策新闻
- * 使用东方财富7x24快讯接口 + JSONP
+ * 从东方财富7x24快讯API获取最新政策新闻
  * @param {boolean} forceRefresh - 强制刷新（忽略缓存）
  */
 function fetchLatestPolicyNews(forceRefresh) {
@@ -438,30 +437,47 @@ function fetchLatestPolicyNews(forceRefresh) {
     } catch(e) {}
   }
 
-  // 使用东方财富快讯搜索接口
-  var searchUrl = 'https://search-api-web.eastmoney.com/search/jsonp';
-  var param = JSON.stringify({
-    uid: '',
-    keyword: '证监会 央行 政策',
-    type: ['cmsArticleWebOld'],
-    client: 'web',
-    clientType: 'web',
-    clientVersion: 'curr',
-    param: {
-      cmsArticleWebOld: {
-        searchScope: 'default',
-        sort: 'default',
-        pageIndex: 1,
-        pageSize: 20,
-        preTag: '',
-        postTag: ''
-      }
-    }
-  });
+  // 使用东方财富np-listapi快讯接口
+  var ts = Date.now();
+  var url = 'https://np-listapi.eastmoney.com/comm/web/getFastNewsList?client=web&biz=stock&fastColumn=102&pageSize=50&pageIndex=1&sortEnd=&endTime=&req_trace=' + ts + '&isDelay=1';
 
-  return emJsonp(searchUrl + '?cb=' + '&param=' + encodeURIComponent(param), 8000)
+  return fetchWithTimeout(url, { cache: 'no-store' }, 10000)
+    .then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
     .then(function(data) {
-      var newsItems = parsePolicyNewsFromSearch(data);
+      var newsItems = [];
+      if (data && data.data && data.data.fastNewsList) {
+        data.data.fastNewsList.forEach(function(item) {
+          var title = item.title || '';
+          var desc = item.summary || '';
+          if (!isPolicyRelated(title, desc)) return;
+          
+          var dateStr = item.showTime || '';
+          var newsDate = dateStr ? dateStr.substring(0, 10) : formatDate(new Date());
+          var newsTime = dateStr ? dateStr.substring(11, 16) : '';
+          
+          // 只保留近60天的政策
+          var newsTimeMs = dateStr ? new Date(dateStr.replace(/-/g, '/')).getTime() : 0;
+          if (newsTimeMs && Date.now() - newsTimeMs > 60 * 24 * 60 * 60 * 1000) return;
+          
+          var type = classifyPolicy(title, desc);
+          var impact = assessImpact(title, desc);
+          var sectors = extractSectors(title, desc);
+          
+          newsItems.push({
+            date: newsDate,
+            time: newsTime,
+            type: type,
+            title: title,
+            desc: desc.substring(0, 200),
+            impact: impact,
+            sectors: sectors
+          });
+        });
+      }
+      
       if (newsItems.length > 0) {
         // 缓存
         try {

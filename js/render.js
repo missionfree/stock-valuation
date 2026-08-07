@@ -2260,8 +2260,6 @@ function assessNewsImpact(title, desc) {
 
 /**
  * 从东方财富7x24快讯API获取最新市场新闻
- * 接口返回 var {callback}={...}; 格式的JSONP
- *
  * @param {boolean} forceRefresh - 强制刷新（忽略缓存）
  * @returns {Promise<Array>} 新闻数组
  */
@@ -2281,88 +2279,86 @@ function fetchLatestNews(forceRefresh) {
     } catch(e) {}
   }
 
-  // 方案1: 东方财富 newsapi 7x24快讯（JSONP，var回调格式）
-  // URL格式: getlist_{type}_{callback}_{pageSize}_{pageIndex}_.html
-  // type=102 为7*24小时全球直播快讯
+  // 方案1: 东方财富 np-listapi 7x24快讯（JSON格式）
   function tryNewsApi() {
-    var cbName = '_na_news_cb_' + Date.now();
-    var url = 'https://newsapi.eastmoney.com/kuaixun/v1/getlist_102_' + cbName + '_30_1_.html';
+    var ts = Date.now();
+    var url = 'https://np-listapi.eastmoney.com/comm/web/getFastNewsList?client=web&biz=stock&fastColumn=102&pageSize=50&pageIndex=1&sortEnd=&endTime=&req_trace=' + ts + '&isDelay=1';
 
-    return new Promise(function(resolve, reject) {
-      var script = document.createElement('script');
-      var timer = Perf.trackedSetTimeout(function() {
-        cleanup();
-        reject(new Error('newsapi快讯请求超时'));
-      }, 8000);
-
-      function cleanup() {
-        Perf.clearTimeout(timer);
-        delete window[cbName];
-        if (script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      // 保存可能存在的旧值
-      var oldVal = window[cbName];
-      var checked = false;
-
-      script.onload = function() {
-        if (checked) return;
-        checked = true;
-        // 先读取数据，再cleanup（cleanup会删除全局变量）
-        var data = window[cbName];
-        cleanup();
-        // 恢复旧值
-        if (oldVal === undefined) delete window[cbName];
-        else window[cbName] = oldVal;
-
-        if (data && data.LivesList && data.LivesList.length > 0) {
-          if(__DEBUG__)console.log('[新闻] newsapi获取成功:', data.LivesList.length + '条');
-          resolve(data.LivesList);
-        } else {
-          reject(new Error('newsapi返回空数据'));
+    return fetchWithTimeout(url, { cache: 'no-store' }, 10000)
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(data) {
+        if (data && data.data && data.data.fastNewsList && data.data.fastNewsList.length > 0) {
+          if(__DEBUG__)console.log('[新闻] np-listapi获取成功:', data.data.fastNewsList.length + '条');
+          return data.data.fastNewsList.map(function(item) {
+            return {
+              title: item.title || '',
+              digest: item.summary || '',
+              showtime: item.showTime || ''
+            };
+          });
         }
-      };
-
-      script.onerror = function() {
-        if (checked) return;
-        checked = true;
-        cleanup();
-        reject(new Error('newsapi快讯加载失败'));
-      };
-
-      script.src = url;
-      document.head.appendChild(script);
-    });
+        throw new Error('np-listapi返回空数据');
+      });
   }
 
-  // 方案2: 东方财富 np-weblist 快讯列表（尝试fetch+CORS，降级JSONP）
+  // 方案2: 备用快讯API（腾讯财经）
   function tryWebList() {
     var ts = Date.now();
-    var url = 'https://np-weblist.eastmoney.com/comm/web/getFastNewsList' +
-      '?client=web&biz=web_724&fastColumn=102&sortEnd=0&pageSize=30&req_trace=' + ts + '&_=' + ts;
-
-    // 尝试1: fetch + CORS
-    return fetchWithTimeout(url, { cache: 'no-store' }, 8000).then(function(res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    }).catch(function(fetchErr) {
-      // 尝试2: JSONP降级（添加cb参数）
-      if(__DEBUG__)console.log('[新闻] np-weblist fetch失败，尝试JSONP:', fetchErr.message);
-      return emJsonp(url, 8000);
-    }).then(function(data) {
-      if (data && data.data && data.data.fastNewsList && data.data.fastNewsList.length > 0) {
-        if(__DEBUG__)console.log('[新闻] np-weblist获取成功:', data.data.fastNewsList.length + '条');
-        // 转换为统一格式
-        return data.data.fastNewsList.map(function(item) {
-          return {
-            title: item.title || '',
-            digest: item.summary || '',
-            showtime: item.showTime || ''
-          };
-        });
-      }
-      throw new Error('np-weblist返回空数据');
-    });
+    // 腾讯财经快讯接口
+    var url = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/mktNewsList?page=0&pageSize=30&type=0&_=' + ts;
+    
+    return fetchWithTimeout(url, { cache: 'no-store' }, 8000)
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(data) {
+        if (data && data.data && data.data.list && data.data.list.length > 0) {
+          if(__DEBUG__)console.log('[新闻] 腾讯快讯获取成功:', data.data.list.length + '条');
+          return data.data.list.map(function(item) {
+            return {
+              title: item.title || item.content || '',
+              digest: item.content || item.digest || '',
+              showtime: item.time || item.datetime || ''
+            };
+          });
+        }
+        throw new Error('腾讯快讯返回空数据');
+      })
+      .catch(function(err) {
+        if(__DEBUG__)console.log('[新闻] 腾讯快讯失败:', err.message);
+        // 最后尝试新浪财经
+        return trySinaNews();
+      });
+  }
+  
+  // 方案3: 新浪财经快讯
+  function trySinaNews() {
+    var ts = Date.now();
+    var url = 'https://zhibo.sina.com.cn/api/zhibo/feed?column=finance&callback=&page=1&page_size=30&type=1&_=' + ts;
+    
+    return fetchWithTimeout(url, { cache: 'no-store' }, 8000)
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(data) {
+        if (data && data.result && data.result.data && data.result.data.feed && data.result.data.feed.list) {
+          var items = data.result.data.feed.list;
+          if(__DEBUG__)console.log('[新闻] 新浪快讯获取成功:', items.length + '条');
+          return items.map(function(item) {
+            return {
+              title: item.meditTitle || item.title || '',
+              digest: item.summary || item.content || '',
+              showtime: item.create_time || ''
+            };
+          });
+        }
+        throw new Error('新浪快讯返回空数据');
+      });
   }
 
   // 解析快讯数据为标准新闻格式
@@ -2409,17 +2405,17 @@ function fetchLatestNews(forceRefresh) {
     return news;
   }
 
-  // 链式尝试：newsapi → np-weblist
+  // 链式尝试：np-listapi → 腾讯财经 → 新浪财经
   return tryNewsApi()
     .then(function(livesList) {
       _newsDataSource = '实时快讯';
       return parseNewsList(livesList);
     })
     .catch(function(err) {
-      console.warn('[新闻] newsapi失败:', err.message, '→ 尝试np-weblist');
+      if(__DEBUG__) console.warn('[新闻] np-listapi失败:', err.message, '→ 尝试腾讯财经');
       return tryWebList()
         .then(function(list) {
-          _newsDataSource = '实时快讯';
+          _newsDataSource = '腾讯快讯';
           return parseNewsList(list);
         });
     })
