@@ -565,7 +565,7 @@ function renderSpotlight(realtimeData) {
     var simTag = s.isSimulated ? '<span style="color:var(--muted);font-size:0.5rem;margin-left:0.2rem">[模拟]</span>' : '';
 
     var simCls = s.isSimulated ? ' sim-data' : '';
-    html += '<div class="spotlight-card' + simCls + '">' +
+    html += '<div class="spotlight-card' + simCls + '" onclick="showEtfRecommend(\'' + s.etfCode + '\', \'' + escapeHtmlAttr(s.name) + '\', \'行业\', \'spotlight\')" style="cursor:pointer" title="点击查看ETF推荐">' +
       '<div class="spotlight-rank ' + rankCls + '">' + rank + '</div>' +
       '<div class="spotlight-info">' +
         '<div class="spotlight-name">' + s.name + simTag + '</div>' +
