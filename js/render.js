@@ -838,9 +838,9 @@ function _renderLeaderHTML(realtimeData) {
 
     html += '<div class="leader-row">';
     // 行业名+PE
-    html += '<div class="leader-sector">';
+    html += '<div class="leader-sector" onclick="showEtfRecommend(\'' + sector.etfCode + '\', \'' + escapeHtmlAttr(sector.name) + '\', \'行业\', \'leader\')" title="点击查看ETF推荐">';
     html += '<div class="leader-sector-name">' + sector.name + '</div>';
-    html += '<div class="leader-sector-pe">PE ' + pe.toFixed(1) + ' · ' + valTag + '</div>';
+    html += '<div class="leader-sector-pe">PE ' + pe.toFixed(1) + ' · <span style="color:' + valColor + ';font-weight:600">' + valTag + '</span></div>';
     html += '</div>';
     // 龙头股列表
     html += '<div class="leader-stocks">';
