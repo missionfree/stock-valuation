@@ -3850,15 +3850,22 @@ function renderEtfRecommendations(container, recommendations, side) {
   html += '<div class="etf-recommend-list">';
   
   recommendations.forEach(function(rec) {
-    html += '<div class="etf-recommend-card" onclick="searchStockByCode(\'' + rec.code + '\')">';
+    // 防御性检查：确保 tag 和 tagClass 有值
+    var tagText = rec.tag || '推荐';
+    var tagCls = rec.tagClass || 'same';
+    var recName = rec.name || '未知ETF';
+    var recCode = rec.code || '';
+    var recReason = rec.reason || '';
+    
+    html += '<div class="etf-recommend-card" onclick="searchStockByCode(\'' + recCode + '\')">';
     html += '<div class="etf-recommend-card-header">';
     html += '<div class="etf-recommend-card-name">';
-    html += rec.name;
-    html += '<span class="tag ' + rec.tagClass + '">' + rec.tag + '</span>';
+    html += escHTML(recName);
+    html += '<span class="tag ' + tagCls + '">' + escHTML(tagText) + '</span>';
     html += '</div>';
-    html += '<div class="etf-recommend-card-code">' + rec.code + '</div>';
+    html += '<div class="etf-recommend-card-code">' + recCode + '</div>';
     html += '</div>';
-    html += '<div class="etf-recommend-card-reason"><strong>推荐理由：</strong>' + rec.reason + '</div>';
+    html += '<div class="etf-recommend-card-reason"><strong>推荐理由：</strong>' + escHTML(recReason) + '</div>';
     html += '</div>';
   });
   

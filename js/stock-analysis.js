@@ -148,8 +148,19 @@ function searchStock() {
     var isIndex = (suggest && suggest._isIndex) || (_suggestMeta && _suggestMeta.isIndex);
 
     if (!suggest) {
+      // 自动检测ETF/指数类型（emSuggest未返回结果时，根据代码格式判断）
+      var _pureCode = keyword.replace(/^(sh|sz|hk)/i, '');
+      if (!isETF && /^5\d{5}$/.test(_pureCode)) isETF = true;        // 沪市ETF: 5开头
+      if (!isETF && /^159\d{3}$/.test(_pureCode)) isETF = true;      // 深市ETF: 159开头
+      if (!isIndex && /^(000300|000016|000905|399001|399006|000852)/.test(_pureCode)) isIndex = true;
+      
       return fetchTencentStock(keyword).then(function(d) {
-        return d ? { _tencent: true, data: d, _secCode: keyword, _isETF: isETF, _isIndex: isIndex } : null;
+        if (!d) return null;
+        // 修复：fetchTencentStock已返回 {_tencent:true, data:...}，不可再次包装
+        d._secCode = _pureCode;
+        d._isETF = isETF;
+        d._isIndex = isIndex;
+        return d;
       });
     }
     var tencentCode = emToTencentCode(suggest.MktNum, suggest.Code);
@@ -6187,6 +6198,12 @@ function renderStockResult(stockData, finData, flowData, loading) {
   // 如果K线图数据已加载，重新渲染（因为 renderStockResult 会覆盖整个区域）
   if (_currentKlineData) {
     renderKlineChart(_currentKlineData.klData, _currentKlineData.stockName, _currentKlineData.realtimePrice);
+    // 重新渲染FTF
+    if (typeof renderFTF === 'function') {
+      Perf.trackedSetTimeout(function() {
+        renderFTF(_currentKlineData.klData, _currentStockData || { name: _currentKlineData.stockName }, _currentKlineData.realtimePrice);
+      }, 120);
+    }
   }
 
   // 异步加载业绩报告附加数据（机构持股+R007利率）
@@ -7234,6 +7251,12 @@ function fetchAndRenderKlineChart(secCode, stockName, realtimePrice) {
   return fetchKline(tencentCode, 250).then(function(klData) {
     _currentKlineData = { klData: klData, stockName: stockName, realtimePrice: realtimePrice };
     renderKlineChart(klData, stockName, realtimePrice);
+    // 渲染FTF未来趋势因子
+    if (typeof renderFTF === 'function') {
+      Perf.trackedSetTimeout(function() {
+        renderFTF(klData, _currentStockData || { name: stockName }, realtimePrice);
+      }, 120);
+    }
   }).catch(function(err) {
     console.warn('K线图获取失败:', err.message);
     renderKlineChart(null, stockName);
