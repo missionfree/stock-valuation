@@ -1821,16 +1821,16 @@ function renderDashboard(realtimeData) {
   // 沪深300吸引力阈值（与第一层核心指标一致）：
   // >3 绝对低位（红），2~3 熊市低位（红），1~2 适中（黄），0~1 偏高（黄），<0 泡沫（绿）
   if (sexyHS300 >= 2) {
-    sexyVal.style.color = '#FF3B30';
-    sexyVal.style.textShadow = '0 0 8px rgba(255,59,48,0.4)';
+    sexyVal.style.color = '#FF0000';
+    sexyVal.style.textShadow = '0 0 8px rgba(255, 0, 0,0.4)';
     sexyCard.className = 'dash-card hl-red';
   } else if (sexyHS300 >= 1) {
     sexyVal.style.color = '#FFD700';
     sexyVal.style.textShadow = '0 0 8px rgba(255,215,0,0.4)';
     sexyCard.className = 'dash-card';
   } else {
-    sexyVal.style.color = '#00C853';
-    sexyVal.style.textShadow = '0 0 8px rgba(0,200,83,0.4)';
+    sexyVal.style.color = '#00AA00';
+    sexyVal.style.textShadow = '0 0 8px rgba(0, 170, 0,0.4)';
     sexyCard.className = 'dash-card';
   }
   sexySub.textContent = (sexyHS300 >= 3 ? '绝对低位' : sexyHS300 >= 2 ? '熊市低位' : sexyHS300 >= 1 ? '适中区间' : sexyHS300 >= 0 ? '偏高区间' : '泡沫预警') + ' · 超额收益率·沪深300保守口径';
@@ -2021,7 +2021,7 @@ function renderOverview(realtimeData) {
   if (psEl) {
     animateOdometer(psEl, priceStrength + '%');
     // 综合回报率着色：>8%红色(强/投资划算)，6~8%黄色(中)，<6%绿色(弱/不划算)
-    psEl.style.color = priceStrength > 8 ? '#FF3B30' : priceStrength > 6 ? '#FFD700' : '#00C853';
+    psEl.style.color = priceStrength > 8 ? '#FF0000' : priceStrength > 6 ? '#FFD700' : '#00AA00';
     psEl.style.textShadow = '0 0 8px ' + psEl.style.color + '55';
     var psTag = document.getElementById('tier1PriceStrengthTag');
     if (psTag) {
@@ -2039,7 +2039,7 @@ function renderOverview(realtimeData) {
   var aiEl = document.getElementById('tier1AttractIdx');
   if (aiEl) {
     animateOdometer(aiEl, sexy.toFixed(2));
-    aiEl.style.color = sexy >= 2.0 ? '#FF3B30' : sexy >= 0.8 ? '#FFD700' : '#00C853';
+    aiEl.style.color = sexy >= 2.0 ? '#FF0000' : sexy >= 0.8 ? '#FFD700' : '#00AA00';
     aiEl.style.textShadow = '0 0 8px ' + aiEl.style.color + '55';
   }
   // 仓位建议（沪深300保守口径，稳健策略）：最高80%股，始终保留债券仓位
@@ -2078,7 +2078,7 @@ function renderOverview(realtimeData) {
     animateOdometer(peEl, peAllA.toFixed(1));
     // 动态计算全市场PE分位，用于颜色判定（统一精度工具）
     var csiAllPct = csiAll ? calcDynamicPct(csiAll.pct10, csiAll.pe, peAllA, csiAll.peMin, csiAll.peMax) : 42;
-    peEl.style.color = csiAllPct < 30 ? '#FF3B30' : csiAllPct < 70 ? '#FFD700' : '#00C853';
+    peEl.style.color = csiAllPct < 30 ? '#FF0000' : csiAllPct < 70 ? '#FFD700' : '#00AA00';
   }
   var dyEl = document.getElementById('tier1DivYield');
   if (dyEl) dyEl.textContent = '股息率 ' + dyAllA.toFixed(2) + '%';
@@ -2119,8 +2119,8 @@ function updateHeaderTime(success) {
   var dot = document.getElementById('liveDot');
   if (dot) {
     if (success) {
-      dot.style.background = '#FF3B30';
-      dot.style.boxShadow = '0 0 6px #FF3B30, 0 0 12px rgba(255,59,48,0.4)';
+      dot.style.background = '#FF0000';
+      dot.style.boxShadow = '0 0 6px #FF0000, 0 0 12px rgba(255, 0, 0,0.4)';
     } else {
       dot.style.background = '#FFD700';
       dot.style.boxShadow = '0 0 6px #FFD700, 0 0 12px rgba(255,215,0,0.3)';

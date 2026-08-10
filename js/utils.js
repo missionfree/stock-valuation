@@ -560,8 +560,8 @@ function _ensureColorCache() {
   var docEl = document.documentElement;
   var cs = getComputedStyle(docEl);
   _colorCache = {};
-  _colorCache.red    = cs.getPropertyValue('--neon-red').trim()   || '#FF3B30';
-  _colorCache.green  = cs.getPropertyValue('--neon-green').trim() || '#00C853';
+  _colorCache.red    = cs.getPropertyValue('--neon-red').trim()   || '#FF0000';
+  _colorCache.green  = cs.getPropertyValue('--neon-green').trim() || '#00AA00';
   _colorCache.yellow = cs.getPropertyValue('--neon-yellow').trim()|| '#FFD700';
   _colorCache.cyan   = cs.getPropertyValue('--neon-cyan').trim()  || '#00E5FF';
   _colorCache.ink    = cs.getPropertyValue('--ink').trim()        || '#F0F4FA';

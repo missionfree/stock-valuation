@@ -256,7 +256,7 @@ function renderPaKlineChart(klineData, result) {
     var kOpen = parseFloat(kData[1]) || 0;
     var kClose = parseFloat(kData[2]) || 0;
     var isUp = kClose >= kOpen;
-    ctx.fillStyle = isUp ? 'rgba(255,59,48,0.35)' : 'rgba(0,200,83,0.35)';
+    ctx.fillStyle = isUp ? 'rgba(255, 0, 0,0.35)' : 'rgba(0, 170, 0,0.35)';
     var vw = Math.max(1, bodyW * 0.7);
     ctx.fillRect(vx - vw / 2, vy, vw, vBottom - vy);
   }
@@ -289,8 +289,8 @@ function renderPaKlineChart(klineData, result) {
     var cx = padL + ci * candleW + candleW / 2;
     var isUpC = cClose >= cOpen;
 
-    var color = isUpC ? '#FF3B30' : '#00C853';
-    var fillColor = isUpC ? 'rgba(255,59,48,0.8)' : 'rgba(0,200,83,0.8)';
+    var color = isUpC ? '#FF0000' : '#00AA00';
+    var fillColor = isUpC ? 'rgba(255, 0, 0,0.8)' : 'rgba(0, 170, 0,0.8)';
 
     // 影线
     ctx.strokeStyle = color;
@@ -322,7 +322,7 @@ function renderPaKlineChart(klineData, result) {
     var strongest = result.signals.reduce(function(prev, cur) {
       return (cur.confidence > prev.confidence) ? cur : prev;
     });
-    var arrowColor = strongest.signal === 'bull' ? '#FF3B30' : '#00C853';
+    var arrowColor = strongest.signal === 'bull' ? '#FF0000' : '#00AA00';
     var arrowY = strongest.signal === 'bull' ? lastY + 20 : lastY - 20;
     var arrowDir = strongest.signal === 'bull' ? 1 : -1; // 1=up arrow, -1=down arrow
 
@@ -832,7 +832,7 @@ function renderPatternAnalysis(result) {
         Perf.clearInterval(scoreTimer);
       }
       gaugeScore.textContent = displayScore;
-      gaugeScore.setAttribute('fill', result.levelColor === 'bull' ? '#FF3B30' : (result.levelColor === 'bear' ? '#00C853' : (result.levelColor === 'neutral' ? '#00C8FF' : '#FFAE00')));
+      gaugeScore.setAttribute('fill', result.levelColor === 'bull' ? '#FF0000' : (result.levelColor === 'bear' ? '#00AA00' : (result.levelColor === 'neutral' ? '#00C8FF' : '#FFAE00')));
     }, 30);
   }
   if (gaugeLabel) { gaugeLabel.textContent = result.level; }
@@ -890,9 +890,9 @@ function renderPatternAnalysis(result) {
     if (fillEl) {
       fillEl.style.width = strength + '%';
       fillEl.style.transition = 'width 1s cubic-bezier(0.4,0,0.2,1)';
-      if (strength >= 58) fillEl.style.background = 'linear-gradient(90deg, rgba(255,174,0,0.4), rgba(255,59,48,0.7))';
+      if (strength >= 58) fillEl.style.background = 'linear-gradient(90deg, rgba(255,174,0,0.4), rgba(255, 0, 0,0.7))';
       else if (strength >= 42) fillEl.style.background = 'linear-gradient(90deg, rgba(0,200,255,0.3), rgba(255,174,0,0.4))';
-      else fillEl.style.background = 'linear-gradient(90deg, rgba(0,200,83,0.7), rgba(255,174,0,0.4))';
+      else fillEl.style.background = 'linear-gradient(90deg, rgba(0, 170, 0,0.7), rgba(255,174,0,0.4))';
     }
     if (valEl) {
       var catLabel = { trend: '趋势', relative: '强弱', volume: '量价', intraday: '分时', position: '位置', breakout: '突破' }[cat];
@@ -966,7 +966,7 @@ function renderPatternAnalysis(result) {
       var dx = cx + dr * Math.cos(drad);
       var dy = cy + dr * Math.sin(drad);
       dataPts.push(dx.toFixed(1) + ',' + dy.toFixed(1));
-      var dotColor = strength >= 58 ? '#FF3B30' : (strength >= 42 ? '#00C8FF' : '#00C853');
+      var dotColor = strength >= 58 ? '#FF0000' : (strength >= 42 ? '#00C8FF' : '#00AA00');
       dotsHtml += '<circle cx="' + dx.toFixed(1) + '" cy="' + dy.toFixed(1) + '" r="3" fill="' + dotColor + '" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>';
     }
     radarShape.setAttribute('points', dataPts.join(' '));
@@ -1005,7 +1005,7 @@ function renderPatternAnalysis(result) {
     itemHtml += '</div>';
     if (triggered && signal) {
       var confPct = Math.round(signal.confidence * 100);
-      var confColor = rule.signal === 'bull' ? 'rgba(255,59,48,0.5)' : 'rgba(0,200,83,0.5)';
+      var confColor = rule.signal === 'bull' ? 'rgba(255, 0, 0,0.5)' : 'rgba(0, 170, 0,0.5)';
       itemHtml += '<div class="pa-rule-meta">';
       itemHtml += '<span class="pa-rule-cat">' + catIcon + ' ' + catLabel + '</span>';
       itemHtml += '<span class="pa-rule-weight">权重' + rule.weight + '</span>';

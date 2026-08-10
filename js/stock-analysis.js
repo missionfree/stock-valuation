@@ -55,7 +55,7 @@ function triggerSearchTransition(callback) {
     var p = document.createElement('div');
     p.className = 'bh-particle';
     var angle = (360 / particleCount) * i;
-    var colors = ['#FF6B35', '#FFD700', '#00E5FF', '#FF3B30', '#7B68EE', '#FF4500'];
+    var colors = ['#FF6B35', '#FFD700', '#00E5FF', '#FF0000', '#7B68EE', '#FF4500'];
     var color = colors[i % colors.length];
     p.style.setProperty('--bh-angle', angle + 'deg');
     p.style.setProperty('--bh-delay', (i * 0.015) + 's');
@@ -691,11 +691,11 @@ function generateIndustryOutlook(profile, finData, stockData) {
   } else if (isTech) {
     analysisParts.push('科技行业受益于国产替代与技术创新驱动，成长空间大但竞争激烈');
     tags.push('高成长', '政策支持', '技术迭代');
-    outlook = '积极'; outlookColor = '#FF3B30';
+    outlook = '积极'; outlookColor = '#FF0000';
   } else if (isNewEnergy) {
     analysisParts.push('新能源行业长期受益于碳中和政策，但短期面临产能过剩与价格竞争压力');
     tags.push('碳中和', '政策驱动', '周期波动');
-    outlook = '积极'; outlookColor = '#FF3B30';
+    outlook = '积极'; outlookColor = '#FF0000';
   } else if (isPharma) {
     analysisParts.push('医药行业受益于老龄化趋势与创新药政策支持，集采压力逐步消化');
     tags.push('老龄化', '创新驱动', '集采影响');
@@ -703,7 +703,7 @@ function generateIndustryOutlook(profile, finData, stockData) {
   } else if (isRealEstate) {
     analysisParts.push('房地产行业处于深度调整期，政策端持续发力但行业基本面仍承压');
     tags.push('政策托底', '行业洗牌', '高风险');
-    outlook = '谨慎'; outlookColor = '#00C853';
+    outlook = '谨慎'; outlookColor = '#00AA00';
   } else if (isConsumer) {
     analysisParts.push('消费行业受益于内需复苏，龙头公司品牌渠道优势显著');
     tags.push('内需消费', '品牌价值', '现金流稳定');
@@ -719,7 +719,7 @@ function generateIndustryOutlook(profile, finData, stockData) {
   } else if (isMaterial) {
     analysisParts.push('材料行业具有强周期属性，当前处于周期底部区域，关注库存拐点');
     tags.push('强周期', '库存周期', '价格波动');
-    outlook = '谨慎'; outlookColor = '#00C853';
+    outlook = '谨慎'; outlookColor = '#00AA00';
   } else {
     analysisParts.push('公司所属「' + (profile.emIndustry || profile.csrcIndustry || '未知') + '」行业，建议关注行业政策与竞争格局变化');
     tags.push('行业研究');
@@ -739,7 +739,7 @@ function generateIndustryOutlook(profile, finData, stockData) {
     } else if (finData.profitYoY < -10) {
       analysisParts.push('净利润同比下降' + Math.abs(finData.profitYoY).toFixed(1) + '%，业绩承压');
       tags.push('业绩下滑');
-      if (outlook === '积极') { outlook = '谨慎'; outlookColor = '#00C853'; }
+      if (outlook === '积极') { outlook = '谨慎'; outlookColor = '#00AA00'; }
     }
     if (finData.grossMargin >= 50) {
       analysisParts.push('毛利率' + finData.grossMargin.toFixed(1) + '%，产品竞争力强');
@@ -1883,7 +1883,7 @@ function renderSentimentPanel(data) {
     var limVal = elLimit.querySelector('.sm-value');
     var limSub = elLimit.querySelector('.sm-sub');
     if (limVal) {
-      limVal.innerHTML = '<span style="color:#FF3B30">' + data.limitUp + '板</span> / <span style="color:#00C853">' + data.limitDown + '停</span>';
+      limVal.innerHTML = '<span style="color:#FF0000">' + data.limitUp + '板</span> / <span style="color:#00AA00">' + data.limitDown + '停</span>';
     }
     if (limSub) {
       limSub.textContent = data.maxLbc > 0 ? '最高' + data.maxLbc + '连板' : '无连板';
@@ -1962,12 +1962,13 @@ function renderSentimentPanel(data) {
  */
 function _getSentimentGaugeColor(score) {
   // 与 getSentimentLevel 断点对齐：20/40/60/80
-  if (isNaN(score) || score < 0) return '#0a4d6c';  // 异常值→冰蓝
-  if (score <= 20) return '#00d4ff';   // 极度恐慌→冰蓝
-  if (score <= 40) return '#00ff88';   // 恐慌→荧光绿
-  if (score <= 60) return '#ff8c00';   // 中性→警示橙
-  if (score <= 80) return '#ff3366';   // 贪婪→沸腾红
-  return '#bb00ff';                     // 极度贪婪→霓虹紫
+  // A股惯例：恐慌=绿(跌)，贪婪=红(涨)
+  if (isNaN(score) || score < 0) return '#0055AA';  // 异常值→深蓝
+  if (score <= 20) return '#00AA00';   // 极度恐慌→绿
+  if (score <= 40) return '#44CC44';   // 恐慌→浅绿
+  if (score <= 60) return '#FFAE00';   // 中性→黄
+  if (score <= 80) return '#FF6600';   // 贪婪→橙红
+  return '#FF0000';                     // 极度贪婪→红
 }
 
 /**
@@ -5642,7 +5643,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
   // 黑五类检测
   var blackFive = detectBlackFive(d, finData);
   var nameClass = blackFive.isBlack ? 'sd-name sd-name-blackfive' : 'sd-name';
-  var nameStyle = blackFive.isBlack ? ' style="color:#00C853;text-shadow:0 0 10px #00C853,0 0 20px #00C853,0 0 30px #00C853aa"' : '';
+  var nameStyle = blackFive.isBlack ? ' style="color:#00AA00;text-shadow:0 0 10px #00AA00,0 0 20px #00AA00,0 0 30px #00AA00aa"' : '';
 
   // 1. 头部：名称+代码+价格+涨跌
   html += '<div class="sd-header">' +
@@ -5679,8 +5680,8 @@ function renderStockResult(stockData, finData, flowData, loading) {
     '<div class="sd-grid">' +
       '<div class="sd-item"><span class="sd-item-val">' + (d.open > 0 ? d.open.toFixed(2) : '—') + '</span><span class="sd-item-lbl">开盘</span></div>' +
       '<div class="sd-item"><span class="sd-item-val">' + (d.prevClose > 0 ? d.prevClose.toFixed(2) : '—') + '</span><span class="sd-item-lbl">昨收</span></div>' +
-      '<div class="sd-item"><span class="sd-item-val" style="color:#FF3B30">' + (d.high > 0 ? d.high.toFixed(2) : '—') + '</span><span class="sd-item-lbl">最高</span></div>' +
-      '<div class="sd-item"><span class="sd-item-val" style="color:#00C853">' + (d.low > 0 ? d.low.toFixed(2) : '—') + '</span><span class="sd-item-lbl">最低</span></div>' +
+      '<div class="sd-item"><span class="sd-item-val" style="color:#FF0000">' + (d.high > 0 ? d.high.toFixed(2) : '—') + '</span><span class="sd-item-lbl">最高</span></div>' +
+      '<div class="sd-item"><span class="sd-item-val" style="color:#00AA00">' + (d.low > 0 ? d.low.toFixed(2) : '—') + '</span><span class="sd-item-lbl">最低</span></div>' +
     '</div>' +
     '<div class="sd-grid" style="margin-top:0.25rem">' +
       '<div class="sd-item"><span class="sd-item-val">' + volumeStr + '</span><span class="sd-item-lbl">成交量</span></div>' +
@@ -5736,10 +5737,10 @@ function renderStockResult(stockData, finData, flowData, loading) {
     '</div>';
   } else if (finData) {
     var reportDateStr = finData.reportDate ? finData.reportDate.slice(0, 10) + (finData.reportType ? ' ' + finData.reportType : '') : '最新';
-    var profitColor = finData.profitYoY >= 0 ? '#FF3B30' : '#00C853';
-    var revenueColor = finData.revenueYoY >= 0 ? '#FF3B30' : '#00C853';
-    var roeColor = finData.roe >= 15 ? '#FF3B30' : finData.roe >= 10 ? '#FFD700' : '#00C853';
-    var debtColor = finData.debtRatio >= 70 ? '#00C853' : finData.debtRatio >= 50 ? '#FFD700' : '#FF3B30';
+    var profitColor = finData.profitYoY >= 0 ? '#FF0000' : '#00AA00';
+    var revenueColor = finData.revenueYoY >= 0 ? '#FF0000' : '#00AA00';
+    var roeColor = finData.roe >= 15 ? '#FF0000' : finData.roe >= 10 ? '#FFD700' : '#00AA00';
+    var debtColor = finData.debtRatio >= 70 ? '#00AA00' : finData.debtRatio >= 50 ? '#FFD700' : '#FF0000';
 
     html += '<div class="sd-section">' +
       '<div class="sd-section-title">财务基本面 <span style="font-size:0.5rem;color:var(--muted);font-weight:400;margin-left:0.3rem">报告期：' + reportDateStr + '</span></div>' +
@@ -5809,18 +5810,18 @@ function renderStockResult(stockData, finData, flowData, loading) {
     '<div class="sd-assess-bars">' +
       '<div class="sd-assess-bar">' +
         '<div class="sd-assess-bar-lbl">估值</div>' +
-        '<div class="sd-assess-bar-track"><div class="sd-assess-bar-fill" style="width:' + valScore + '%;background:' + (valScore >= 60 ? '#FF3B30' : valScore >= 40 ? '#FFD700' : '#00C853') + ';color:' + (valScore >= 60 ? '#FF3B30' : valScore >= 40 ? '#FFD700' : '#00C853') + '"></div></div>' +
-        '<div class="sd-assess-bar-val" style="color:' + (valScore >= 60 ? '#FF3B30' : valScore >= 40 ? '#FFD700' : '#00C853') + '">' + valScore + '</div>' +
+        '<div class="sd-assess-bar-track"><div class="sd-assess-bar-fill" style="width:' + valScore + '%;background:' + (valScore >= 60 ? '#FF0000' : valScore >= 40 ? '#FFD700' : '#00AA00') + ';color:' + (valScore >= 60 ? '#FF0000' : valScore >= 40 ? '#FFD700' : '#00AA00') + '"></div></div>' +
+        '<div class="sd-assess-bar-val" style="color:' + (valScore >= 60 ? '#FF0000' : valScore >= 40 ? '#FFD700' : '#00AA00') + '">' + valScore + '</div>' +
       '</div>' +
       '<div class="sd-assess-bar">' +
         '<div class="sd-assess-bar-lbl">基本面</div>' +
-        '<div class="sd-assess-bar-track"><div class="sd-assess-bar-fill" style="width:' + fundScore + '%;background:' + (fundScore >= 60 ? '#FF3B30' : fundScore >= 40 ? '#FFD700' : '#00C853') + ';color:' + (fundScore >= 60 ? '#FF3B30' : fundScore >= 40 ? '#FFD700' : '#00C853') + '"></div></div>' +
-        '<div class="sd-assess-bar-val" style="color:' + (fundScore >= 60 ? '#FF3B30' : fundScore >= 40 ? '#FFD700' : '#00C853') + '">' + fundScore + '</div>' +
+        '<div class="sd-assess-bar-track"><div class="sd-assess-bar-fill" style="width:' + fundScore + '%;background:' + (fundScore >= 60 ? '#FF0000' : fundScore >= 40 ? '#FFD700' : '#00AA00') + ';color:' + (fundScore >= 60 ? '#FF0000' : fundScore >= 40 ? '#FFD700' : '#00AA00') + '"></div></div>' +
+        '<div class="sd-assess-bar-val" style="color:' + (fundScore >= 60 ? '#FF0000' : fundScore >= 40 ? '#FFD700' : '#00AA00') + '">' + fundScore + '</div>' +
       '</div>' +
       '<div class="sd-assess-bar">' +
         '<div class="sd-assess-bar-lbl">成长性</div>' +
-        '<div class="sd-assess-bar-track"><div class="sd-assess-bar-fill" style="width:' + growthScore + '%;background:' + (growthScore >= 60 ? '#FF3B30' : growthScore >= 40 ? '#FFD700' : '#00C853') + ';color:' + (growthScore >= 60 ? '#FF3B30' : growthScore >= 40 ? '#FFD700' : '#00C853') + '"></div></div>' +
-        '<div class="sd-assess-bar-val" style="color:' + (growthScore >= 60 ? '#FF3B30' : growthScore >= 40 ? '#FFD700' : '#00C853') + '">' + growthScore + '</div>' +
+        '<div class="sd-assess-bar-track"><div class="sd-assess-bar-fill" style="width:' + growthScore + '%;background:' + (growthScore >= 60 ? '#FF0000' : growthScore >= 40 ? '#FFD700' : '#00AA00') + ';color:' + (growthScore >= 60 ? '#FF0000' : growthScore >= 40 ? '#FFD700' : '#00AA00') + '"></div></div>' +
+        '<div class="sd-assess-bar-val" style="color:' + (growthScore >= 60 ? '#FF0000' : growthScore >= 40 ? '#FFD700' : '#00AA00') + '">' + growthScore + '</div>' +
       '</div>' +
     '</div>';
 
@@ -5884,7 +5885,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
       html += '</div></div></div>';
 
       // 资金强度评分条
-      var scoreColor = flowAnalysis.strengthScore >= 65 ? '#FF3B30' : flowAnalysis.strengthScore >= 40 ? '#FFD700' : '#00C853';
+      var scoreColor = flowAnalysis.strengthScore >= 65 ? '#FF0000' : flowAnalysis.strengthScore >= 40 ? '#FFD700' : '#00AA00';
       html += '<div class="sd-flow-score">' +
         '<div class="sd-flow-score-lbl">主力资金强度</div>' +
         '<div class="sd-flow-score-bar">' +
@@ -5896,20 +5897,20 @@ function renderStockResult(stockData, finData, flowData, loading) {
 
       // 资金数据网格
       html += '<div class="sd-grid">' +
-        '<div class="sd-item"><span class="sd-item-val" style="color:' + (flowAnalysis.totalMain >= 0 ? '#FF3B30' : '#00C853') + '">' + formatFlowAmount(flowAnalysis.totalMain) + '</span><span class="sd-item-lbl">20日主力净流入</span></div>' +
-        '<div class="sd-item"><span class="sd-item-val" style="color:' + (flowAnalysis.recent5Main >= 0 ? '#FF3B30' : '#00C853') + '">' + formatFlowAmount(flowAnalysis.recent5Main) + '</span><span class="sd-item-lbl">5日主力净流入</span></div>' +
-        '<div class="sd-item"><span class="sd-item-val" style="color:' + (flowAnalysis.recent5Xlarge >= 0 ? '#FF3B30' : '#00C853') + '">' + formatFlowAmount(flowAnalysis.recent5Xlarge) + '</span><span class="sd-item-lbl">5日超大单净流入</span></div>' +
+        '<div class="sd-item"><span class="sd-item-val" style="color:' + (flowAnalysis.totalMain >= 0 ? '#FF0000' : '#00AA00') + '">' + formatFlowAmount(flowAnalysis.totalMain) + '</span><span class="sd-item-lbl">20日主力净流入</span></div>' +
+        '<div class="sd-item"><span class="sd-item-val" style="color:' + (flowAnalysis.recent5Main >= 0 ? '#FF0000' : '#00AA00') + '">' + formatFlowAmount(flowAnalysis.recent5Main) + '</span><span class="sd-item-lbl">5日主力净流入</span></div>' +
+        '<div class="sd-item"><span class="sd-item-val" style="color:' + (flowAnalysis.recent5Xlarge >= 0 ? '#FF0000' : '#00AA00') + '">' + formatFlowAmount(flowAnalysis.recent5Xlarge) + '</span><span class="sd-item-lbl">5日超大单净流入</span></div>' +
         '<div class="sd-item"><span class="sd-item-val">' + flowAnalysis.inflowRatio + '%</span><span class="sd-item-lbl">净流入天数占比</span></div>' +
       '</div>';
 
       // 量价关系
       var trendStr = flowAnalysis.priceTrend > 2 ? '↑ 走强' : flowAnalysis.priceTrend < -2 ? '↓ 走弱' : '→ 横盘';
-      var trendColor = flowAnalysis.priceTrend > 2 ? '#FF3B30' : flowAnalysis.priceTrend < -2 ? '#00C853' : '#FFD700';
+      var trendColor = flowAnalysis.priceTrend > 2 ? '#FF0000' : flowAnalysis.priceTrend < -2 ? '#00AA00' : '#FFD700';
       html += '<div class="sd-grid" style="margin-top:0.25rem">' +
         '<div class="sd-item"><span class="sd-item-val" style="color:' + trendColor + '">' + trendStr + '</span><span class="sd-item-lbl">近5日趋势</span></div>' +
-        '<div class="sd-item"><span class="sd-item-val" style="color:' + (flowAnalysis.recent5Change >= 0 ? '#FF3B30' : '#00C853') + '">' + (flowAnalysis.recent5Change >= 0 ? '+' : '') + flowAnalysis.recent5Change.toFixed(1) + '%</span><span class="sd-item-lbl">5日涨跌幅</span></div>' +
+        '<div class="sd-item"><span class="sd-item-val" style="color:' + (flowAnalysis.recent5Change >= 0 ? '#FF0000' : '#00AA00') + '">' + (flowAnalysis.recent5Change >= 0 ? '+' : '') + flowAnalysis.recent5Change.toFixed(1) + '%</span><span class="sd-item-lbl">5日涨跌幅</span></div>' +
         '<div class="sd-item"><span class="sd-item-val">' + flowAnalysis.recent5Inflow + '/5</span><span class="sd-item-lbl">净流入天数</span></div>' +
-        '<div class="sd-item"><span class="sd-item-val" style="color:' + (flowAnalysis.isRetailSelling ? '#00C853' : '#FFD700') + '">' + (flowAnalysis.isRetailSelling ? '散户卖出' : '散户买入') + '</span><span class="sd-item-lbl">散户行为</span></div>' +
+        '<div class="sd-item"><span class="sd-item-val" style="color:' + (flowAnalysis.isRetailSelling ? '#00AA00' : '#FFD700') + '">' + (flowAnalysis.isRetailSelling ? '散户卖出' : '散户买入') + '</span><span class="sd-item-lbl">散户行为</span></div>' +
       '</div>';
 
       // 近5日资金流向明细
@@ -5918,14 +5919,14 @@ function renderStockResult(stockData, finData, flowData, loading) {
         '<div class="sd-flow-detail-title">近5日资金明细</div>' +
         '<div class="sd-flow-detail-list">';
       recent5.forEach(function(day) {
-        var dayColor = day.main >= 0 ? '#FF3B30' : '#00C853';
+        var dayColor = day.main >= 0 ? '#FF0000' : '#00AA00';
         var dayArrow = day.main >= 0 ? '↑' : '↓';
         var dateShort = day.date.substring(5); // MM-DD
         html += '<div class="sd-flow-detail-row">' +
           '<span class="sd-flow-detail-date">' + dateShort + '</span>' +
           '<span class="sd-flow-detail-arrow" style="color:' + dayColor + '">' + dayArrow + '</span>' +
           '<span class="sd-flow-detail-amount" style="color:' + dayColor + '">' + formatFlowAmount(day.main) + '</span>' +
-          '<span class="sd-flow-detail-change" style="color:' + (day.changePct >= 0 ? '#FF3B30' : '#00C853') + '">' + (day.changePct >= 0 ? '+' : '') + day.changePct.toFixed(2) + '%</span>' +
+          '<span class="sd-flow-detail-change" style="color:' + (day.changePct >= 0 ? '#FF0000' : '#00AA00') + '">' + (day.changePct >= 0 ? '+' : '') + day.changePct.toFixed(2) + '%</span>' +
         '</div>';
       });
       html += '</div></div>';
@@ -5979,7 +5980,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
             '</div>' +
             '<div class="sd-vps-bar-row">' +
               '<span style="font-size:0.48rem;color:var(--muted);min-width:3rem">价格位置</span>' +
-              '<div class="sd-vps-bar-track"><div class="sd-vps-bar-fill" style="width:' + v1.metrics.pricePosition + '%;background:' + (v1.metrics.pricePosition < 40 ? '#FF3B30' : v1.metrics.pricePosition > 60 ? '#00C853' : '#FFD700') + '"></div></div>' +
+              '<div class="sd-vps-bar-track"><div class="sd-vps-bar-fill" style="width:' + v1.metrics.pricePosition + '%;background:' + (v1.metrics.pricePosition < 40 ? '#FF0000' : v1.metrics.pricePosition > 60 ? '#00AA00' : '#FFD700') + '"></div></div>' +
               '<span class="sd-vps-bar-val">' + v1.metrics.pricePosition.toFixed(0) + '%</span>' +
             '</div>' +
           '</div>' +
@@ -6003,7 +6004,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
             '</div>' +
             '<div class="sd-vps-bar-row">' +
               '<span style="font-size:0.48rem;color:var(--muted);min-width:3rem">量能变异</span>' +
-              '<div class="sd-vps-bar-track"><div class="sd-vps-bar-fill" style="width:' + Math.min(100, v2.metrics.volCV * 100) + '%;background:' + (v2.metrics.volCV < 0.4 ? '#00C853' : '#FFD700') + '"></div></div>' +
+              '<div class="sd-vps-bar-track"><div class="sd-vps-bar-fill" style="width:' + Math.min(100, v2.metrics.volCV * 100) + '%;background:' + (v2.metrics.volCV < 0.4 ? '#00AA00' : '#FFD700') + '"></div></div>' +
               '<span class="sd-vps-bar-val">' + (v2.metrics.volCV * 100).toFixed(1) + '%</span>' +
             '</div>' +
           '</div>' +
@@ -6022,12 +6023,12 @@ function renderStockResult(stockData, finData, flowData, loading) {
             '<div class="sd-vps-item-desc">' + v3.desc + '</div>' +
             '<div class="sd-vps-bar-row">' +
               '<span style="font-size:0.48rem;color:var(--muted);min-width:3rem">上涨放量</span>' +
-              '<div class="sd-vps-bar-track"><div class="sd-vps-bar-fill" style="width:' + (v3.metrics.upDaysWithVol / 5 * 100) + '%;background:#FF3B30"></div></div>' +
+              '<div class="sd-vps-bar-track"><div class="sd-vps-bar-fill" style="width:' + (v3.metrics.upDaysWithVol / 5 * 100) + '%;background:#FF0000"></div></div>' +
               '<span class="sd-vps-bar-val">' + v3.metrics.upDaysWithVol + '/5日</span>' +
             '</div>' +
             '<div class="sd-vps-bar-row">' +
               '<span style="font-size:0.48rem;color:var(--muted);min-width:3rem">下跌放量</span>' +
-              '<div class="sd-vps-bar-track"><div class="sd-vps-bar-fill" style="width:' + (v3.metrics.downDaysWithVol / 5 * 100) + '%;background:#00C853"></div></div>' +
+              '<div class="sd-vps-bar-track"><div class="sd-vps-bar-fill" style="width:' + (v3.metrics.downDaysWithVol / 5 * 100) + '%;background:#00AA00"></div></div>' +
               '<span class="sd-vps-bar-val">' + v3.metrics.downDaysWithVol + '/5日</span>' +
             '</div>' +
           '</div>' +
@@ -6046,7 +6047,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
             '<div class="sd-vps-item-desc">' + v4.desc + '</div>' +
             '<div class="sd-vps-bar-row">' +
               '<span style="font-size:0.48rem;color:var(--muted);min-width:3rem">量价一致</span>' +
-              '<div class="sd-vps-bar-track"><div class="sd-vps-bar-fill" style="width:' + (v4.metrics.consistentDays / 5 * 100) + '%;background:#FF3B30"></div></div>' +
+              '<div class="sd-vps-bar-track"><div class="sd-vps-bar-fill" style="width:' + (v4.metrics.consistentDays / 5 * 100) + '%;background:#FF0000"></div></div>' +
               '<span class="sd-vps-bar-val">' + v4.metrics.consistentDays + '/5日</span>' +
             '</div>' +
             '<div class="sd-vps-bar-row">' +
@@ -6345,7 +6346,7 @@ function generateWatchlistRecommendation(profile, finData, stockData, outlook) {
   if (score >= 75) {
     title = '建议纳入自选';
     icon = '★';
-    color = '#FF3B30';
+    color = '#FF0000';
   } else if (score >= 60) {
     title = '可关注，择机纳入';
     icon = '☆';
@@ -6357,7 +6358,7 @@ function generateWatchlistRecommendation(profile, finData, stockData, outlook) {
   } else {
     title = '暂不建议纳入';
     icon = '×';
-    color = '#00C853';
+    color = '#00AA00';
   }
 
   var text = '综合评分' + score + '/100。' + (reasons.length > 0 ? reasons.join('、') + '。' : '') + '建议结合自身风险偏好与持仓结构决定是否纳入自选。';
@@ -6413,15 +6414,15 @@ function renderDragonTiger(dtData) {
   var totalSell = list.reduce(function(s, d) { return s + d.sellAmt; }, 0);
   var billboardCount = list.length;
 
-  var netColor = totalNetBuy >= 0 ? '#FF3B30' : '#00C853';
+  var netColor = totalNetBuy >= 0 ? '#FF0000' : '#00AA00';
   var netStr = formatBigNumber(totalNetBuy);
 
   html += '<div class="sd-section sd-dt-section">' +
     '<div class="sd-section-title">龙虎榜 <span style="font-size:0.5rem;color:var(--muted);font-weight:400;margin-left:0.3rem">近30天上榜' + billboardCount + '次</span></div>';
 
   // 最新上榜日汇总卡片
-  var lChangeColor = latestEntry.changeRate >= 0 ? '#FF3B30' : '#00C853';
-  var lNetColor = latestEntry.netBuyAmt >= 0 ? '#FF3B30' : '#00C853';
+  var lChangeColor = latestEntry.changeRate >= 0 ? '#FF0000' : '#00AA00';
+  var lNetColor = latestEntry.netBuyAmt >= 0 ? '#FF0000' : '#00AA00';
 
   html += '<div class="sd-dt-latest">' +
     '<div class="sd-dt-latest-date">' + latestEntry.tradeDate + ' 上榜</div>' +
@@ -6444,8 +6445,8 @@ function renderDragonTiger(dtData) {
   // 近30天汇总
   html += '<div class="sd-grid" style="margin-top:0.25rem">' +
     '<div class="sd-item"><span class="sd-item-val" style="color:' + netColor + '">' + netStr + '</span><span class="sd-item-lbl">30日龙虎榜净买</span></div>' +
-    '<div class="sd-item"><span class="sd-item-val" style="color:#FF3B30">' + formatBigNumber(totalBuy) + '</span><span class="sd-item-lbl">30日总买入</span></div>' +
-    '<div class="sd-item"><span class="sd-item-val" style="color:#00C853">' + formatBigNumber(totalSell) + '</span><span class="sd-item-lbl">30日总卖出</span></div>' +
+    '<div class="sd-item"><span class="sd-item-val" style="color:#FF0000">' + formatBigNumber(totalBuy) + '</span><span class="sd-item-lbl">30日总买入</span></div>' +
+    '<div class="sd-item"><span class="sd-item-val" style="color:#00AA00">' + formatBigNumber(totalSell) + '</span><span class="sd-item-lbl">30日总卖出</span></div>' +
     '<div class="sd-item"><span class="sd-item-val">' + billboardCount + '</span><span class="sd-item-lbl">上榜次数</span></div>' +
   '</div>';
 
@@ -6453,13 +6454,13 @@ function renderDragonTiger(dtData) {
   html += '<div class="sd-dt-list">' +
     '<div class="sd-dt-list-title">上榜记录</div>';
   list.forEach(function(item, idx) {
-    var iColor = item.netBuyAmt >= 0 ? '#FF3B30' : '#00C853';
-    var cColor = item.changeRate >= 0 ? '#FF3B30' : '#00C853';
+    var iColor = item.netBuyAmt >= 0 ? '#FF0000' : '#00AA00';
+    var cColor = item.changeRate >= 0 ? '#FF0000' : '#00AA00';
     var arrow = item.netBuyAmt >= 0 ? '↑' : '↓';
     // 次日涨跌幅
     var nextDayStr = '';
     if (item.nextDayChange !== null && !isNaN(item.nextDayChange)) {
-      var ndColor = item.nextDayChange >= 0 ? '#FF3B30' : '#00C853';
+      var ndColor = item.nextDayChange >= 0 ? '#FF0000' : '#00AA00';
       nextDayStr = '<span style="font-size:0.46rem;color:' + ndColor + ';width:2.5rem;text-align:right;flex-shrink:0">次日' + (item.nextDayChange >= 0 ? '+' : '') + item.nextDayChange.toFixed(1) + '%</span>';
     }
     html += '<div class="sd-dt-row' + (idx === 0 ? ' sd-dt-row-latest' : '') + '">' +
@@ -6844,11 +6845,11 @@ function renderMAAnalysis(maData) {
 
   // 信号颜色
   var signalColor = {
-    buy: '#FF3B30',
+    buy: '#FF0000',
     caution: '#FFD700',
     hold: '#FFD700',
     watch: '#FFD700',
-    sell: '#00C853'
+    sell: '#00AA00'
   };
   var sColor = signalColor[maData.signalCls] || '#A0B0C8';
 
@@ -6879,10 +6880,10 @@ function renderMAAnalysis(maData) {
 
   // 均线数据网格
   html += '<div class="sd-grid">' +
-    '<div class="sd-item"><span class="sd-item-val" style="color:' + (maData.aboveMA ? '#FF3B30' : '#00C853') + '">' + maData.currentPrice.toFixed(2) + '</span><span class="sd-item-lbl">现价</span></div>' +
+    '<div class="sd-item"><span class="sd-item-val" style="color:' + (maData.aboveMA ? '#FF0000' : '#00AA00') + '">' + maData.currentPrice.toFixed(2) + '</span><span class="sd-item-lbl">现价</span></div>' +
     '<div class="sd-item"><span class="sd-item-val" style="color:var(--neon-cyan)">' + maData.ma20.toFixed(2) + '</span><span class="sd-item-lbl">20日均线</span></div>' +
-    '<div class="sd-item"><span class="sd-item-val" style="color:' + (maData.deviation >= 0 ? '#FF3B30' : '#00C853') + '">' + (maData.deviation >= 0 ? '+' : '') + maData.deviation.toFixed(2) + '%</span><span class="sd-item-lbl">离均线多远</span></div>' +
-    '<div class="sd-item"><span class="sd-item-val" style="color:' + (maData.maRising ? '#FF3B30' : '#00C853') + '">' + (maData.maRising ? '↑' : '↓') + ' ' + Math.abs(maData.maTrendPct).toFixed(2) + '%</span><span class="sd-item-lbl">均线方向</span></div>' +
+    '<div class="sd-item"><span class="sd-item-val" style="color:' + (maData.deviation >= 0 ? '#FF0000' : '#00AA00') + '">' + (maData.deviation >= 0 ? '+' : '') + maData.deviation.toFixed(2) + '%</span><span class="sd-item-lbl">离均线多远</span></div>' +
+    '<div class="sd-item"><span class="sd-item-val" style="color:' + (maData.maRising ? '#FF0000' : '#00AA00') + '">' + (maData.maRising ? '↑' : '↓') + ' ' + Math.abs(maData.maTrendPct).toFixed(2) + '%</span><span class="sd-item-lbl">均线方向</span></div>' +
   '</div>';
 
   // 均线排列 + 连续天数
@@ -7023,7 +7024,7 @@ function renderResonance(data) {
   html += '<div class="sd-grid">' +
     '<div class="sd-item"><span class="sd-item-val" style="color:var(--neon-cyan)">' + corrPct.toFixed(0) + '%</span><span class="sd-item-lbl">跟大盘同步</span></div>' +
     '<div class="sd-item"><span class="sd-item-val" style="color:var(--neon-cyan)">' + beta.toFixed(2) + '</span><span class="sd-item-lbl">涨跌放大倍数</span></div>' +
-    '<div class="sd-item"><span class="sd-item-val" style="color:' + (alphaPct >= 0 ? '#FF3B30' : '#00C853') + '">' + (alphaPct >= 0 ? '+' : '') + alphaPct.toFixed(1) + '%</span><span class="sd-item-lbl">比大盘多赚</span></div>' +
+    '<div class="sd-item"><span class="sd-item-val" style="color:' + (alphaPct >= 0 ? '#FF0000' : '#00AA00') + '">' + (alphaPct >= 0 ? '+' : '') + alphaPct.toFixed(1) + '%</span><span class="sd-item-lbl">比大盘多赚</span></div>' +
     '<div class="sd-item"><span class="sd-item-val" style="color:var(--neon-cyan)">' + (data.sameDirRate * 100).toFixed(0) + '%</span><span class="sd-item-lbl">同涨同跌</span></div>' +
   '</div>';
 
@@ -7042,20 +7043,20 @@ function renderResonance(data) {
     '</div>' +
     '<div class="sd-resonance-row">' +
       '<span>近5天</span>' +
-      '<span style="color:' + (data.stockR5 >= 0 ? '#FF3B30' : '#00C853') + '">' + (data.stockR5 >= 0 ? '+' : '') + (data.stockR5 * 100).toFixed(2) + '%</span>' +
-      '<span style="color:' + (data.indexR5 >= 0 ? '#FF3B30' : '#00C853') + '">' + (data.indexR5 >= 0 ? '+' : '') + (data.indexR5 * 100).toFixed(2) + '%</span>' +
+      '<span style="color:' + (data.stockR5 >= 0 ? '#FF0000' : '#00AA00') + '">' + (data.stockR5 >= 0 ? '+' : '') + (data.stockR5 * 100).toFixed(2) + '%</span>' +
+      '<span style="color:' + (data.indexR5 >= 0 ? '#FF0000' : '#00AA00') + '">' + (data.indexR5 >= 0 ? '+' : '') + (data.indexR5 * 100).toFixed(2) + '%</span>' +
       '<span class="sd-resonance-diff ' + r5.cls + '">' + r5.text + '</span>' +
     '</div>' +
     '<div class="sd-resonance-row">' +
       '<span>近20天</span>' +
-      '<span style="color:' + (data.stockR20 >= 0 ? '#FF3B30' : '#00C853') + '">' + (data.stockR20 >= 0 ? '+' : '') + (data.stockR20 * 100).toFixed(2) + '%</span>' +
-      '<span style="color:' + (data.indexR20 >= 0 ? '#FF3B30' : '#00C853') + '">' + (data.indexR20 >= 0 ? '+' : '') + (data.indexR20 * 100).toFixed(2) + '%</span>' +
+      '<span style="color:' + (data.stockR20 >= 0 ? '#FF0000' : '#00AA00') + '">' + (data.stockR20 >= 0 ? '+' : '') + (data.stockR20 * 100).toFixed(2) + '%</span>' +
+      '<span style="color:' + (data.indexR20 >= 0 ? '#FF0000' : '#00AA00') + '">' + (data.indexR20 >= 0 ? '+' : '') + (data.indexR20 * 100).toFixed(2) + '%</span>' +
       '<span class="sd-resonance-diff ' + r20.cls + '">' + r20.text + '</span>' +
     '</div>' +
     '<div class="sd-resonance-row">' +
       '<span>近60天</span>' +
-      '<span style="color:' + (data.stockR60 >= 0 ? '#FF3B30' : '#00C853') + '">' + (data.stockR60 >= 0 ? '+' : '') + (data.stockR60 * 100).toFixed(2) + '%</span>' +
-      '<span style="color:' + (data.indexR60 >= 0 ? '#FF3B30' : '#00C853') + '">' + (data.indexR60 >= 0 ? '+' : '') + (data.indexR60 * 100).toFixed(2) + '%</span>' +
+      '<span style="color:' + (data.stockR60 >= 0 ? '#FF0000' : '#00AA00') + '">' + (data.stockR60 >= 0 ? '+' : '') + (data.stockR60 * 100).toFixed(2) + '%</span>' +
+      '<span style="color:' + (data.indexR60 >= 0 ? '#FF0000' : '#00AA00') + '">' + (data.indexR60 >= 0 ? '+' : '') + (data.indexR60 * 100).toFixed(2) + '%</span>' +
       '<span class="sd-resonance-diff ' + r60.cls + '">' + r60.text + '</span>' +
     '</div>' +
   '</div>';
@@ -7095,13 +7096,13 @@ function renderResonance(data) {
     '</div>' +
     '<div class="sd-resonance-row">' +
       '<span>' + escHTML(data.stockName || '个股') + '</span>' +
-      '<span style="color:' + (ddPct > 10 ? '#00C853' : '#FF3B30') + '">-' + ddPct.toFixed(1) + '%</span>' +
+      '<span style="color:' + (ddPct > 10 ? '#00AA00' : '#FF0000') + '">-' + ddPct.toFixed(1) + '%</span>' +
       '<span>' + data.ddDuration + '天</span>' +
       '<span class="sd-resonance-diff ' + recoveryCls + '">' + recoveryText + '</span>' +
     '</div>' +
     '<div class="sd-resonance-row">' +
       '<span>沪深300</span>' +
-      '<span style="color:' + (idxDDPct > 10 ? '#00C853' : '#FF3B30') + '">-' + idxDDPct.toFixed(1) + '%</span>' +
+      '<span style="color:' + (idxDDPct > 10 ? '#00AA00' : '#FF0000') + '">-' + idxDDPct.toFixed(1) + '%</span>' +
       '<span>—</span>' +
       '<span class="sd-resonance-diff flat">' + ddVsText + '</span>' +
     '</div>' +
@@ -7196,8 +7197,8 @@ function renderKlineChart(klData, stockName, realtimePrice) {
     '<div class="sd-section-title">近一年K线走势 <span style="font-size:0.5rem;color:var(--muted);font-weight:400;margin-left:0.3rem">' + escHTML(stockName || '') + ' · ' + klData.klines.length + '个交易日</span></div>' +
     '<canvas id="stockKlineCanvas" class="sd-kline-canvas"></canvas>' +
     '<div class="sd-kline-legend">' +
-      '<span><span class="dot" style="background:#FF3B30"></span>涨</span>' +
-      '<span><span class="dot" style="background:#00C853"></span>跌</span>' +
+      '<span><span class="dot" style="background:#FF0000"></span>涨</span>' +
+      '<span><span class="dot" style="background:#00AA00"></span>跌</span>' +
       '<span><span class="dot" style="background:#FFB400"></span>MA20均线</span>' +
     '</div>' +
     '<div class="sd-flow-note">※ 绿色蜡烛表示收盘价高于开盘价（上涨），红色表示收盘价低于开盘价（下跌），黄线为20日均线</div>' +
@@ -7329,7 +7330,7 @@ function drawStockKline(klData, realtimePrice) {
     var x = padL + candleGap * i + candleGap / 2;
     var d = data[i];
     var isUp = d.close >= d.open;
-    var color = isUp ? '#FF3B30' : '#00C853';
+    var color = isUp ? '#FF0000' : '#00AA00';
 
     // 影线
     ctx.strokeStyle = color;
@@ -7349,7 +7350,7 @@ function drawStockKline(klData, realtimePrice) {
     // 成交量柱
     if (maxVol > 0) {
       var volBarH = (d.volume / maxVol) * volPlotH;
-      ctx.fillStyle = isUp ? 'rgba(255,59,48,0.4)' : 'rgba(0,200,83,0.4)';
+      ctx.fillStyle = isUp ? 'rgba(255, 0, 0,0.4)' : 'rgba(0, 170, 0,0.4)';
       ctx.fillRect(x - candleW / 2, volTop + volPlotH - volBarH, candleW, volBarH);
     }
   }
@@ -7383,7 +7384,7 @@ function drawStockKline(klData, realtimePrice) {
   if (n > 0) {
     var lastD = data[n - 1];
     var lastY = padT + (1 - (lastD.close - minPrice) / priceRange) * plotH;
-    var lastColor = lastD.close >= lastD.open ? '#FF3B30' : '#00C853';
+    var lastColor = lastD.close >= lastD.open ? '#FF0000' : '#00AA00';
     ctx.strokeStyle = lastColor;
     ctx.setLineDash([2, 2]);
     ctx.lineWidth = 0.5;
@@ -7585,7 +7586,7 @@ function loadDragonTigerDetail(secCode, tradeDate, btn) {
 
     // 买入席位
     html += '<div class="sd-dt-detail-col sd-dt-detail-buy">' +
-      '<div class="sd-dt-detail-col-title" style="color:#FF3B30">买入前5</div>';
+      '<div class="sd-dt-detail-col-title" style="color:#FF0000">买入前5</div>';
     detail.buy.forEach(function(seat, idx) {
       var isInst = seat.name.indexOf('机构') >= 0;
       var nameDisplay = seat.name.length > 12 ? seat.name.substring(0, 12) + '...' : seat.name;
@@ -7593,14 +7594,14 @@ function loadDragonTigerDetail(secCode, tradeDate, btn) {
       html += '<div class="sd-dt-seat' + (isInst ? ' sd-dt-seat-inst' : '') + '">' +
         '<span class="sd-dt-seat-rank">' + (idx + 1) + '</span>' +
         '<span class="sd-dt-seat-name" title="' + (seat.fullName || seat.name) + '">' + nameDisplay + (isInst ? ' ★' : '') + '</span>' +
-        '<span class="sd-dt-seat-amt" style="color:#FF3B30">' + formatBigNumber(seat.buyAmt) + timesStr + '</span>' +
+        '<span class="sd-dt-seat-amt" style="color:#FF0000">' + formatBigNumber(seat.buyAmt) + timesStr + '</span>' +
       '</div>';
     });
     html += '</div>';
 
     // 卖出席位
     html += '<div class="sd-dt-detail-col sd-dt-detail-sell">' +
-      '<div class="sd-dt-detail-col-title" style="color:#00C853">卖出前5</div>';
+      '<div class="sd-dt-detail-col-title" style="color:#00AA00">卖出前5</div>';
     detail.sell.forEach(function(seat, idx) {
       var isInst = seat.name.indexOf('机构') >= 0;
       var nameDisplay = seat.name.length > 12 ? seat.name.substring(0, 12) + '...' : seat.name;
@@ -7608,7 +7609,7 @@ function loadDragonTigerDetail(secCode, tradeDate, btn) {
       html += '<div class="sd-dt-seat' + (isInst ? ' sd-dt-seat-inst' : '') + '">' +
         '<span class="sd-dt-seat-rank">' + (idx + 1) + '</span>' +
         '<span class="sd-dt-seat-name" title="' + (seat.fullName || seat.name) + '">' + nameDisplay + (isInst ? ' ★' : '') + '</span>' +
-        '<span class="sd-dt-seat-amt" style="color:#00C853">' + formatBigNumber(seat.sellAmt) + timesStr + '</span>' +
+        '<span class="sd-dt-seat-amt" style="color:#00AA00">' + formatBigNumber(seat.sellAmt) + timesStr + '</span>' +
       '</div>';
     });
     html += '</div>';
@@ -7622,12 +7623,12 @@ function loadDragonTigerDetail(secCode, tradeDate, btn) {
       var instBuyTotal = instBuy.reduce(function(s, d) { return s + d.buyAmt; }, 0);
       var instSellTotal = instSell.reduce(function(s, d) { return s + d.sellAmt; }, 0);
       var instNet = instBuyTotal - instSellTotal;
-      var instColor = instNet >= 0 ? '#FF3B30' : '#00C853';
+      var instColor = instNet >= 0 ? '#FF0000' : '#00AA00';
       html += '<div class="sd-dt-inst-summary">' +
         '<span class="sd-dt-inst-label">机构动向：</span>' +
         '<span style="color:' + instColor + '">净' + (instNet >= 0 ? '买入' : '卖出') + ' ' + formatBigNumber(Math.abs(instNet)) + '</span>' +
-        '<span style="color:#FF3B30;margin-left:0.3rem">买' + instBuy.length + '席</span>' +
-        '<span style="color:#00C853;margin-left:0.15rem">卖' + instSell.length + '席</span>' +
+        '<span style="color:#FF0000;margin-left:0.3rem">买' + instBuy.length + '席</span>' +
+        '<span style="color:#00AA00;margin-left:0.15rem">卖' + instSell.length + '席</span>' +
       '</div>';
     }
 

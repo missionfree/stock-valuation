@@ -341,6 +341,230 @@ function calcMaxDrawdown(closes, lookback) {
 }
 
 /**
+ * 计算布林带（Bollinger Bands）
+ * @param {number[]} closes - 收盘价数组
+ * @param {number} period - 周期（默认20）
+ * @param {number} mult - 标准差倍数（默认2）
+ * @returns {{upper:number, middle:number, lower:number, pctB:number}|null}
+ *   pctB = (price - lower) / (upper - lower)，0~1表示在中轨和上轨之间
+ */
+function calcBollinger(closes, period, mult) {
+  period = period || 20;
+  mult = mult || 2;
+  if (!closes || closes.length < period) return null;
+  var slice = closes.slice(-period);
+  var ma = slice.reduce(function(a, b) { return a + b; }, 0) / period;
+  var variance = 0;
+  for (var i = 0; i < slice.length; i++) {
+    variance += Math.pow(slice[i] - ma, 2);
+  }
+  var std = Math.sqrt(variance / period);
+  var upper = ma + mult * std;
+  var lower = ma - mult * std;
+  var price = closes[closes.length - 1];
+  var bandwidth = upper - lower;
+  var pctB = bandwidth > 0 ? (price - lower) / bandwidth : 0.5;
+  return { upper: upper, middle: ma, lower: lower, pctB: pctB, bandwidth: bandwidth };
+}
+
+/**
+ * 计算MACD指标
+ * @param {number[]} closes - 收盘价数组
+ * @param {number} fast - 快线周期（默认12）
+ * @param {number} slow - 慢线周期（默认26）
+ * @param {number} signalP - 信号线周期（默认9）
+ * @returns {{dif:number, dea:number, hist:number, histTrend:number}|null}
+ *   histTrend: 1=柱状体放大，-1=柱状体收窄，0=数据不足
+ */
+function calcMACD(closes, fast, slow, signalP) {
+  fast = fast || 12;
+  slow = slow || 26;
+  signalP = signalP || 9;
+  if (!closes || closes.length < slow + signalP) return null;
+
+  // 计算EMA
+  function ema(data, period) {
+    var k = 2 / (period + 1);
+    var e = data[0];
+    for (var i = 1; i < data.length; i++) {
+      e = data[i] * k + e * (1 - k);
+    }
+    return e;
+  }
+
+  var emaFast = ema(closes.slice(-slow - signalP), fast);
+  var emaSlow = ema(closes.slice(-slow - signalP), slow);
+  var dif = emaFast - emaSlow;
+
+  // 计算DEA（DIF的signalP日EMA）
+  // 需要历史的DIF序列来算EMA，简化处理：用近 slow+signalP 天的数据
+  var difSeries = [];
+  var dataLen = Math.min(closes.length, slow + signalP + 10);
+  for (var i = dataLen - slow - signalP; i >= 0; i--) {
+    var sub = closes.slice(i, i + slow + signalP);
+    if (sub.length < slow + signalP) break;
+    var ef = ema(sub, fast);
+    var es = ema(sub, slow);
+    difSeries.push(ef - es);
+  }
+  if (difSeries.length < signalP) return null;
+  var dea = ema(difSeries, signalP);
+  var hist = 2 * (dif - dea);
+
+  // 判断柱状体趋势（近3根柱状体是否连续收窄）
+  var histTrend = 0;
+  if (difSeries.length >= signalP + 3) {
+    var hists = [];
+    for (var j = difSeries.length - 3; j < difSeries.length; j++) {
+      var d = difSeries[j];
+      var prevD = difSeries[j - 1] || d;
+      // 近似计算历史hist
+      var deaApprox = ema(difSeries.slice(0, j + 1), signalP);
+      hists.push(2 * (d - deaApprox));
+    }
+    if (hists.length >= 3) {
+      var narrowing = Math.abs(hists[2]) < Math.abs(hists[1]) && Math.abs(hists[1]) < Math.abs(hists[0]);
+      histTrend = narrowing ? -1 : 1;
+    }
+  }
+
+  return { dif: dif, dea: dea, hist: hist, histTrend: histTrend };
+}
+
+/**
+ * 计算成交量强度（连续放量判断）
+ * @param {Array} klines - K线数据 [日期, 开, 收, 高, 低, 成交量]
+ * @returns {{consecutiveUp:boolean, volRatio:number, qualified:boolean}|null}
+ *   consecutiveUp: 连续3日放量
+ *   volRatio: 最近一日量/5日均量
+ *   qualified: 连续3日放量且不低于5日均量1.5倍
+ */
+function calcVolumeStrength(klines) {
+  if (!klines || klines.length < 8) return null;
+  var vols = klines.slice(-8).map(function(k) { return parseFloat(k[5]) || 0; });
+  var recent3 = vols.slice(-3);
+  var avg5 = (vols.slice(-8, -3).reduce(function(a, b) { return a + b; }, 0)) / 5;
+
+  if (avg5 <= 0) return null;
+
+  // 连续3日放量：每日量 > 前一日量
+  var consecutiveUp = recent3[1] > recent3[0] && recent3[2] > recent3[1];
+  // 最近一日量比
+  var volRatio = recent3[2] / avg5;
+  // 连续3日均不低于5日均量的1.5倍
+  var allAbove15 = recent3.every(function(v) { return v >= avg5 * 1.5; });
+
+  return {
+    consecutiveUp: consecutiveUp,
+    volRatio: volRatio,
+    qualified: consecutiveUp && allAbove15,
+    recent3: recent3,
+    avg5: avg5
+  };
+}
+
+/**
+ * 计算近5日相对强度（相对于一组标的的排名百分位）
+ * @param {number[]} allChanges5d - 所有标的的5日涨幅数组
+ * @param {number} myChange5d - 当前标的的5日涨幅
+ * @returns {number} 排名百分位（0-100），越高越强
+ */
+function calcRelativeStrengthRank(allChanges5d, myChange5d) {
+  if (!allChanges5d || allChanges5d.length === 0) return 50;
+  var sorted = allChanges5d.slice().sort(function(a, b) { return a - b; });
+  var rank = 0;
+  for (var i = 0; i < sorted.length; i++) {
+    if (myChange5d > sorted[i]) rank++;
+  }
+  return (rank / sorted.length) * 100;
+}
+
+/**
+ * ============================================================
+ * 二次筛选系统：从符合条件的标的中选出最优"可上车"标的
+ *
+ * 筛选条件（全部满足）：
+ * ① 近5日相对强度排名前10%
+ * ② 成交量连续3日放大且不低于5日均量1.5倍
+ * ③ 当前价格位于20日布林带中轨以上但未触及上轨（pctB 0.5~0.8）
+ * ④ 动态回撤率 < 8%
+ *
+ * 排除规则（任一满足即排除）：
+ * ✗ 近3日涨幅 > 15%（追高风险）
+ * ✗ MACD柱状体连续收窄（动能衰竭）
+ * ============================================================
+ */
+
+/**
+ * 对一组候选标的执行二次筛选，标注"可上车"
+ * @param {Array} candidates - 候选标的数组，每个需包含 {closes, klines, change5d, code, name}
+ * @returns {Array} 添加了 secondaryPass 和 canBoard 标志的候选数组
+ */
+function secondaryScreen(candidates) {
+  if (!candidates || candidates.length < 3) return candidates;
+
+  // 收集所有5日涨幅用于相对强度排名
+  var allChanges5d = candidates.map(function(c) { return c.change5d || 0; });
+
+  candidates.forEach(function(c) {
+    c.secondaryPass = false;
+    c.canBoard = false;
+    c.screenDetails = null;
+
+    var closes = c.closes;
+    var klines = c.klines;
+
+    if (!closes || closes.length < 30) return;
+
+    // ① 近5日相对强度排名前10%
+    var rsRank = calcRelativeStrengthRank(allChanges5d, c.change5d || 0);
+    var passRS = rsRank >= 90;
+
+    // ② 成交量连续3日放大且不低于5日均量1.5倍
+    var volStr = calcVolumeStrength(klines);
+    var passVol = volStr && volStr.qualified;
+
+    // ③ 布林带：价格在中轨以上但未触及上轨
+    var boll = calcBollinger(closes, 20, 2);
+    var passBoll = boll && boll.pctB >= 0.5 && boll.pctB <= 0.85;
+
+    // ④ 动态回撤率 < 8%
+    var maxDD = calcMaxDrawdown(closes, 20);
+    var passDD = maxDD !== null && maxDD < 8;
+
+    // 排除规则
+    // ✗ 近3日涨幅 > 15%
+    var change3d = closes.length >= 4 ? ((closes[closes.length - 1] - closes[closes.length - 4]) / closes[closes.length - 4]) * 100 : 0;
+    var excludeGain = change3d > 15;
+
+    // ✗ MACD柱状体连续收窄
+    var macd = calcMACD(closes);
+    var excludeMACD = macd && macd.histTrend === -1;
+
+    c.screenDetails = {
+      rsRank: rsRank,
+      passRS: passRS,
+      volStr: volStr,
+      passVol: passVol,
+      boll: boll,
+      passBoll: passBoll,
+      maxDD: maxDD,
+      passDD: passDD,
+      change3d: change3d,
+      excludeGain: excludeGain,
+      macd: macd,
+      excludeMACD: excludeMACD
+    };
+
+    // 全部条件满足且无排除 → 可上车
+    c.secondaryPass = passRS && passVol && passBoll && passDD;
+    c.canBoard = c.secondaryPass && !excludeGain && !excludeMACD;
+  });
+
+  return candidates;
+}
+
+/**
  * ============================================================
  * 双线轮动复合评分系统：动量确认 + 回踩入场
  * 
@@ -619,7 +843,58 @@ function analyzeRotationLine(etfList) {
     valid.sort(function(a, b) {
       return (b.score || 0) - (a.score || 0);
     });
-    // 选出评分最高的（入场性价比最好的）
+
+    // 二次筛选：当符合条件的标的≥3个时，执行多维度筛选标注"可上车"
+    if (valid.length >= 3) {
+      // 为每个有效标的附加K线数据用于技术分析
+      var screenCandidates = valid.map(function(v) {
+        return {
+          code: v.code,
+          name: v.name,
+          closes: v._closes || null,
+          klines: v._klines || null,
+          change5d: v.change5 || 0
+        };
+      });
+      // 异步获取K线数据用于二次筛选
+      return Promise.all(screenCandidates.map(function(c) {
+        if (c.closes) return Promise.resolve(c);
+        return fetchKline(c.code, 60).then(function(kd) {
+          if (kd) { c.closes = kd.closes; c.klines = kd.klines; }
+          return c;
+        }).catch(function() { return c; });
+      })).then(function(candidatesWithData) {
+        secondaryScreen(candidatesWithData);
+        // 将筛选结果回写到valid数组
+        valid.forEach(function(v) {
+          var match = candidatesWithData.find(function(c) { return c.code === v.code; });
+          if (match) {
+            v.canBoard = match.canBoard || false;
+            v.secondaryPass = match.secondaryPass || false;
+            v.screenDetails = match.screenDetails || null;
+          }
+        });
+        // 优先选择"可上车"标的作为pick
+        var boardable = valid.filter(function(v) { return v.canBoard; });
+        var pick = (boardable.length > 0 ? boardable[0] : (valid.length > 0 ? valid[0] : null));
+        var allBroke = results.every(function(r) {
+          return r.error || r.aboveMA60 === false || r.aboveMA60 === null;
+        });
+        results.sort(function(a, b) {
+          if (a.error && !b.error) return 1;
+          if (!a.error && b.error) return -1;
+          if (a.aboveMA60 && !b.aboveMA60) return -1;
+          if (!a.aboveMA60 && b.aboveMA60) return 1;
+          // 可上车的排前面
+          if (a.canBoard && !b.canBoard) return -1;
+          if (!a.canBoard && b.canBoard) return 1;
+          return (b.score || 0) - (a.score || 0);
+        });
+        return { results: results, pick: pick, allBroke: allBroke };
+      });
+    }
+
+    // 不足3个标的时直接选最高分
     var pick = valid.length > 0 ? valid[0] : null;
     var allBroke = results.every(function(r) {
       return r.error || r.aboveMA60 === false || r.aboveMA60 === null;
@@ -672,7 +947,7 @@ function renderRotationLine(containerId, lineData, lineType) {
       // 15日涨幅
       if (r.change15 !== null) {
         var cStr = (r.change15 >= 0 ? '+' : '') + r.change15.toFixed(1) + '%';
-        var cColor = r.change15 >= 0 ? '#FF3B30' : '#00C853';
+        var cColor = r.change15 >= 0 ? '#FF0000' : '#00AA00';
         chgHtml = '<span style="color:' + cColor + ';font-weight:600">' + cStr + '</span>';
       } else { chgHtml = '—'; }
 
@@ -950,7 +1225,7 @@ function updateRotation() {
   if (nextDateEl) {
     var rebInfo = getNextRebalanceInfo();
     var urgencyColor = rebInfo.daysLeft <= 3 ? 'var(--neon-red)' : rebInfo.daysLeft <= 7 ? 'var(--neon-yellow)' : 'var(--neon-yellow)';
-    var urgencyShadow = rebInfo.daysLeft <= 3 ? '0 0 8px rgba(255,59,48,0.4)' : '0 0 8px rgba(255,215,0,0.3)';
+    var urgencyShadow = rebInfo.daysLeft <= 3 ? '0 0 8px rgba(255, 0, 0,0.4)' : '0 0 8px rgba(255,215,0,0.3)';
     nextDateEl.innerHTML = '距下次调仓还有 <b style="font-size:0.85rem;color:' + urgencyColor + ';text-shadow:' + urgencyShadow + '">' + rebInfo.daysLeft + '</b> 天 · ' + rebInfo.text +
       '<div style="font-size:0.52rem;color:var(--muted);font-weight:400;margin-top:0.2rem;letter-spacing:0">每周一调仓 · 信号变化自动提醒 · 不错过趋势启动</div>';
   }
@@ -1840,7 +2115,7 @@ function renderIndustrySignals(results) {
   sorted.forEach(function(r) {
     var info = getIndustryZone(r.score);
     var chgStr = r.change15 !== null ? ((r.change15 >= 0 ? '+' : '') + r.change15.toFixed(1) + '%') : '—';
-    var chgColor = r.change15 !== null && r.change15 >= 0 ? 'var(--neon-red, #FF3B30)' : 'var(--neon-green, #00C853)';
+    var chgColor = r.change15 !== null && r.change15 >= 0 ? 'var(--neon-red, #FF0000)' : 'var(--neon-green, #00AA00)';
     var errStyle = r.error ? 'opacity:0.5' : '';
     html += '<div class="sig-thermo-row" style="' + errStyle + '" title="' + getIndustryNote(r.name, r.score, r.change15, r.aboveMA60) + '">' +
       '<span class="st-name">' + r.name + '</span>' +
@@ -2014,6 +2289,37 @@ function updateTrendLeaders() {
   });
 
   return Promise.all(promises).then(function(results) {
+    // 二次筛选：对有趋势的标的执行多维度筛选
+    var qualified = results.filter(function(r) { return r.trend !== null; });
+    if (qualified.length >= 3) {
+      var screenCandidates = qualified.map(function(r) {
+        return fetchKline(r.code, 60).then(function(kd) {
+          return {
+            code: r.code,
+            name: r.name,
+            closes: kd ? kd.closes : null,
+            klines: kd ? kd.klines : null,
+            change5d: r.trend.change5 || 0
+          };
+        }).catch(function() {
+          return { code: r.code, name: r.name, closes: null, klines: null, change5d: r.trend.change5 || 0 };
+        });
+      });
+      return Promise.all(screenCandidates).then(function(candidatesWithData) {
+        secondaryScreen(candidatesWithData);
+        // 回写canBoard标志到results
+        results.forEach(function(r) {
+          if (r.trend) {
+            var match = candidatesWithData.find(function(c) { return c.code === r.code; });
+            if (match) {
+              r.canBoard = match.canBoard || false;
+              r.screenDetails = match.screenDetails || null;
+            }
+          }
+        });
+        renderTrendLeaders(results);
+      });
+    }
     renderTrendLeaders(results);
   }).catch(function(err) {
     console.warn('趋势右侧更新失败:', err);
