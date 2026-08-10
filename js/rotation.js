@@ -2173,6 +2173,249 @@ function renderIndustrySignals(results) {
    ============================================================ */
 
 /**
+ * 计算RSI指标
+ * @param {number[]} closes - 收盘价数组
+ * @param {number} period - 周期（默认14）
+ * @returns {number|null} RSI值（0-100）
+ */
+function calcRSI(closes, period) {
+  period = period || 14;
+  if (!closes || closes.length < period + 1) return null;
+  var gains = 0, losses = 0;
+  for (var i = closes.length - period; i < closes.length; i++) {
+    var change = closes[i] - closes[i - 1];
+    if (change >= 0) gains += change;
+    else losses -= change;
+  }
+  var avgGain = gains / period;
+  var avgLoss = losses / period;
+  if (avgLoss === 0) return 100;
+  var rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
+}
+
+/**
+ * 计算波动率（近N日日收益率标准差，单位%）
+ * @param {number[]} closes - 收盘价数组
+ * @param {number} period - 周期（默认20）
+ * @returns {number|null} 波动率（%）
+ */
+function calcVolatility(closes, period) {
+  period = period || 20;
+  if (!closes || closes.length < period + 1) return null;
+  var returns = [];
+  for (var i = closes.length - period; i < closes.length; i++) {
+    if (closes[i - 1] > 0) {
+      returns.push((closes[i] - closes[i - 1]) / closes[i - 1] * 100);
+    }
+  }
+  if (returns.length === 0) return null;
+  var mean = returns.reduce(function(a, b) { return a + b; }, 0) / returns.length;
+  var variance = returns.reduce(function(sum, r) { return sum + Math.pow(r - mean, 2); }, 0) / returns.length;
+  return Math.sqrt(variance);
+}
+
+/**
+ * 计算安全边际评分（0-100分）
+ * 评分基于：波动率（0-35分）、RSI 40-60区间（0-35分）、MACD柱状体收敛度（0-30分）
+ * 评分<70分时禁止交易
+ * @param {number[]} closes - 收盘价数组
+ * @returns {{score:number, components:object}}
+ */
+function calcSafetyMarginScore(closes) {
+  if (!closes || closes.length < 30) return { score: 0, components: {} };
+  var score = 0;
+  var comp = {};
+
+  // 1. 波动率评分（0-35分）：低波动=高分
+  var vol = calcVolatility(closes, 20);
+  comp.volatility = vol;
+  if (vol !== null) {
+    if (vol < 1) score += 35;
+    else if (vol < 1.5) score += 28;
+    else if (vol < 2) score += 20;
+    else if (vol < 2.5) score += 12;
+    else if (vol < 3) score += 6;
+  }
+
+  // 2. RSI评分（0-35分）：40-60区间=满分
+  var rsi = calcRSI(closes, 14);
+  comp.rsi = rsi;
+  if (rsi !== null) {
+    if (rsi >= 40 && rsi <= 60) score += 35;
+    else if (rsi >= 35 && rsi <= 65) score += 25;
+    else if (rsi >= 30 && rsi <= 70) score += 15;
+    else if (rsi >= 25 && rsi <= 75) score += 8;
+  }
+
+  // 3. MACD柱状体收敛度（0-30分）
+  var macd = calcMACD(closes);
+  comp.macd = macd;
+  if (macd !== null) {
+    if (macd.histTrend === -1) {
+      // 柱状体收窄→动能趋于稳定→高分
+      score += (Math.abs(macd.hist) < 0.01) ? 20 : 30;
+    } else if (macd.histTrend === 1) {
+      // 柱状体放大→动能释放中
+      score += (macd.hist > 0) ? 15 : 5;
+    } else {
+      score += 10;
+    }
+  }
+
+  return { score: Math.round(score), components: comp };
+}
+
+/**
+ * 左右侧趋势分析算法
+ *
+ * 机制：
+ * 1. 左侧趋势（历史5根K线）：连续收阳且平均涨幅≤3% → 温和上升，非追高
+ * 2. 右侧趋势（当前）：突破20日均线 + 成交量较前5日均值放大≥30%
+ * 3. 回撤抑制：当前价格距10日高点下跌>5% → 自动抑制买入
+ * 4. 安全边际评分：波动率+RSI(40-60)+MACD收敛度，<70分禁止交易
+ *
+ * @param {object} kd - K线数据 {closes, klines, dates}
+ * @returns {object|null} 分析结果
+ */
+function analyzeLeftRightTrend(kd) {
+  if (!kd || !kd.closes || kd.closes.length < 30) return null;
+  var closes = kd.closes;
+  var klines = kd.klines || kd.rawKlines || null;
+  var n = closes.length;
+  var currentPrice = closes[n - 1];
+
+  // ========== 1. 左侧趋势检测 ==========
+  var leftSide = { passed: false, consecutiveBull: 0, avgGain: 0, reason: '' };
+  if (klines && klines.length >= 5) {
+    var recent5 = klines.slice(-5);
+    var bullCount = 0;
+    var totalGain = 0;
+    for (var i = 0; i < recent5.length; i++) {
+      var open = parseFloat(recent5[i][1]) || 0;
+      var close = parseFloat(recent5[i][2]) || 0;
+      if (close > open) bullCount++;
+      if (open > 0) totalGain += ((close - open) / open) * 100;
+    }
+    leftSide.consecutiveBull = bullCount;
+    leftSide.avgGain = totalGain / 5;
+    if (bullCount >= 5 && leftSide.avgGain <= 3) {
+      leftSide.passed = true;
+    } else if (bullCount < 5) {
+      leftSide.reason = '左侧5根K线仅' + bullCount + '根收阳（需5根全阳）';
+    } else {
+      leftSide.reason = '左侧平均涨幅' + leftSide.avgGain.toFixed(2) + '%>3%（追高风险）';
+    }
+  } else {
+    // 无K线开收价数据时，用收盘价递增近似判断
+    var upCount = 0;
+    var gainSum = 0;
+    for (var j = n - 5; j < n; j++) {
+      if (closes[j] > closes[j - 1]) {
+        upCount++;
+        gainSum += ((closes[j] - closes[j - 1]) / closes[j - 1]) * 100;
+      }
+    }
+    leftSide.consecutiveBull = upCount;
+    leftSide.avgGain = upCount > 0 ? gainSum / 5 : 0;
+    if (upCount >= 5 && leftSide.avgGain <= 3) {
+      leftSide.passed = true;
+    } else if (upCount < 5) {
+      leftSide.reason = '左侧近5日仅' + upCount + '日收涨（需5日全涨）';
+    } else {
+      leftSide.reason = '左侧平均涨幅' + leftSide.avgGain.toFixed(2) + '%>3%（追高风险）';
+    }
+  }
+
+  // ========== 2. 右侧趋势检测 ==========
+  var rightSide = { passed: false, aboveMA20: false, volRatio: 0, reason: '' };
+  // MA20
+  var ma20 = 0;
+  if (n >= 20) {
+    for (var k = 0; k < 20; k++) ma20 += closes[n - 1 - k];
+    ma20 /= 20;
+  }
+  rightSide.aboveMA20 = currentPrice > ma20;
+
+  // 成交量放大≥30%
+  var volRatio = 0;
+  if (klines && klines.length >= 6) {
+    var todayVol = parseFloat(klines[klines.length - 1][5]) || 0;
+    var avg5Vol = 0;
+    for (var v = 2; v <= 6; v++) {
+      avg5Vol += parseFloat(klines[klines.length - v][5]) || 0;
+    }
+    avg5Vol /= 5;
+    volRatio = avg5Vol > 0 ? todayVol / avg5Vol : 0;
+  }
+  rightSide.volRatio = volRatio;
+
+  if (rightSide.aboveMA20 && volRatio >= 1.3) {
+    rightSide.passed = true;
+  } else if (!rightSide.aboveMA20) {
+    rightSide.reason = '当前价' + currentPrice.toFixed(3) + '未突破MA20(' + ma20.toFixed(3) + ')';
+  } else {
+    rightSide.reason = '量比' + volRatio.toFixed(2) + '<1.3（需放量30%以上）';
+  }
+
+  // ========== 3. 回撤抑制检测 ==========
+  var drawdown = { suppressed: false, dropFromHigh: 0, high10: 0, reason: '' };
+  var lookbackDD = Math.min(10, n);
+  var high10 = closes[n - 1];
+  for (var h = n - lookbackDD; h < n; h++) {
+    if (closes[h] > high10) high10 = closes[h];
+  }
+  drawdown.high10 = high10;
+  drawdown.dropFromHigh = high10 > 0 ? ((high10 - currentPrice) / high10) * 100 : 0;
+  if (drawdown.dropFromHigh > 5) {
+    drawdown.suppressed = true;
+    drawdown.reason = '距10日高点回撤' + drawdown.dropFromHigh.toFixed(2) + '%>5%（回撤抑制）';
+  }
+
+  // ========== 4. 安全边际评分 ==========
+  var safety = calcSafetyMarginScore(closes);
+
+  // ========== 综合信号判定 ==========
+  var reasons = [];
+  if (!leftSide.passed) reasons.push(leftSide.reason);
+  if (!rightSide.passed) reasons.push(rightSide.reason);
+  if (drawdown.suppressed) reasons.push(drawdown.reason);
+  if (safety.score < 70) reasons.push('安全边际' + safety.score + '分<70分');
+
+  var canBuy = leftSide.passed && rightSide.passed && !drawdown.suppressed && safety.score >= 70;
+
+  var signal, signalCls;
+  if (canBuy) {
+    signal = '✓ 安全买入';
+    signalCls = 'buy';
+  } else if (safety.score >= 60 && (leftSide.passed || rightSide.passed)) {
+    signal = '△ 接近买入';
+    signalCls = 'watch';
+  } else if (safety.score >= 50) {
+    signal = '○ 观望';
+    signalCls = 'watch';
+  } else {
+    signal = '✗ 禁止交易';
+    signalCls = 'wait';
+  }
+
+  return {
+    canBuy: canBuy,
+    signal: signal,
+    signalCls: signalCls,
+    reasons: reasons,
+    safetyScore: safety.score,
+    safetyComponents: safety.components,
+    leftSide: leftSide,
+    rightSide: rightSide,
+    drawdown: drawdown,
+    ma20: ma20,
+    currentPrice: currentPrice,
+    lastDate: kd.dates ? kd.dates[kd.dates.length - 1] : ''
+  };
+}
+
+/**
  * 计算趋势右侧强度分（0-100）
  * 条件：站上MA20 且 MA20向上（不满足直接排除）
  * 评分维度：
@@ -2259,17 +2502,25 @@ function calcTrendScore(kd) {
 
   score = Math.max(0, Math.min(100, Math.round(score)));
 
-  // 信号判断
+  // 左右侧趋势分析（安全边际算法）
+  var lrTrend = analyzeLeftRightTrend(kd);
+  var safetyScore = lrTrend ? lrTrend.safetyScore : 0;
+  var canBuy = lrTrend ? lrTrend.canBuy : false;
+
+  // 信号判断：基于安全边际评分，不再依赖简单排名
   var signal, signalCls;
-  if (score >= 75 && deviation < 10) {
-    signal = '右侧买入';
+  if (canBuy) {
+    signal = '✓ 安全买入';
     signalCls = 'buy';
-  } else if (score >= 60) {
-    signal = '趋势持有';
+  } else if (safetyScore >= 60 && score >= 60) {
+    signal = '△ 趋势持有';
     signalCls = 'hold';
-  } else {
-    signal = '关注待确认';
+  } else if (safetyScore >= 50) {
+    signal = '○ 关注待确认';
     signalCls = 'watch';
+  } else {
+    signal = '✗ 禁止交易';
+    signalCls = 'wait';
   }
 
   return {
@@ -2286,6 +2537,9 @@ function calcTrendScore(kd) {
     change15: change15,
     consecDays: consecDays,
     deviation: deviation,
+    safetyScore: safetyScore,
+    canBuy: canBuy,
+    lrTrend: lrTrend,
     lastDate: kd.dates[kd.dates.length - 1] || ''
   };
 }
@@ -2356,9 +2610,20 @@ function renderTrendLeaders(results) {
   var container = document.getElementById('trendLeadersArea');
   if (!container) return;
 
-  // 过滤出有趋势的，按分数降序
+  // 过滤出有趋势的，按安全边际评分+趋势分综合排序（不按涨幅排名）
   var qualified = results.filter(function(r) { return r.trend !== null; });
-  qualified.sort(function(a, b) { return b.trend.score - a.trend.score; });
+  qualified.sort(function(a, b) {
+    // 可买入的排最前
+    var aBuy = a.trend.canBuy ? 1 : 0;
+    var bBuy = b.trend.canBuy ? 1 : 0;
+    if (aBuy !== bBuy) return bBuy - aBuy;
+    // 其次按安全边际评分
+    var aSafety = a.trend.safetyScore || 0;
+    var bSafety = b.trend.safetyScore || 0;
+    if (aSafety !== bSafety) return bSafety - aSafety;
+    // 最后按趋势分
+    return b.trend.score - a.trend.score;
+  });
 
   if (qualified.length === 0) {
     container.innerHTML = '<div class="trend-empty">暂无站上20日线且均线向上的标的，市场可能处于调整期，耐心等待右侧信号</div>';
@@ -2409,7 +2674,10 @@ function renderTrendLeaders(results) {
         '</div>' +
       '</div>' +
       '<div class="trend-score-area">' +
-        '<div class="trend-score">' + t.score + '</div>' +
+        '<div style="display:flex;gap:0.3rem;justify-content:center">' +
+          '<div style="text-align:center"><div style="font-size:0.5rem;color:var(--muted)">趋势分</div><div class="trend-score" style="font-size:1.1rem">' + t.score + '</div></div>' +
+          '<div style="text-align:center"><div style="font-size:0.5rem;color:var(--muted)">安全边际</div><div class="trend-score" style="font-size:1.1rem;color:' + (t.safetyScore >= 70 ? 'var(--neon-red)' : t.safetyScore >= 50 ? 'var(--neon-yellow)' : 'var(--neon-green)') + '">' + (t.safetyScore || 0) + '</div></div>' +
+        '</div>' +
         '<div class="trend-score-bar"><div class="trend-score-fill" style="width:' + t.score + '%"></div></div>' +
         '<div class="trend-signal ' + t.signalCls + '">' + t.signal + '</div>' +
       '</div>' +
@@ -2417,7 +2685,7 @@ function renderTrendLeaders(results) {
   });
 
   // 底部说明
-  html += '<div class="sd-flow-note" style="margin-top:0.4rem">※ 右侧交易=趋势确认后入场。筛选条件：收盘价站上20日均线 且 20日均线向上。趋势分=MA斜率+均线排列+涨幅+持续性，偏离MA20过高会扣分（追高风险）</div>';
+  html += '<div class="sd-flow-note" style="margin-top:0.4rem">※ 左右侧趋势分析算法：①左侧5根K线连续收阳且均涨≤3% ②右侧突破MA20且放量≥30% ③回撤>5%抑制买入 ④安全边际评分(波动率+RSI 40-60+MACD收敛)≥70分方可交易。排序=可买入>安全边际>趋势分，非涨幅排名</div>';
 
   container.innerHTML = html;
 }
@@ -2544,16 +2812,24 @@ function calcBottomScore(kd) {
 
   score = Math.max(0, Math.min(100, Math.round(score)));
 
-  // 信号判断
+  // 左右侧趋势分析（安全边际算法）
+  var lrTrend = analyzeLeftRightTrend(kd);
+  var safetyScore = lrTrend ? lrTrend.safetyScore : 0;
+  var canBuy = lrTrend ? lrTrend.canBuy : false;
+
+  // 信号判断：基于安全边际评分，抄底也需安全边际≥70
   var signal, signalCls;
-  if (score >= 70 && (nearMA60 || decelerating)) {
-    signal = '可分批抄底';
+  if (canBuy && score >= 55) {
+    signal = '✓ 安全抄底';
     signalCls = 'buy';
-  } else if (score >= 55) {
-    signal = '关注企稳';
+  } else if (safetyScore >= 60 && (nearMA60 || decelerating)) {
+    signal = '△ 关注企稳';
+    signalCls = 'watch';
+  } else if (safetyScore >= 50) {
+    signal = '○ 继续等待';
     signalCls = 'watch';
   } else {
-    signal = '继续等待';
+    signal = '✗ 禁止交易';
     signalCls = 'wait';
   }
 
@@ -2581,6 +2857,9 @@ function calcBottomScore(kd) {
     nearMA60: nearMA60,
     ma60Dist: ma60Dist,
     decelerating: decelerating,
+    safetyScore: safetyScore,
+    canBuy: canBuy,
+    lrTrend: lrTrend,
     lastDate: kd.dates[kd.dates.length - 1] || ''
   };
 }
@@ -2620,9 +2899,17 @@ function renderBottomPick(results) {
   var container = document.getElementById('bottomPickArea');
   if (!container) return;
 
-  // 过滤出超跌的，按分数降序
+  // 过滤出超跌的，按安全边际评分+抄底分综合排序（不按涨幅排名）
   var qualified = results.filter(function(r) { return r.bottom !== null; });
-  qualified.sort(function(a, b) { return b.bottom.score - a.bottom.score; });
+  qualified.sort(function(a, b) {
+    var aBuy = a.bottom.canBuy ? 1 : 0;
+    var bBuy = b.bottom.canBuy ? 1 : 0;
+    if (aBuy !== bBuy) return bBuy - aBuy;
+    var aSafety = a.bottom.safetyScore || 0;
+    var bSafety = b.bottom.safetyScore || 0;
+    if (aSafety !== bSafety) return bSafety - aSafety;
+    return b.bottom.score - a.bottom.score;
+  });
 
   if (qualified.length === 0) {
     container.innerHTML = '<div class="bottom-empty">暂无超跌标的，市场整体趋势偏强，无左侧抄底机会</div>';
@@ -2670,7 +2957,10 @@ function renderBottomPick(results) {
         '</div>' +
       '</div>' +
       '<div class="bottom-score-area">' +
-        '<div class="bottom-score">' + b.score + '</div>' +
+        '<div style="display:flex;gap:0.3rem;justify-content:center">' +
+          '<div style="text-align:center"><div style="font-size:0.5rem;color:var(--muted)">抄底分</div><div class="bottom-score" style="font-size:1.1rem">' + b.score + '</div></div>' +
+          '<div style="text-align:center"><div style="font-size:0.5rem;color:var(--muted)">安全边际</div><div class="bottom-score" style="font-size:1.1rem;color:' + (b.safetyScore >= 70 ? 'var(--neon-red)' : b.safetyScore >= 50 ? 'var(--neon-yellow)' : 'var(--neon-green)') + '">' + (b.safetyScore || 0) + '</div></div>' +
+        '</div>' +
         '<div class="bottom-score-bar"><div class="bottom-score-fill" style="width:' + b.score + '%"></div></div>' +
         '<div class="bottom-signal ' + b.signalCls + '">' + b.signal + '</div>' +
       '</div>' +
@@ -2678,7 +2968,7 @@ function renderBottomPick(results) {
   });
 
   // 底部说明
-  html += '<div class="sd-flow-note" style="margin-top:0.4rem">※ 左侧交易=逆向布局等反转。筛选条件：收盘价跌破20日均线。抄底分=回撤幅度+超跌程度+MA60支撑+跌速放缓+中期跌幅，5日暴跌超10%会扣分（接飞刀风险）。左侧交易需严格止损，建议分批建仓</div>';
+  html += '<div class="sd-flow-note" style="margin-top:0.4rem">※ 左右侧趋势分析算法（抄底版）：需满足左侧5连阳温和上升+右侧突破MA20放量+回撤<5%+安全边际≥70分才触发安全抄底。排序=可买入>安全边际>抄底分，非涨幅排名。左侧交易需严格止损</div>';
 
   container.innerHTML = html;
 }
