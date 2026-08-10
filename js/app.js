@@ -37,7 +37,7 @@ function startAutoRefresh() {
   _autoRefreshEnabled = true;
   _nextRefreshTime = Date.now() + AUTO_REFRESH_INTERVAL;
 
-  // 主定时器：5分钟触发一次刷新（非强制，依赖缓存策略减少请求）
+  // 主定时器：3分钟触发一次刷新（非强制，依赖缓存策略减少请求）
   // 使用 Perf.setInterval 跟踪定时器，页面卸载时自动清理
   _autoRefreshTimer = Perf.setInterval(function() {
     if (!_autoRefreshEnabled) return;

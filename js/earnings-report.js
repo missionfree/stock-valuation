@@ -951,7 +951,7 @@ function resetEarningsThresholds() {
  * 刷新业绩报告区块
  */
 function refreshEarningsReport() {
-  if (!_currentStockData) return;
+  if (!_currentStockData) { showToast('请先搜索股票'); return; }
 
   var secCode = _currentStockData.code;
   var promises = [];
@@ -980,6 +980,8 @@ function refreshEarningsReport() {
         area.appendChild(insertDiv.firstChild);
       }
     }
+  }).catch(function(err) {
+    console.warn('财报数据加载失败:', err.message);
   });
 }
 

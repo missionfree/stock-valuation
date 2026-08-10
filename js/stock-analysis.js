@@ -871,9 +871,9 @@ function fetchDragonTiger(secCode) {
         turnoverRate: parseFloat(item.TURNOVERRATE) || 0,         // 换手率(%)
         reason: item.EXPLANATION || '',                            // 上榜原因
         interpret: item.EXPLAIN || '',                             // 解读（如"2家机构买入"）
-        nextDayChange: parseFloat(item.D1_CLOSE_ADJCHRATE) || null, // 上榜后1日涨跌幅
-        d2Change: parseFloat(item.D2_CLOSE_ADJCHRATE) || null,    // 上榜后2日涨跌幅
-        d5Change: parseFloat(item.D5_CLOSE_ADJCHRATE) || null,    // 上榜后5日涨跌幅
+        nextDayChange: (function(){ var v = parseFloat(item.D1_CLOSE_ADJCHRATE); return isNaN(v) ? null : v; })(), // 上榜后1日涨跌幅
+        d2Change: (function(){ var v = parseFloat(item.D2_CLOSE_ADJCHRATE); return isNaN(v) ? null : v; })(),    // 上榜后2日涨跌幅
+        d5Change: (function(){ var v = parseFloat(item.D5_CLOSE_ADJCHRATE); return isNaN(v) ? null : v; })(),    // 上榜后5日涨跌幅
         tradeId: item.TRADE_ID || '',                              // 交易ID
         freeMarketCap: parseFloat(item.FREE_MARKET_CAP) || 0,     // 流通市值(元)
         secCode: item.SECURITY_CODE || code,
@@ -5687,13 +5687,15 @@ function renderStockResult(stockData, finData, flowData, loading) {
   var backBtn = document.getElementById('backSearchBtn');
   if (backBtn) backBtn.style.display = '';
 
-  title.style.display = 'block';
-
   var d = stockData;
-  title.textContent = d.isETF ? 'ETF基金详情分析' : '个股详情分析';
+  if (title) {
+    title.style.display = 'block';
+    title.textContent = d.isETF ? 'ETF基金详情分析' : '个股详情分析';
+  }
 
   var changeColor = getChangeColor(d.changePct);
-  var changeStr = (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%';
+  var _changePct = d.changePct || 0;
+  var changeStr = (_changePct >= 0 ? '+' : '') + _changePct.toFixed(2) + '%';
 
   // 估值判断（ETF不适用PE估值，显示ETF专属标签）
   var valSig, valCls;

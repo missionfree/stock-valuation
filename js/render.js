@@ -211,6 +211,7 @@ function generateSparkline(minVal, maxVal, currentVal, pct) {
    ============================================================ */
 function drawHeatmap() {
   var canvas = document.getElementById('heatmapCanvas');
+  if (!canvas || !canvas.parentElement) return;
   var dpr = window.devicePixelRatio || 1;
   var w = canvas.parentElement.clientWidth - 24;
   
@@ -356,6 +357,7 @@ function roundRect(ctx, x, y, w, h, r) {
    ============================================================ */
 function drawPEBar(realtimeData) {
   var canvas = document.getElementById('peBarCanvas');
+  if (!canvas || !canvas.parentElement) return;
   var dpr = window.devicePixelRatio || 1;
   var w = canvas.parentElement.clientWidth - 24;
   var indices = BASE_DATA.indices;
@@ -499,6 +501,11 @@ function renderSpotlight(realtimeData) {
   var container = document.getElementById('spotlightArea');
   if (!container) return;
 
+  // 防止补获后递归调用
+  if (renderSpotlight._retrying) {
+    renderSpotlight._retrying = false;
+  }
+
   // 收集所有板块的实时涨幅
   var sectorChanges = [];
   BASE_DATA.sectors.forEach(function(s) {
@@ -520,15 +527,14 @@ function renderSpotlight(realtimeData) {
     });
   });
 
-  // 如果没有实时数据，不生成模拟假数据，标记为无数据
-  var hasAnyRealtime = sectorChanges.some(function(s) { return s.hasRealtime; });
-  if (!hasAnyRealtime) {
-    sectorChanges.forEach(function(s) {
+  // 逐个检查板块数据有效性（不再只在全部缺失时标记）
+  sectorChanges.forEach(function(s) {
+    if (!s.hasRealtime || s.changePct === null) {
       s.changePct = null;
       s.isSimulated = false;
       s.noData = true;
-    });
-  }
+    }
+  });
 
   // 按涨幅降序排列，取前5
   sectorChanges.sort(function(a, b) {
@@ -586,6 +592,37 @@ function renderSpotlight(realtimeData) {
   });
 
   container.innerHTML = html;
+
+  // 补获缺失的sector ETF数据（类似 renderIndustryLeaders 的 fetchLeaderStocksData 机制）
+  var sectorEtfCodes = BASE_DATA.sectors.map(function(s) { return s.etfCode; });
+  var missingSectorCodes = sectorEtfCodes.filter(function(code) {
+    return !realtimeData || !realtimeData[code];
+  });
+  if (missingSectorCodes.length > 0 && realtimeData !== null && !renderSpotlight._retrying) {
+    renderSpotlight._retrying = true;
+    fetchTencentBatch(missingSectorCodes).then(function(extraData) {
+      // 合并到realtimeData
+      if (realtimeData) {
+        Object.keys(extraData).forEach(function(k) { realtimeData[k] = extraData[k]; });
+      }
+      if (typeof _lastRealtimeData !== 'undefined' && _lastRealtimeData) {
+        Object.keys(extraData).forEach(function(k) { _lastRealtimeData[k] = extraData[k]; });
+      }
+      // 回填缓存
+      try {
+        var raw = localStorage.getItem('quote_cache_v4');
+        if (raw) {
+          var cached = JSON.parse(raw);
+          Object.keys(extraData).forEach(function(k) { cached.data[k] = extraData[k]; });
+          localStorage.setItem('quote_cache_v4', JSON.stringify(cached));
+        }
+      } catch(e) {}
+      // 用合并后的数据重新渲染
+      renderSpotlight(realtimeData);
+    }).catch(function(e) {
+      if (typeof __DEBUG__ !== 'undefined' && __DEBUG__) console.log('sector ETF补获失败:', e.message);
+    });
+  }
 }
 
 /**
@@ -596,6 +633,19 @@ function renderSpotlight(realtimeData) {
 function analyzeSpotlightRisk(sector) {
   var pct = sector.pct10;
   var chg = sector.changePct || 0;
+
+  // 数据缺失时返回保守评估
+  if (sector.changePct === null || sector.changePct === undefined) {
+    return {
+      cls: 'advice-caution',
+      text: '数据不足',
+      icon: '◇',
+      riskLevel: 3,
+      riskText: '数据不足',
+      valuationText: pct < 40 ? '偏低' : pct > 60 ? '偏高' : '适中'
+    };
+  }
+
   var riskLevel = 1;
   var adviceCls = 'advice-buy';
   var adviceText = '可关注';

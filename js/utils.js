@@ -141,7 +141,7 @@ function parseTencentData(varName) {
     volume: _volume,               // 成交量(手)
     time: f[30] || '',
     changeAmount: parseFloat(f[31]) || 0,
-    changePercent: parseFloat(f[32]) || 0,
+    changePercent: _num(f[32]),
     high: parseFloat(f[33]) || 0,
     low: parseFloat(f[34]) || 0,
     turnover: _turnover,           // 成交额(万)
@@ -167,25 +167,39 @@ function parseTencentData(varName) {
  */
 function parseTencentJsonData(code, f) {
   if (!f || f.length < 35) return null;
+  function _num(v) {
+    var n = parseFloat(v);
+    return n !== null && !isNaN(n) ? n : null;
+  }
+  var _price = _num(f[3]);
+  var _changePercent = _num(f[32]);
+  var _pe = _num(f[39]);
+  var _pb = _num(f[46]);
+  var _volume = _num(f[6]);
+  var _turnover = _num(f[37]);
+  var _marketCap = _num(f[45]);
+  var _turnoverRate = _num(f[38]);
+  var _valid = _price !== null && _changePercent !== null && _pe !== null;
   return {
     name: f[1],
     code: f[2] || code,
-    price: parseFloat(f[3]) || 0,
+    price: _price,
     yesterdayClose: parseFloat(f[4]) || 0,
     open: parseFloat(f[5]) || 0,
-    volume: parseFloat(f[6]) || 0,
+    volume: _volume,
     time: f[30] || '',
     changeAmount: parseFloat(f[31]) || 0,
-    changePercent: parseFloat(f[32]) || 0,
+    changePercent: _changePercent,
     high: parseFloat(f[33]) || 0,
     low: parseFloat(f[34]) || 0,
-    turnover: parseFloat(f[37]) || 0,
-    pe: parseFloat(f[39]) || 0,
-    pb: parseFloat(f[46]) || 0,
-    marketCap: parseFloat(f[45]) || 0,      // 总市值(亿元)
-    floatMarketCap: parseFloat(f[44]) || 0, // 流通市值(亿元)
+    turnover: _turnover,
+    pe: _pe,
+    pb: _pb,
+    marketCap: _marketCap,
+    floatMarketCap: parseFloat(f[44]) || 0,
     amplitude: parseFloat(f[43]) || 0,
-    turnoverRate: parseFloat(f[38]) || 0,
+    turnoverRate: _turnoverRate,
+    _valid: _valid,
     source: 'tencent-fetch'
   };
 }
@@ -408,7 +422,7 @@ function fetchEastmoneyBatch(tencentCodes) {
         var price = (item.f43 || 0) / 100;
         var prevClose = (item.f60 || 0) / 100;
         var change = price - prevClose;
-        var pct = prevClose > 0 ? (change / prevClose * 100) : 0;
+        var pct = prevClose > 0 ? (change / prevClose * 100) : null;
         var peVal = item.f162 ? parseFloat((item.f162 / 100).toFixed(2)) : 0;
         var pbVal = item.f167 ? parseFloat((item.f167 / 100).toFixed(2)) : 0;
         var highVal = (item.f45 || 0) / 100;
@@ -716,7 +730,7 @@ function animateOdometerBatch(elements) {
  * @returns {number} 四舍五入后的数值
  */
 function roundPrecise(num, decimals) {
-  if (typeof num !== 'number' || !isFinite(num)) return 0;
+  if (typeof num !== 'number' || !isFinite(num)) return null;
   decimals = decimals || 2;
   if (decimals < 0) decimals = 0;
   if (decimals > 4) decimals = 4;

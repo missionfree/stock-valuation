@@ -347,9 +347,11 @@ function calcMaxDrawdown(closes, lookback) {
   if (closes.length < 2) return null;
   var slice = closes.slice(-lookback);
   var peak = slice[0];
+  if (peak <= 0) return 0;
   var maxDD = 0;
   for (var i = 1; i < slice.length; i++) {
     if (slice[i] > peak) peak = slice[i];
+    if (peak <= 0) continue;
     var dd = ((peak - slice[i]) / peak) * 100;
     if (dd > maxDD) maxDD = dd;
   }
