@@ -20,7 +20,7 @@ window.addEventListener('unhandledrejection', function(e) {
 /* ============================================================
    十四、自动刷新（3分钟定时器 + 倒计时显示）
    ============================================================ */
-var AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5分钟（原3分钟，降低频率减少请求量）
+var AUTO_REFRESH_INTERVAL = 3 * 60 * 1000; // 3分钟（提高盘中数据敏锐度）
 var _autoRefreshTimer = null;    // setInterval ID
 var _countdownTimer = null;      // 倒计时 setInterval ID
 var _autoRefreshEnabled = true;  // 开关状态

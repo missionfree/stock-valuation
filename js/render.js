@@ -520,15 +520,13 @@ function renderSpotlight(realtimeData) {
     });
   });
 
-  // 如果没有实时数据，使用模拟数据（基于历史分位生成合理涨跌）
+  // 如果没有实时数据，不生成模拟假数据，标记为无数据
   var hasAnyRealtime = sectorChanges.some(function(s) { return s.hasRealtime; });
   if (!hasAnyRealtime) {
     sectorChanges.forEach(function(s) {
-      // 基于分位生成模拟涨跌：低分位倾向小幅上涨，高分位倾向波动
-      var base = (50 - s.pct10) * 0.05;
-      var noise = (Math.random() - 0.5) * 3;
-      s.changePct = +(base + noise).toFixed(2);
-      s.isSimulated = true;
+      s.changePct = null;
+      s.isSimulated = false;
+      s.noData = true;
     });
   }
 
@@ -543,9 +541,15 @@ function renderSpotlight(realtimeData) {
   topSectors.forEach(function(s, i) {
     var rank = i + 1;
     var rankCls = 'r' + Math.min(rank, 3);
-    var changeVal = s.changePct || 0;
-    var changeStr = (changeVal >= 0 ? '+' : '') + changeVal.toFixed(2) + '%';
-    var changeCls = changeVal >= 0 ? 'up' : 'down';
+    var changeVal = (s.changePct == null) ? null : s.changePct;
+    var changeStr, changeCls;
+    if (s.noData || changeVal == null) {
+      changeStr = '数据获取中';
+      changeCls = 'nodata';
+    } else {
+      changeStr = (changeVal >= 0 ? '+' : '') + changeVal.toFixed(2) + '%';
+      changeCls = changeVal >= 0 ? 'up' : 'down';
+    }
 
     // 买入/风险评估
     var advice = analyzeSpotlightRisk(s);
@@ -562,9 +566,9 @@ function renderSpotlight(realtimeData) {
       riskDotsHtml += '<span class="spotlight-risk-dot ' + dotCls + '"></span>';
     }
 
-    var simTag = s.isSimulated ? '<span style="color:var(--muted);font-size:0.5rem;margin-left:0.2rem">[模拟]</span>' : '';
+    var simTag = s.noData ? '<span style="color:var(--muted);font-size:0.5rem;margin-left:0.2rem">[无数据]</span>' : (s.isSimulated ? '<span style="color:var(--muted);font-size:0.5rem;margin-left:0.2rem">[模拟]</span>' : '');
 
-    var simCls = s.isSimulated ? ' sim-data' : '';
+    var simCls = (s.isSimulated || s.noData) ? ' sim-data' : '';
     html += '<div class="spotlight-card' + simCls + '" onclick="showEtfRecommend(\'' + s.etfCode + '\', \'' + escapeHtmlAttr(s.name) + '\', \'行业\', \'spotlight\')" style="cursor:pointer" title="点击查看ETF推荐">' +
       '<div class="spotlight-rank ' + rankCls + '">' + rank + '</div>' +
       '<div class="spotlight-info">' +
@@ -2993,7 +2997,7 @@ function analyzeMarketFactors() {
   }
   
   // 6. 市场情绪判断
-  var fearIndex = sentiment.fearIndex || 50;
+  var fearIndex = sentiment.score || sentiment.fearIndex || 50;
   if (fearIndex < 30) {
     factors.push({
       type: 'bull',

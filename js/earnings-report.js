@@ -242,61 +242,41 @@ function fetchInstitutionalHoldings(secCode) {
 
 /**
  * 计算全年净利润预期达成率
- * 基于三季报累计净利润推算全年
+ * 优先用真实对比基准（去年全年利润 / 业绩预告），无基准时按报告期时间进度估算
  * @param {Object} finData - 财务数据
  * @returns {number} 达成率(%)
  */
 function calcAnnualAchievementRate(finData) {
   if (!finData || !finData.netProfit || finData.netProfit === 0) return 0;
-  // 三季报累计净利润通常占全年75%-85%（季节性因子）
-  // 简化推算：三季报累计 / 0.8 = 全年预估
-  // 实际达成率 = (三季报累计 / 全年预估) * 100
-  // 这里用历史季节性因子0.8作为参考
-  var seasonalFactor = 0.8;
-  var estimatedAnnual = finData.netProfit / seasonalFactor;
-  // 达成率 = 已实现利润 / 预估全年利润 * 100
-  // 如果有分析师一致预期，应使用一致预期代替
-  var achievementRate = (finData.netProfit / estimatedAnnual) * 100 * seasonalFactor;
-  return Math.min(100, achievementRate);
+  // 1. 优先：有去年全年净利润时，用真实同比达成率
+  if (finData.lastYearAnnualProfit && finData.lastYearAnnualProfit > 0) {
+    return Math.min(100, Math.round((finData.netProfit / finData.lastYearAnnualProfit) * 1000) / 10);
+  }
+  // 2. 次优：有全年业绩预告时，用当期净利润 / 预告净利润
+  if (finData.forecastProfit && finData.forecastProfit > 0) {
+    return Math.min(100, Math.round((finData.netProfit / finData.forecastProfit) * 1000) / 10);
+  }
+  // 3. 兜底：无对比基准，按报告期时间进度估算（表示已完成全年时间的百分比）
+  var reportPeriod = finData.reportPeriod || finData.period || '';
+  var quarterProgress = 0.25; // 默认按Q1
+  if (/中报|半年/.test(reportPeriod) || finData.month === 6) quarterProgress = 0.50;
+  else if (/三季|Q3|9月/.test(reportPeriod) || finData.month === 9) quarterProgress = 0.75;
+  else if (/年报|年度|12月/.test(reportPeriod) || finData.month === 12) quarterProgress = 1.0;
+  else if (/一季|Q1|3月/.test(reportPeriod) || finData.month === 3) quarterProgress = 0.25;
+  return Math.round(quarterProgress * 1000) / 10;
 }
 
 /**
  * 计算近3年同期历史回撤率
- * 基于公开数据的统计估算（无API时的回退方案）
+ * 历史最大回撤需要真实历史K线数据，当前无此数据源
  * @param {Object} stockData - 股票数据
  * @param {string} windowId - 窗口期ID
- * @returns {string} 回撤率描述
+ * @returns {string|null} 回撤率描述，null表示数据不可用
  */
 function calcHistoricalDrawdown(stockData, windowId) {
-  // 根据PE和市值估算历史回撤风险
-  var pe = stockData.pe || 0;
-  var marketCap = (stockData.marketCap || 0) / 1e8; // 转为亿
-
-  // 高PE小市值股在业绩窗口期回撤更大
-  var baseDrawdown = 15; // 基准回撤15%
-  if (pe > 80) baseDrawdown += 20;
-  else if (pe > 50) baseDrawdown += 15;
-  else if (pe > 30) baseDrawdown += 8;
-
-  if (marketCap > 0 && marketCap < 50) baseDrawdown += 10;
-  else if (marketCap > 0 && marketCap < 100) baseDrawdown += 5;
-
-  // 不同窗口期风险不同
-  switch (windowId) {
-    case 'annual': baseDrawdown += 5; break;  // 年报窗口波动更大
-    case 'q1': baseDrawdown += 3; break;
-    case 'semi': baseDrawdown += 2; break;
-    case 'q3': baseDrawdown += 1; break;
-  }
-
-  // 加入随机微扰模拟不同个股差异（±3%）
-  var seed = 0;
-  var code = (stockData.code || '').replace(/\D/g, '');
-  for (var i = 0; i < code.length; i++) seed += parseInt(code[i]);
-  var jitter = (seed % 7) - 3;
-  baseDrawdown += jitter;
-
-  return Math.max(5, Math.min(45, baseDrawdown)).toFixed(1) + '%';
+  // 历史最大回撤需要真实历史K线数据，当前无此数据源
+  // 返回null表示数据不可用，UI层应显示"数据不足"而非虚假数字
+  return null;
 }
 
 /**
@@ -619,8 +599,14 @@ function renderEarningsReport(stockData, finData, flowData, extraData) {
                        risk.color === 'green' ? 'green' : 'cyan';
       var severityPct = risk.level === 'high' ? 90 : risk.level === 'medium' ? 60 : 25;
       var drawdownPct = 0;
-      var drawdownMatch = String(risk.drawdown).match(/([\d.]+)/);
-      if (drawdownMatch) drawdownPct = Math.min(100, parseFloat(drawdownMatch[1]));
+      var drawdownDisplay;
+      if (risk.drawdown == null) {
+        drawdownDisplay = '暂无数据';
+      } else {
+        drawdownDisplay = risk.drawdown;
+        var drawdownMatch = String(risk.drawdown).match(/([\d.]+)/);
+        if (drawdownMatch) drawdownPct = Math.min(100, parseFloat(drawdownMatch[1]));
+      }
 
       html += '<div class="er-risk-card ' + colorClass + '">';
       // 卡片头部
@@ -659,7 +645,7 @@ function renderEarningsReport(stockData, finData, flowData, extraData) {
       html += '<div class="er-dd-bar">';
       html += '<div class="er-dd-fill ' + (drawdownPct > 25 ? 'red' : 'yellow') + '" style="width:' + drawdownPct + '%"></div>';
       html += '</div>';
-      html += '<span class="er-dd-val">' + risk.drawdown + '</span>';
+      html += '<span class="er-dd-val">' + drawdownDisplay + '</span>';
       html += '</div>';
       html += '<span class="er-source-tag" title="' + risk.dataSource + '">📊 ' + (risk.dataSource || '').replace(/东方财富/g, '东财').substring(0, 12) + '</span>';
       html += '</div>';

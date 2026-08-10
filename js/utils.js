@@ -112,25 +112,46 @@ function parseTencentData(varName) {
   var f = raw.split('~');
   if (f.length < 35) return null;
 
+  // 关键金融字段：解析失败设为null而非0，区分"真实值为0"和"数据缺失"
+  function _num(v) {
+    var n = parseFloat(v);
+    return n !== null && !isNaN(n) ? n : null;
+  }
+
+  var _price = _num(f[3]);
+  var _yesterdayClose = _num(f[4]);
+  var _volume = _num(f[6]);
+  var _turnover = _num(f[37]);
+  var _pe = _num(f[39]);
+  var _pb = _num(f[46]);
+  var _marketCap = _num(f[45]);
+  var _turnoverRate = _num(f[38]);
+
+  // 数据完整性标志：所有关键字段都不为null时为true
+  var _valid = _price !== null && _yesterdayClose !== null && _volume !== null &&
+    _turnover !== null && _pe !== null && _pb !== null &&
+    _marketCap !== null && _turnoverRate !== null;
+
   return {
     name: f[1],
     code: f[2],
-    price: parseFloat(f[3]) || 0,
-    yesterdayClose: parseFloat(f[4]) || 0,
+    price: _price,
+    yesterdayClose: _yesterdayClose,
     open: parseFloat(f[5]) || 0,
-    volume: parseFloat(f[6]) || 0,    // 成交量(手)
+    volume: _volume,               // 成交量(手)
     time: f[30] || '',
     changeAmount: parseFloat(f[31]) || 0,
     changePercent: parseFloat(f[32]) || 0,
     high: parseFloat(f[33]) || 0,
     low: parseFloat(f[34]) || 0,
-    turnover: parseFloat(f[37]) || 0,  // 成交额(万)
-    pe: parseFloat(f[39]) || 0,        // PE(TTM) - 个股有值，指数也有值
-    pb: parseFloat(f[46]) || 0,        // 市净率 - 个股有值，指数为0
-    marketCap: parseFloat(f[45]) || 0, // 总市值(亿元) - f[45]为总市值，f[44]为流通市值
+    turnover: _turnover,           // 成交额(万)
+    pe: _pe,                       // PE(TTM) - 个股有值，指数也有值
+    pb: _pb,                       // 市净率 - 个股有值，指数为0
+    marketCap: _marketCap,         // 总市值(亿元) - f[45]为总市值，f[44]为流通市值
     floatMarketCap: parseFloat(f[44]) || 0, // 流通市值(亿元)
     amplitude: parseFloat(f[43]) || 0, // 振幅(%)
-    turnoverRate: parseFloat(f[38]) || 0 // 换手率(%)
+    turnoverRate: _turnoverRate,   // 换手率(%)
+    _valid: _valid
   };
 }
 
@@ -390,6 +411,12 @@ function fetchEastmoneyBatch(tencentCodes) {
         var pct = prevClose > 0 ? (change / prevClose * 100) : 0;
         var peVal = item.f162 ? parseFloat((item.f162 / 100).toFixed(2)) : 0;
         var pbVal = item.f167 ? parseFloat((item.f167 / 100).toFixed(2)) : 0;
+        var highVal = (item.f45 || 0) / 100;
+        var lowVal = (item.f46 || 0) / 100;
+        // 换手率：东方财富f168字段（需/100转换为百分比）
+        var turnoverRateVal = item.f168 ? parseFloat((item.f168 / 100).toFixed(2)) : 0;
+        // 振幅：东方财富ulist.np接口无直接振幅字段，从最高/最低/昨收计算
+        var amplitudeVal = prevClose > 0 ? parseFloat((Math.abs(highVal - lowVal) / prevClose * 100).toFixed(2)) : 0;
         result[tencentCode] = {
           name: item.f58 || '',
           code: tencentCode,
@@ -397,8 +424,8 @@ function fetchEastmoneyBatch(tencentCodes) {
           yesterdayClose: prevClose,    // 腾讯兼容
           prevClose: prevClose,          // 保留向后兼容
           open: (item.f44 || 0) / 100,
-          high: (item.f45 || 0) / 100,
-          low: (item.f46 || 0) / 100,
+          high: highVal,
+          low: lowVal,
           changeAmount: change,          // 腾讯兼容
           change: change,                // 保留向后兼容
           changePercent: pct,            // 腾讯兼容
@@ -412,8 +439,8 @@ function fetchEastmoneyBatch(tencentCodes) {
           marketCap: item.f116 || 0,     // 腾讯兼容（总市值）
           floatMarketCap: item.f117 || 0,// 流通市值
           mv: item.f116 || 0,            // 保留向后兼容
-          amplitude: 0,
-          turnoverRate: 0,
+          amplitude: amplitudeVal,
+          turnoverRate: turnoverRateVal,
           source: 'eastmoney'
         };
       });
@@ -752,7 +779,7 @@ function calcDynamicPct(basePct, basePE, realtimePE, peMin, peMax) {
   var result = basePct + offset;
   // 限制在 0-100 范围
   result = Math.max(0, Math.min(100, result));
-  return Math.round(result);
+  return Math.round(result * 10) / 10;
 }
 
 /**

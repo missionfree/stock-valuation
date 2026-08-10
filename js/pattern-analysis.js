@@ -79,19 +79,20 @@ function runPatternAnalysis(forceRefresh) {
       Perf.trackedSetTimeout(function() { runPatternAnalysis(false); }, 2000);
       return;
     }
-    // 重试耗尽，用基准数据兜底
+    // 重试耗尽，显示数据获取失败（不再用空数据生成虚构分析）
+    setStatus('⚠️ 数据获取失败', 'error');
+    _paLastResult = null;
+    _paWasFallback = false;
+    // 重置仪表盘标签为待推演
+    var _errTag = document.getElementById('paScoreTag');
+    if (_errTag) { _errTag.textContent = '待推演'; _errTag.className = 'pa-gauge-tag'; }
+    // 渲染错误状态而非虚构结果
     if (container) {
-      container.innerHTML = '<div class="pa-loading">\u26a0\ufe0f \u884c\u60c5\u6570\u636e\u6682\u672a\u5c31\u7eea\uff0c\u5df2\u4f7f\u7528\u57fa\u51c6\u6570\u636e\u63a8\u6f14\u3002\u70b9\u51fb\u300c\u63a8\u6f14\u300d\u91cd\u8bd5</div>';
+      container.innerHTML = '<div class="pa-error" style="padding:2rem;text-align:center;color:var(--muted)">⚠️ 行情数据获取失败，盘口推演暂不可用。请点击「推演」重试。</div>';
     }
-    setStatus('\u26a0\ufe0f \u57fa\u51c6\u6570\u636e\u5151\u5e95', 'fallback');
-    if (btn) { btn.disabled = false; btn.textContent = '\u27f3 \u63a8\u6f14'; }
+    if (btn) { btn.disabled = false; btn.textContent = '⟳ 推演'; }
     _paAnalysisLock = false;
     _paRetryCount = 0;
-    _paWasFallback = true;
-    // 用空数据兜底渲染
-    var fallbackResult = analyzePatterns({}, null, null);
-    _paLastResult = fallbackResult;
-    renderPatternAnalysis(fallbackResult);
     return;
   }
 
@@ -405,13 +406,25 @@ function analyzePatterns(rt, sent, klineData) {
   var klines = klineData ? (klineData.klines || []) : [];
   var volumes = klines.length > 0 ? klines.map(function(k) { return parseFloat(k[5]) || 0; }) : [];
 
-  var hs300Base = null;
-  if (typeof BASE_DATA !== 'undefined') {
-    for (var i = 0; i < BASE_DATA.indices.length; i++) {
-      if (BASE_DATA.indices[i].code === 'sh000300') { hs300Base = BASE_DATA.indices[i]; break; }
+  var pePct = 50;
+  // 优先使用实时动态PE分位
+  if (sent && sent.hs300Pct != null) {
+    // 情绪数据携带实时PE分位
+    pePct = sent.hs300Pct;
+  } else {
+    // 回退到静态基准值（非实时，截至2026-07-24冻结数据），并尝试用实时PE动态修正
+    var hs300Base = null;
+    if (typeof BASE_DATA !== 'undefined') {
+      for (var i = 0; i < BASE_DATA.indices.length; i++) {
+        if (BASE_DATA.indices[i].code === 'sh000300') { hs300Base = BASE_DATA.indices[i]; break; }
+      }
+    }
+    if (hs300Base) {
+      // 用沪深300实时PE动态推算分位（无实时PE时calcDynamicPct自动回退到静态pct10）
+      var rtHs300PE = hs300.pe || 0;
+      pePct = calcDynamicPct(hs300Base.pct10, hs300Base.pe, rtHs300PE, hs300Base.peMin, hs300Base.peMax);
     }
   }
-  var pePct = hs300Base ? (hs300Base.pct10 || 50) : 50;
 
   var totalStocks = upCount + downCount + flatCount;
   var breadthChg = totalStocks > 0 ? (upCount - downCount) / totalStocks * 100 : 0;
@@ -621,119 +634,10 @@ function analyzePatterns(rt, sent, klineData) {
     }
   }
 
-  // ========== K线缺失时的兜底信号（确保各分类有信号，不卡50）==========
+  // ========== 数据状态标记（不再生成虚构兜底信号）==========
+  // K线数据缺失时，仅标记数据状态，不强制生成低置信度虚构信号
+  // 某分类无信号时，该分类强度保持50（中性），不添加虚假信号
   var hasKline = closes.length >= 4;
-  if (!hasKline) {
-    // 趋势兜底：用当日涨跌幅推断短期趋势方向
-    if (chgPct > 0.3) {
-      signals.push({ ruleId: 1, triggered: true, signal: 'bull', confidence: 0.35,
-        detail: '大盘今日涨' + chgPct.toFixed(2) + '%，短期趋势偏多（K线数据缺失，基于实时行情推断）' });
-    } else if (chgPct < -0.3) {
-      signals.push({ ruleId: 2, triggered: true, signal: 'bear', confidence: 0.35,
-        detail: '大盘今日跌' + chgPct.toFixed(2) + '%，短期趋势偏空（K线数据缺失，基于实时行情推断）' });
-    }
-    // 量价兜底：正常量能水平也有信号
-    if (avg20Amount > 0 && totalAmount > 0) {
-      var volRatioNorm = totalAmount / avg20Amount;
-      if (volRatioNorm >= 0.9 && volRatioNorm <= 1.1 && chgPct >= 0) {
-        signals.push({ ruleId: 7, triggered: true, signal: 'bull', confidence: 0.3,
-          detail: '成交量接近20日均量（量比' + volRatioNorm.toFixed(2) + '），涨势平稳' });
-      } else if (volRatioNorm >= 0.9 && volRatioNorm <= 1.1 && chgPct < 0) {
-        signals.push({ ruleId: 8, triggered: true, signal: 'bear', confidence: 0.3,
-          detail: '成交量接近20日均量（量比' + volRatioNorm.toFixed(2) + '），跌势平稳' });
-      }
-    }
-    // 位置兜底：用PE分位直接判断
-    if (pePct > 0) {
-      if (pePct >= 60) {
-        signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.35,
-          detail: 'PE分位' + pePct.toFixed(0) + '%（偏高），估值位置偏热' });
-      } else if (pePct <= 40) {
-        signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.35,
-          detail: 'PE分位' + pePct.toFixed(0) + '%（偏低），估值位置偏冷' });
-      } else {
-        // 中间位置也给弱信号
-        if (chgPct >= 0) {
-          signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.25,
-            detail: 'PE分位' + pePct.toFixed(0) + '%（中性），今日涨势温和' });
-        } else {
-          signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.25,
-            detail: 'PE分位' + pePct.toFixed(0) + '%（中性），今日跌势温和' });
-        }
-      }
-    }
-    // 突破兜底：用日内振幅判断
-    if (open > 0 && high > 0 && low > 0 && price > 0) {
-      var dayRange = (high - low) / Math.max(open, price) * 100;
-      var dayChgAbs = Math.abs(chgPct);
-      if (dayChgAbs > 1.0 && chgPct > 0) {
-        signals.push({ ruleId: 15, triggered: true, signal: 'bull', confidence: 0.35,
-          detail: '今日涨' + chgPct.toFixed(2) + '%且振幅' + dayRange.toFixed(1) + '%，有向上突破迹象' });
-      } else if (dayChgAbs > 1.0 && chgPct < 0) {
-        signals.push({ ruleId: 16, triggered: true, signal: 'bear', confidence: 0.35,
-          detail: '今日跌' + chgPct.toFixed(2) + '%且振幅' + dayRange.toFixed(1) + '%，有向下破位迹象' });
-      }
-    }
-  }
-
-  // ========== 分类兜底：确保每个分类至少有一个信号（不卡50）==========
-  var triggeredRuleIds = signals.map(function(s) { return s.ruleId; });
-  function catHasSignal(cat) {
-    var catRuleIds = PATTERN_RULES.filter(function(r) { return r.category === cat; }).map(function(r) { return r.id; });
-    return catRuleIds.some(function(rid) { return triggeredRuleIds.indexOf(rid) >= 0; });
-  }
-  // 趋势分类兜底
-  if (!catHasSignal('trend')) {
-    if (chgPct > 0.1) {
-      signals.push({ ruleId: 1, triggered: true, signal: 'bull', confidence: 0.3,
-        detail: '今日大盘涨' + chgPct.toFixed(2) + '%，趋势偏多（基础信号）' });
-    } else if (chgPct < -0.1) {
-      signals.push({ ruleId: 2, triggered: true, signal: 'bear', confidence: 0.3,
-        detail: '今日大盘跌' + chgPct.toFixed(2) + '%，趋势偏空（基础信号）' });
-    }
-  }
-  // 量价分类兜底
-  if (!catHasSignal('volume')) {
-    if (avg20Amount > 0 && totalAmount > 0) {
-      var volR = totalAmount / avg20Amount;
-      if (chgPct >= 0) {
-        signals.push({ ruleId: 7, triggered: true, signal: 'bull', confidence: 0.25,
-          detail: '量比' + volR.toFixed(2) + '，今日涨' + chgPct.toFixed(2) + '%（量价基础信号）' });
-      } else {
-        signals.push({ ruleId: 8, triggered: true, signal: 'bear', confidence: 0.25,
-          detail: '量比' + volR.toFixed(2) + '，今日跌' + chgPct.toFixed(2) + '%（量价基础信号）' });
-      }
-    }
-  }
-  // 位置分类兜底
-  if (!catHasSignal('position')) {
-    if (pePct >= 55) {
-      signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.3,
-        detail: 'PE分位' + pePct.toFixed(0) + '%（偏高区域），估值偏热（基础信号）' });
-    } else if (pePct <= 45) {
-      signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.3,
-        detail: 'PE分位' + pePct.toFixed(0) + '%（偏低区域），估值偏冷（基础信号）' });
-    } else if (chgPct >= 0) {
-      signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.2,
-        detail: 'PE分位' + pePct.toFixed(0) + '%（中性），今日偏强（基础信号）' });
-    } else {
-      signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.2,
-        detail: 'PE分位' + pePct.toFixed(0) + '%（中性），今日偏弱（基础信号）' });
-    }
-  }
-  // 突破分类兜底
-  if (!catHasSignal('breakout')) {
-    if (open > 0 && price > 0) {
-      var intradayRet = (price - open) / open * 100;
-      if (intradayRet > 0.5) {
-        signals.push({ ruleId: 15, triggered: true, signal: 'bull', confidence: 0.25,
-          detail: '日内涨' + intradayRet.toFixed(2) + '%，偏多运行（基础信号）' });
-      } else if (intradayRet < -0.5) {
-        signals.push({ ruleId: 16, triggered: true, signal: 'bear', confidence: 0.25,
-          detail: '日内跌' + intradayRet.toFixed(2) + '%，偏弱运行（基础信号）' });
-      }
-    }
-  }
 
   // Calculate composite score
   var bullScore = 0, bearScore = 0;
@@ -749,8 +653,8 @@ function analyzePatterns(rt, sent, klineData) {
   var netScore = bullScore - bearScore;
   var compositeScore = 50;
   if (totalScore > 0) {
-    // 信号覆盖率修正：触发信号少于8条时，分数向50收敛，避免少量信号导致极端分数
-    var coverageFactor = Math.min(1, triggeredCount / 8);
+    // 信号覆盖率修正：触发3条信号即不压缩，下限0.5保证单信号也保留50%信号强度
+    var coverageFactor = Math.min(1, Math.max(0.5, triggeredCount / 3));
     var rawScore = 50 + netScore / totalScore * 50;
     compositeScore = Math.round(50 + (rawScore - 50) * coverageFactor);
     compositeScore = Math.max(0, Math.min(100, compositeScore));

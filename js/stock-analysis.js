@@ -1523,8 +1523,8 @@ function fetchMarketSentiment(forceRefresh) {
       var isTradingHours = isWeekday && minutes >= 565 && minutes <= 905; // 9:25~15:05
 
       if (isTradingHours) {
-        // 交易时段：每15分钟刷新一次
-        return (nowTs - obj.ts) > 15 * 60 * 1000;
+        // 交易时段：每5分钟刷新一次
+        return (nowTs - obj.ts) > 5 * 60 * 1000;
       }
 
       // 非交易时段
@@ -1628,22 +1628,19 @@ function calculateSentimentScore(data) {
 
     // 1a. 20日涨跌幅 → 核心趋势信号
     var ret20Score = 50 + m.ret20 * 5;
-    ret20Score = Math.max(0, Math.min(100, ret20Score));
 
     // 1b. MA20偏离 → 趋势位置
     var devScore = 50 + m.deviationMA20 * 10;
-    devScore = Math.max(0, Math.min(100, devScore));
 
     // 1c. 近10日下跌天数 → 持续性
     var downDaysScore = 100 - m.downDays10 * 10;
 
     // 1d. 5日涨跌幅 → 短期动能
     var ret5Score = 50 + m.ret5 * 8;
-    ret5Score = Math.max(0, Math.min(100, ret5Score));
 
     // 加权：20日趋势(40%) + MA20偏离(25%) + 下跌天数(15%) + 5日动能(20%)
+    // 子维度不独立clamp，保留极端信号（如ret20Score可达120或-20），仅在最终汇总后clamp一次
     momentumScore = ret20Score * 0.40 + devScore * 0.25 + downDaysScore * 0.15 + ret5Score * 0.20;
-    momentumScore = Math.max(0, Math.min(100, momentumScore));
   }
 
   // ========== 2. 涨跌比评分（30%）==========
@@ -1655,7 +1652,6 @@ function calculateSentimentScore(data) {
     adScore = 0;
   } else {
     adScore = 50 + (Math.log(ratio) / Math.log(3)) * 50;
-    adScore = Math.max(0, Math.min(100, adScore));
   }
 
   // ========== 3. 涨停跌停比评分（20%）==========
@@ -1665,10 +1661,11 @@ function calculateSentimentScore(data) {
   } else {
     limitScore = (data.limitUp / (data.limitUp + data.limitDown)) * 100;
   }
-  if (data.limitUp >= 100) limitScore = Math.min(100, limitScore + 10);
-  else if (data.limitUp >= 50) limitScore = Math.min(100, limitScore + 5);
-  if (data.limitDown >= 50) limitScore = Math.max(0, limitScore - 15);
-  else if (data.limitDown >= 20) limitScore = Math.max(0, limitScore - 8);
+  // 子维度不独立clamp，保留极端信号
+  if (data.limitUp >= 100) limitScore = limitScore + 10;
+  else if (data.limitUp >= 50) limitScore = limitScore + 5;
+  if (data.limitDown >= 50) limitScore = limitScore - 15;
+  else if (data.limitDown >= 20) limitScore = limitScore - 8;
 
   // ========== 4. 市场量能评分（15%）==========
   // 动态基准：今日成交额 ÷ 近20日平均成交额 = 量比
@@ -1676,14 +1673,18 @@ function calculateSentimentScore(data) {
   var amountYi = data.totalAmount / 1e8;
   var avg20Yi = data.avg20Amount ? data.avg20Amount / 1e8 : 0;
   var volRatio20 = avg20Yi > 0 ? amountYi / avg20Yi : 1;
+  // 连续映射：量比0.5→20分，1.0→50分，1.5→75分，2.0→92分，3.0→100分
   var volScore;
-  if (volRatio20 >= 2.0) volScore = 92;        // 2倍以上均量 → 极度放量
-  else if (volRatio20 >= 1.5) volScore = 80;   // 1.5倍 → 显著放量
-  else if (volRatio20 >= 1.2) volScore = 68;   // 1.2倍 → 温和放量
-  else if (volRatio20 >= 0.9) volScore = 55;   // 接近均量 → 中性
-  else if (volRatio20 >= 0.7) volScore = 42;   // 0.7倍 → 温和缩量
-  else if (volRatio20 >= 0.5) volScore = 30;   // 0.5倍 → 显著缩量
-  else volScore = 20;                           // 低于0.5倍 → 极度缩量
+  if (volRatio20 <= 0.5) {
+    volScore = 20;
+  } else if (volRatio20 <= 1.0) {
+    volScore = 20 + (volRatio20 - 0.5) * 60; // 0.5→20, 1.0→50
+  } else if (volRatio20 <= 2.0) {
+    volScore = 50 + (volRatio20 - 1.0) * 42; // 1.0→50, 2.0→92
+  } else {
+    volScore = Math.min(100, 92 + (volRatio20 - 2.0) * 8); // 2.0→92, 3.0→100
+  }
+  volScore = Math.round(volScore * 10) / 10; // 保留1位小数
 
   // ========== 综合加权 ==========
   // 动量(35%) + 涨跌比(30%) + 涨停潮(20%) + 量能(15%)
@@ -4460,102 +4461,175 @@ function fetchCapitalFlow(secCode, days) {
   else if (secCode.indexOf('sz') === 0) tencentCode = 'sz' + code;
   else return Promise.reject(new Error('不支持的市场代码'));
 
-  // 腾讯日K线API（支持CORS）
-  // 格式: code,day,start_date,end_date,count,qfq
-  var url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' +
-    tencentCode + ',day,,,' + (days + 5) + ',qfq';
+  // 构建东方财富secid：6/5/9开头→沪市(1.代码)，0/3/1/2开头→深市(0.代码)
+  var emSecid = null;
+  if (code.charAt(0) === '6' || code.charAt(0) === '5' || code.charAt(0) === '9') emSecid = '1.' + code;
+  else if (code.charAt(0) === '0' || code.charAt(0) === '3' || code.charAt(0) === '1' || code.charAt(0) === '2') emSecid = '0.' + code;
+  else if (secCode.indexOf('sh') === 0) emSecid = '1.' + code;
+  else if (secCode.indexOf('sz') === 0) emSecid = '0.' + code;
 
-  return fetchWithTimeout(url, { cache: 'no-store' }, 6000).then(function(res) {
-    return res.json();
-  }).then(function(resp) {
-    if (!resp || resp.code !== 0 || !resp.data) return null;
+  // === 兜底：量价资金流向代理模型（估算，非真实API数据）===
+  // 东方财富真实API不可用时，使用K线量价关系估算主力资金流向
+  function estimationFallback() {
+    // 腾讯日K线API（支持CORS）
+    // 格式: code,day,start_date,end_date,count,qfq
+    var url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' +
+      tencentCode + ',day,,,' + (days + 5) + ',qfq';
 
-    var stockData = resp.data[tencentCode];
-    var klines = stockData.qfqday || stockData.day;
-    if (!klines || klines.length === 0) return null;
+    return fetchWithTimeout(url, { cache: 'no-store' }, 6000).then(function(res) {
+      return res.json();
+    }).then(function(resp) {
+      if (!resp || resp.code !== 0 || !resp.data) return null;
 
-    // 腾讯K线格式: [日期, 开盘, 收盘, 最高, 最低, 成交量(手)]
-    var parsed = klines.map(function(k, i) {
-      var date = k[0];
-      var open = parseFloat(k[1]) || 0;
-      var close = parseFloat(k[2]) || 0;
-      var high = parseFloat(k[3]) || 0;
-      var low = parseFloat(k[4]) || 0;
-      var volume = parseFloat(k[5]) || 0; // 成交量(手)
+      var stockData = resp.data[tencentCode];
+      var klines = stockData.qfqday || stockData.day;
+      if (!klines || klines.length === 0) return null;
 
-      // 涨跌幅
-      var changePct = 0;
-      if (i > 0) {
-        var prevClose = parseFloat(klines[i - 1][2]) || 0;
-        if (prevClose > 0) changePct = (close - prevClose) / prevClose * 100;
-      }
+      // 腾讯K线格式: [日期, 开盘, 收盘, 最高, 最低, 成交量(手)]
+      var parsed = klines.map(function(k, i) {
+        var date = k[0];
+        var open = parseFloat(k[1]) || 0;
+        var close = parseFloat(k[2]) || 0;
+        var high = parseFloat(k[3]) || 0;
+        var low = parseFloat(k[4]) || 0;
+        var volume = parseFloat(k[5]) || 0; // 成交量(手)
 
-      // === 量价资金流向代理模型 ===
-      // 典型价格 = (最高+最低+收盘)/3
-      var typicalPrice = (high + low + close) / 3;
-      // 总资金流 = 典型价格 × 成交量(手) × 100(股/手)
-      var moneyFlow = typicalPrice * volume * 100;
+        // 涨跌幅
+        var changePct = 0;
+        if (i > 0) {
+          var prevClose = parseFloat(klines[i - 1][2]) || 0;
+          if (prevClose > 0) changePct = (close - prevClose) / prevClose * 100;
+        }
 
-      // 日内方向强度: (收盘-开盘)/(最高-最低), 范围[-1,1]
-      var range = high - low;
-      var direction = range > 0.01 ? (close - open) / range : 0;
-      direction = Math.max(-1, Math.min(1, direction));
+        // === 量价资金流向代理模型（估算兜底）===
+        // 典型价格 = (最高+最低+收盘)/3
+        var typicalPrice = (high + low + close) / 3;
+        // 总资金流 = 典型价格 × 成交量(手) × 100(股/手)
+        var moneyFlow = typicalPrice * volume * 100;
 
-      // 量比: 当日量 vs 前5日均量
-      var volAvg5 = 0;
-      if (i >= 5) {
-        for (var j = 1; j <= 5; j++) volAvg5 += parseFloat(klines[i - j][5]) || 0;
-        volAvg5 /= 5;
-      } else {
-        volAvg5 = volume;
-      }
-      var volRatio = volAvg5 > 0 ? volume / volAvg5 : 1;
+        // 日内方向强度: (收盘-开盘)/(最高-最低), 范围[-1,1]
+        var range = high - low;
+        var direction = range > 0.01 ? (close - open) / range : 0;
+        direction = Math.max(-1, Math.min(1, direction));
 
-      // 主力净流入 = 方向 × 资金流 × 量比修正
-      // 量比>1.5表示放量, 放大主力信号; 量比<0.7表示缩量, 减弱信号
-      var volWeight = volRatio > 1.5 ? 1.3 : volRatio < 0.7 ? 0.6 : 1.0;
-      var main = direction * moneyFlow * volWeight;
+        // 量比: 当日量 vs 前5日均量
+        var volAvg5 = 0;
+        if (i >= 5) {
+          for (var j = 1; j <= 5; j++) volAvg5 += parseFloat(klines[i - j][5]) || 0;
+          volAvg5 /= 5;
+        } else {
+          volAvg5 = volume;
+        }
+        var volRatio = volAvg5 > 0 ? volume / volAvg5 : 1;
 
-      // 超大单/大单: 主力的子分类(按比例拆分)
-      var xlarge = main * 0.55; // 超大单约占主力55%
-      var large = main * 0.45;  // 大单约占主力45%
+        // 主力净流入 = 方向 × 资金流 × 量比修正
+        // 量比>1.5表示放量, 放大主力信号; 量比<0.7表示缩量, 减弱信号
+        var volWeight = volRatio > 1.5 ? 1.3 : volRatio < 0.7 ? 0.6 : 1.0;
+        var main = direction * moneyFlow * volWeight;
 
-      // 散户(小单+中单) = -主力 (零和博弈)
-      var small = -main * 0.65; // 小单约占反方向65%
-      var medium = -main * 0.35; // 中单约占反方向35%
+        // 超大单/大单: 主力的子分类(按比例拆分)
+        var xlarge = main * 0.55; // 超大单约占主力55%
+        var large = main * 0.45;  // 大单约占主力45%
 
-      // 主力净流入占比
-      var totalAbs = Math.abs(main) + Math.abs(small) + Math.abs(medium);
-      var mainPct = totalAbs > 0 ? (main / totalAbs * 100) : 0;
+        // 散户(小单+中单) = -主力 (零和博弈)
+        var small = -main * 0.65; // 小单约占反方向65%
+        var medium = -main * 0.35; // 中单约占反方向35%
+
+        // 主力净流入占比
+        var totalAbs = Math.abs(main) + Math.abs(small) + Math.abs(medium);
+        var mainPct = totalAbs > 0 ? (main / totalAbs * 100) : 0;
+
+        return {
+          date: date,
+          main: main,
+          small: small,
+          medium: medium,
+          large: large,
+          xlarge: xlarge,
+          mainPct: mainPct,
+          price: close,
+          changePct: changePct,
+          volume: volume,
+          volRatio: volRatio
+        };
+      });
+
+      // 取最近N天
+      if (parsed.length > days) parsed = parsed.slice(-days);
 
       return {
-        date: date,
-        main: main,
-        small: small,
-        medium: medium,
-        large: large,
-        xlarge: xlarge,
-        mainPct: mainPct,
-        price: close,
-        changePct: changePct,
-        volume: volume,
-        volRatio: volRatio
+        name: '',
+        code: code,
+        days: parsed,
+        source: 'tencent-volprice-proxy'
       };
+    }).catch(function(err) {
+      console.warn('主力资金数据获取失败:', err.message);
+      return null;
     });
+  }
 
-    // 取最近N天
-    if (parsed.length > days) parsed = parsed.slice(-days);
+  // === 主数据源：东方财富真实资金流向API ===
+  // 返回fields2: f51=日期, f52=主力净流入, f53=小单净流入, f54=中单净流入, f55=大单净流入, f56=超大单净流入
+  if (emSecid) {
+    var emUrl = 'https://push2.eastmoney.com/api/qt/stock/fflow/kline/get' +
+      '?secid=' + emSecid + '&lmt=' + days + '&klt=101' +
+      '&fields1=f1,f2,f3,f7&fields2=f51,f52,f53,f54,f55,f56,f57';
 
-    return {
-      name: '',
-      code: code,
-      days: parsed,
-      source: 'tencent-volprice-proxy'
-    };
-  }).catch(function(err) {
-    console.warn('主力资金数据获取失败:', err.message);
-    return null;
-  });
+    return fetchWithTimeout(emUrl, { cache: 'no-store' }, 6000).then(function(res) {
+      return res.json();
+    }).then(function(resp) {
+      if (!resp || !resp.data || !resp.data.klines) {
+        throw new Error('东方财富资金流向返回空数据');
+      }
+
+      var klines = resp.data.klines;
+      var parsed = klines.map(function(k) {
+        var parts = k.split(',');
+        // f51=日期, f52=主力净流入, f53=小单净流入, f54=中单净流入, f55=大单净流入, f56=超大单净流入
+        var main = parseFloat(parts[1]) || 0;
+        var small = parseFloat(parts[2]) || 0;
+        var medium = parseFloat(parts[3]) || 0;
+        var large = parseFloat(parts[4]) || 0;
+        var xlarge = parseFloat(parts[5]) || 0;
+
+        var totalAbs = Math.abs(main) + Math.abs(small) + Math.abs(medium);
+        var mainPct = totalAbs > 0 ? (main / totalAbs * 100) : 0;
+
+        return {
+          date: parts[0],
+          main: main,
+          small: small,
+          medium: medium,
+          large: large,
+          xlarge: xlarge,
+          mainPct: mainPct,
+          price: 0,        // 东方财富资金流向API不返回价格
+          changePct: 0,
+          volume: 0,
+          volRatio: 0
+        };
+      });
+
+      if (parsed.length > days) parsed = parsed.slice(-days);
+
+      return {
+        name: resp.data.name || '',
+        code: code,
+        days: parsed,
+        source: 'eastmoney-real'
+      };
+    }).catch(function(err) {
+      if (typeof __DEBUG__ !== 'undefined' && __DEBUG__) {
+        console.warn('东方财富资金流向API失败，降级估算模型:', err.message);
+      }
+      // 东方财富API失败，降级到估算兜底模型
+      return estimationFallback();
+    });
+  }
+
+  // 无有效secid，直接使用估算兜底模型
+  return estimationFallback();
 }
 
 /**

@@ -11,8 +11,22 @@
 var _klineCache = {};        // 内存缓存（本次会话内）
 var _klineCacheTime = {};
 var MEM_CACHE_TTL = 30 * 60 * 1000;       // 内存缓存30分钟
-var LS_CACHE_TTL  = 24 * 60 * 60 * 1000;  // localStorage缓存24小时（日K数据不变）
+var LS_CACHE_TTL  = 24 * 60 * 60 * 1000;  // localStorage缓存24小时（非交易时段，日K数据不变）
+var LS_CACHE_TTL_TRADING = 10 * 60 * 1000; // 交易时段内LS缓存10分钟（提高盘中数据敏锐度）
 var LS_KEY_PREFIX = 'kline_';             // localStorage键前缀
+
+/**
+ * 判断当前是否在交易时段（周一至周五 9:25-15:05）
+ * 交易时段内缓存使用短TTL，非交易时段使用长TTL
+ * @returns {boolean}
+ */
+function isInTradingSession() {
+  var now = new Date();
+  var day = now.getDay(); // 0=周日, 6=周六
+  if (day === 0 || day === 6) return false; // 周末非交易
+  var minutes = now.getHours() * 60 + now.getMinutes();
+  return minutes >= 9 * 60 + 25 && minutes < 15 * 60 + 5; // 9:25 - 15:05
+}
 var _klineKeyRegistry = null;             // K线缓存键注册表（惰性初始化，避免全量扫描localStorage）
 
 /**
@@ -49,7 +63,9 @@ function _getLSCache(cacheKey) {
     var raw = localStorage.getItem(LS_KEY_PREFIX + cacheKey);
     if (!raw) return null;
     var obj = JSON.parse(raw);
-    if (Date.now() - obj.ts > LS_CACHE_TTL) return null; // 过期
+    // 交易时段内使用短TTL（10分钟），非交易时段使用长TTL（24小时）
+    var ttl = isInTradingSession() ? LS_CACHE_TTL_TRADING : LS_CACHE_TTL;
+    if (Date.now() - obj.ts > ttl) return null; // 过期
     return obj.data;
   } catch(e) { return null; }
 }
@@ -382,7 +398,7 @@ function calcMACD(closes, fast, slow, signalP) {
   signalP = signalP || 9;
   if (!closes || closes.length < slow + signalP) return null;
 
-  // 计算EMA
+  // EMA：接收完整data数组，从索引0开始迭代到底，返回最后一个EMA值
   function ema(data, period) {
     var k = 2 / (period + 1);
     var e = data[0];
@@ -392,40 +408,40 @@ function calcMACD(closes, fast, slow, signalP) {
     return e;
   }
 
-  var emaFast = ema(closes.slice(-slow - signalP), fast);
-  var emaSlow = ema(closes.slice(-slow - signalP), slow);
-  var dif = emaFast - emaSlow;
-
-  // 计算DEA（DIF的signalP日EMA）
-  // 需要历史的DIF序列来算EMA，简化处理：用近 slow+signalP 天的数据
-  var difSeries = [];
-  var dataLen = Math.min(closes.length, slow + signalP + 10);
-  for (var i = dataLen - slow - signalP; i >= 0; i--) {
-    var sub = closes.slice(i, i + slow + signalP);
-    if (sub.length < slow + signalP) break;
-    var ef = ema(sub, fast);
-    var es = ema(sub, slow);
-    difSeries.push(ef - es);
+  // 在完整序列上计算每个时点的EMA，返回与data等长的EMA序列（不再slice截断）
+  function emaFullSeries(data, period) {
+    var k = 2 / (period + 1);
+    var series = [];
+    var e = data[0];
+    series.push(e);
+    for (var i = 1; i < data.length; i++) {
+      e = data[i] * k + e * (1 - k);
+      series.push(e);
+    }
+    return series;
   }
-  if (difSeries.length < signalP) return null;
+
+  // 1. 完整序列的快慢EMA → 2. 完整DIF序列
+  var emaFastArr = emaFullSeries(closes, fast);
+  var emaSlowArr = emaFullSeries(closes, slow);
+  var difSeries = [];
+  for (var i = 0; i < closes.length; i++) {
+    difSeries.push(emaFastArr[i] - emaSlowArr[i]);
+  }
+
+  // 3. 用完整DIF序列计算DEA（DIF的signalP日EMA，取最后一个值）
+  var dif = difSeries[difSeries.length - 1];
   var dea = ema(difSeries, signalP);
+  // 4. hist = 2 * (DIF - DEA)
   var hist = 2 * (dif - dea);
 
-  // 判断柱状体趋势（近3根柱状体是否连续收窄）
+  // 5. histTrend：比较最后两个hist值（最后hist < 前一个hist = 收窄 = -1）
   var histTrend = 0;
-  if (difSeries.length >= signalP + 3) {
-    var hists = [];
-    for (var j = difSeries.length - 3; j < difSeries.length; j++) {
-      var d = difSeries[j];
-      var prevD = difSeries[j - 1] || d;
-      // 近似计算历史hist
-      var deaApprox = ema(difSeries.slice(0, j + 1), signalP);
-      hists.push(2 * (d - deaApprox));
-    }
-    if (hists.length >= 3) {
-      var narrowing = Math.abs(hists[2]) < Math.abs(hists[1]) && Math.abs(hists[1]) < Math.abs(hists[0]);
-      histTrend = narrowing ? -1 : 1;
-    }
+  if (difSeries.length >= 2) {
+    var prevDif = difSeries[difSeries.length - 2];
+    var prevDea = ema(difSeries.slice(0, difSeries.length - 1), signalP);
+    var prevHist = 2 * (prevDif - prevDea);
+    histTrend = hist < prevHist ? -1 : 1;
   }
 
   return { dif: dif, dea: dea, hist: hist, histTrend: histTrend };
@@ -447,17 +463,23 @@ function calcVolumeStrength(klines) {
 
   if (avg5 <= 0) return null;
 
-  // 连续3日放量：每日量 > 前一日量
-  var consecutiveUp = recent3[1] > recent3[0] && recent3[2] > recent3[1];
   // 最近一日量比
   var volRatio = recent3[2] / avg5;
-  // 连续3日均不低于5日均量的1.5倍
-  var allAbove15 = recent3.every(function(v) { return v >= avg5 * 1.5; });
+  // 近3日成交量均值
+  var recent3Avg = (recent3[0] + recent3[1] + recent3[2]) / 3;
+
+  // 条件1：近3日中至少2日成交量 > 5日均量的1.2倍
+  var above12Count = recent3.filter(function(v) { return v > avg5 * 1.2; }).length;
+  var atLeast2Above12 = above12Count >= 2;
+  // 条件2：近3日成交量均值 > 5日均量的1.1倍（整体放量）
+  var recent3Above11 = recent3Avg > avg5 * 1.1;
+  // 近3日整体呈放量趋势：最后一天量 >= 近3日均值（替代旧的严格连续3日递增）
+  var consecutiveUp = recent3[2] >= recent3Avg;
 
   return {
     consecutiveUp: consecutiveUp,
     volRatio: volRatio,
-    qualified: consecutiveUp && allAbove15,
+    qualified: atLeast2Above12 && recent3Above11,
     recent3: recent3,
     avg5: avg5
   };
@@ -2890,10 +2912,13 @@ function runAnalysis(forceRefresh) {
   var realtimeData = null;
   var quoteSuccess = false;
 
-  // === 行情缓存：按10:30更新策略 ===
+  // === 行情缓存：交易时段5分钟刷新 + 非交易时段收盘缓存 ===
   var QUOTE_CACHE_KEY = 'quote_cache_v4';
 
-  // 判断是否需要刷新：当天10:30后且缓存时间早于当天10:30 → 需要刷新
+  // 判断是否需要刷新：
+  // - 交易时段（9:25-15:05）：缓存超过5分钟即需刷新
+  // - 收盘后（15:05后）：缓存必须持有当天收盘数据（缓存时间 >= 最近交易日15:05）才算有效
+  // - 开盘前（9:25前）/ 周末：使用最近一个交易日的收盘缓存
   function needRefreshQuote() {
     if (forceRefresh) return true;
     try {
@@ -2902,15 +2927,30 @@ function runAnalysis(forceRefresh) {
       var obj = JSON.parse(raw);
       var cacheTs = obj.ts;
       var now = new Date();
-      // 当天10:30的时间戳
-      var today1030 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 30, 0).getTime();
-      // 当前已过10:30：缓存必须在今天10:30之后才算有效
-      if (now.getTime() >= today1030) {
-        return cacheTs < today1030; // 缓存早于今天10:30 → 需刷新
+      var nowMs = now.getTime();
+      var y = now.getFullYear(), mo = now.getMonth(), d = now.getDate();
+      var today925 = new Date(y, mo, d, 9, 25, 0).getTime();
+
+      // 交易时段内：缓存超过5分钟即需刷新
+      if (isInTradingSession()) {
+        return (nowMs - cacheTs) > 5 * 60 * 1000;
       }
-      // 当前未过10:30：使用昨天的缓存（即缓存时间在昨天10:30之后即可）
-      var yesterday1030 = today1030 - 24 * 60 * 60 * 1000;
-      return cacheTs < yesterday1030; // 缓存早于昨天10:30 → 需刷新
+
+      // 非交易时段：定位“最近一个交易日”，要求缓存持有该日收盘数据
+      var closeDay = new Date(y, mo, d);
+      var day = now.getDay(); // 0=周日, 6=周六
+      if (day === 0 || day === 6) {
+        // 周末：回退到上周五
+        closeDay.setDate(closeDay.getDate() - (day === 0 ? 2 : 1));
+      } else if (nowMs < today925) {
+        // 工作日开盘前（9:25前）：使用上一交易日的收盘缓存
+        closeDay.setDate(closeDay.getDate() - 1);
+        if (closeDay.getDay() === 0) closeDay.setDate(closeDay.getDate() - 2); // 周日→上周五
+      }
+      // 否则：工作日15:05后，closeDay 即为今天
+      var lastCloseTs = new Date(closeDay.getFullYear(), closeDay.getMonth(), closeDay.getDate(), 15, 5, 0).getTime();
+      // 缓存时间早于最近交易日15:05 → 未持有收盘数据，需刷新
+      return cacheTs < lastCloseTs;
     } catch(e) {
       return true;
     }
@@ -3057,7 +3097,7 @@ function runAnalysis(forceRefresh) {
       });
     }).then(function() {
       // 阶段3：市场情绪数据（最后获取，优先级最低，且自带缓存策略）
-      return refreshSentimentData(false);
+      return refreshSentimentData(forceRefresh);
     }).then(function() {
       // 阶段3.5：刷新消息面分析（纳入情绪数据后更新）
       renderNewsAnalysis();
