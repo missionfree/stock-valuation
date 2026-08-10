@@ -3881,7 +3881,8 @@ function searchStockByCode(code) {
   closeEtfRecommendModal();
   var searchInput = document.getElementById('searchInput');
   if (searchInput) {
-    searchInput.value = code;
+    // 显示纯代码（去掉sh/sz/hk前缀），更美观
+    searchInput.value = code.replace(/^(sh|sz|hk|SH|SZ|HK)/i, '');
     searchStock();
   }
 }

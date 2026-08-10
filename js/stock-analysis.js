@@ -139,8 +139,15 @@ function searchStock() {
 
   showToast('查询中...');
 
+  // 预处理：提取纯代码和前缀，用于API调用和ETF检测
+  var _prefixMatch = keyword.match(/^(sh|sz|hk|SH|SZ|HK)/i);
+  var _pureCode = _prefixMatch ? keyword.substring(_prefixMatch[0].length) : keyword;
+  var _hasPrefix = !!_prefixMatch;
+
   // 流程：东方财富 suggest API 解析关键词 → 腾讯接口获取实时行情 → 东方财富获取财务数据+主力资金
-  emSuggest(keyword).then(function(data) {
+  // 对带前缀的代码，使用纯代码调用emSuggest（API不识别前缀）
+  var _suggestKeyword = _hasPrefix ? _pureCode : keyword;
+  emSuggest(_suggestKeyword).then(function(data) {
     // 从API响应中提取第一条匹配结果
     var suggest = (data && data.QuotationCodeTable && data.QuotationCodeTable.Data && data.QuotationCodeTable.Data[0]) || null;
     // 从suggest结果或_suggestMeta中获取ETF/指数标志
@@ -149,18 +156,22 @@ function searchStock() {
 
     if (!suggest) {
       // 自动检测ETF/指数类型（emSuggest未返回结果时，根据代码格式判断）
-      var _pureCode = keyword.replace(/^(sh|sz|hk)/i, '');
       if (!isETF && /^5\d{5}$/.test(_pureCode)) isETF = true;        // 沪市ETF: 5开头
       if (!isETF && /^159\d{3}$/.test(_pureCode)) isETF = true;      // 深市ETF: 159开头
       if (!isIndex && /^(000300|000016|000905|399001|399006|000852)/.test(_pureCode)) isIndex = true;
       
-      return fetchTencentStock(keyword).then(function(d) {
-        if (!d) return null;
-        // 修复：fetchTencentStock已返回 {_tencent:true, data:...}，不可再次包装
-        d._secCode = _pureCode;
-        d._isETF = isETF;
-        d._isIndex = isIndex;
-        return d;
+      // 构建腾讯代码（带前缀）
+      var _tencentCode = _hasPrefix ? keyword : null;
+      if (!_tencentCode) {
+        // 无前缀的纯代码，根据首位数字判断市场
+        if (/^[659]/.test(_pureCode)) _tencentCode = 'sh' + _pureCode;
+        else _tencentCode = 'sz' + _pureCode;
+      }
+      return fetchTencentBatch([_tencentCode]).then(function(tData) {
+        if (tData[_tencentCode]) {
+          return { _tencent: true, data: tData[_tencentCode], _secCode: _pureCode, _isETF: isETF, _isIndex: isIndex };
+        }
+        return null;
       });
     }
     var tencentCode = emToTencentCode(suggest.MktNum, suggest.Code);
