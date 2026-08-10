@@ -9996,35 +9996,131 @@ html {
 /* === FTF 当前评级面板 === */
 .ftf-current-panel {
   display: flex; align-items: center; justify-content: center;
-  padding: 0.5rem 0.6rem; margin: 0.4rem 0;
-  background: linear-gradient(135deg, rgba(0,200,255,0.04), rgba(0,0,0,0.15));
+  padding: 0.6rem 0.8rem; margin: 0.4rem 0;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+/* 评级背景色：看好大红，看跌大绿 */
+.ftf-rating-overbought-bg {
+  background: linear-gradient(135deg, rgba(255,0,0,0.12), rgba(255,0,0,0.04));
+  border-color: rgba(255,0,0,0.25);
+}
+.ftf-rating-strong-bg {
+  background: linear-gradient(135deg, rgba(255,50,50,0.1), rgba(255,100,0,0.04));
+  border-color: rgba(255,50,50,0.2);
+}
+.ftf-rating-neutral-bg {
+  background: linear-gradient(135deg, rgba(255,217,61,0.08), rgba(0,0,0,0.1));
+  border-color: rgba(255,217,61,0.15);
+}
+.ftf-rating-weak-bg {
+  background: linear-gradient(135deg, rgba(100,150,0,0.08), rgba(0,0,0,0.1));
+  border-color: rgba(100,150,0,0.15);
+}
+.ftf-rating-bearish-bg {
+  background: linear-gradient(135deg, rgba(0,170,0,0.1), rgba(0,130,0,0.04));
+  border-color: rgba(0,170,0,0.2);
+}
+.ftf-rating-oversold-bg {
+  background: linear-gradient(135deg, rgba(0,170,0,0.15), rgba(0,130,0,0.06));
+  border-color: rgba(0,170,0,0.3);
+}
+.ftf-score-display {
+  display: flex; align-items: center; gap: 1rem;
+}
+.ftf-score-num {
+  font-size: 3rem; font-weight: 900; font-family: 'Orbitron', Monaco, monospace;
+  line-height: 1; min-width: 5rem; text-align: center;
+  text-shadow: 0 0 20px currentColor;
+}
+.ftf-score-meta {
+  display: flex; flex-direction: column; gap: 0.2rem;
+}
+.ftf-score-label {
+  font-size: 0.6rem; color: var(--muted); font-family: Monaco, monospace;
+}
+.ftf-score-rating {
+  font-size: 0.8rem; font-weight: 700;
+}
+
+/* FTF 评级颜色：看好大红，看跌大绿 */
+.ftf-rating-overbought { color: #FF0000; }
+.ftf-rating-strong { color: #FF3333; }
+.ftf-rating-neutral { color: #FFD93D; }
+.ftf-rating-weak { color: #88AA00; }
+.ftf-rating-bearish { color: #00AA00; }
+.ftf-rating-oversold { color: #00CC00; }
+
+/* === FTF 得分详解面板 === */
+.ftf-breakdown-panel {
+  padding: 0.5rem 0.6rem; margin: 0.3rem 0;
+  background: rgba(10,15,23,0.5);
   border-radius: var(--radius-sm);
   border: 1px solid rgba(0,200,255,0.08);
 }
-.ftf-score-display {
-  display: flex; align-items: center; gap: 0.8rem;
+.ftf-breakdown-title {
+  font-size: 0.65rem; font-weight: 700; color: var(--ink);
+  margin-bottom: 0.35rem;
 }
-.ftf-score-num {
-  font-size: 2rem; font-weight: 900; font-family: 'Orbitron', Monaco, monospace;
-  line-height: 1; min-width: 3.5rem; text-align: center;
+.ftf-formula {
+  padding: 0.3rem 0.4rem; margin-bottom: 0.35rem;
+  background: rgba(0,0,0,0.2); border-radius: 3px;
 }
-.ftf-score-meta {
-  display: flex; flex-direction: column; gap: 0.15rem;
+.ftf-formula-label {
+  font-size: 0.5rem; color: var(--muted); margin-bottom: 0.1rem;
 }
-.ftf-score-label {
-  font-size: 0.55rem; color: var(--muted); font-family: Monaco, monospace;
+.ftf-formula-eq {
+  font-size: 0.55rem; color: var(--ink); font-family: Monaco, monospace;
+  line-height: 1.5;
 }
-.ftf-score-rating {
-  font-size: 0.7rem; font-weight: 700;
+.ftf-breakdown-factors {
+  display: flex; flex-direction: column; gap: 0.35rem;
 }
-
-/* FTF 评级颜色 */
-.ftf-rating-overbought { color: #FF4D4D; }
-.ftf-rating-strong { color: #4CAF50; }
-.ftf-rating-neutral { color: #FFD93D; }
-.ftf-rating-weak { color: #FFA940; }
-.ftf-rating-bearish { color: #FF6B6B; }
-.ftf-rating-oversold { color: #1E90FF; }
+.ftf-bf-row {
+  padding: 0.3rem 0.4rem;
+  background: rgba(0,0,0,0.15); border-radius: 3px;
+}
+.ftf-bf-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.15rem;
+}
+.ftf-bf-name {
+  font-size: 0.58rem; font-weight: 700;
+}
+.ftf-bf-score {
+  font-size: 0.65rem; font-weight: 800; font-family: Monaco, monospace;
+}
+.ftf-bf-bar {
+  height: 6px; background: rgba(128,128,128,0.15); border-radius: 3px;
+  overflow: hidden; margin-bottom: 0.15rem;
+}
+.ftf-bf-fill {
+  height: 100%; border-radius: 3px; transition: width 0.4s ease;
+}
+.ftf-bf-detail {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.5rem; color: var(--muted);
+}
+.ftf-bf-desc {
+  font-size: 0.5rem; color: var(--ink); opacity: 0.8;
+}
+.ftf-breakdown-trend {
+  display: flex; align-items: center; gap: 0.3rem;
+  padding: 0.3rem 0.4rem; margin-top: 0.3rem;
+  background: rgba(0,0,0,0.15); border-radius: 3px;
+  font-size: 0.55rem;
+}
+.ftf-bt-label { color: var(--muted); }
+.ftf-bt-val { color: var(--ink); font-weight: 600; font-family: Monaco, monospace; }
+.ftf-breakdown-note {
+  margin-top: 0.3rem; padding: 0.35rem 0.45rem;
+  background: rgba(0,200,255,0.04);
+  border-radius: 3px;
+  border-left: 2px solid rgba(0,200,255,0.25);
+  font-size: 0.52rem; color: var(--muted); line-height: 1.65;
+}
+.ftf-breakdown-note b { color: var(--ink); font-weight: 600; }
 
 /* === FTF 小白说明面板 === */
 .ftf-guide-panel {
@@ -10073,7 +10169,7 @@ html {
 }
 .ftf-factor-desc b { color: var(--ink); font-weight: 600; }
 
-/* 渐变色图例条 */
+/* 渐变色图例条：绿→黄→红（A股标准） */
 .ftf-legend-bar {
   margin-bottom: 0.4rem;
 }
@@ -10081,8 +10177,8 @@ html {
   font-size: 0.52rem; color: var(--muted); margin-bottom: 0.15rem;
 }
 .ftf-legend-gradient {
-  height: 10px; border-radius: 3px;
-  background: linear-gradient(to right, #FF4D4D 0%, #FFD93D 50%, #4CAF50 100%);
+  height: 12px; border-radius: 3px;
+  background: linear-gradient(to right, #00AA00 0%, #FFD93D 50%, #FF0000 100%);
   margin-bottom: 0.1rem;
   border: 1px solid rgba(128,128,128,0.15);
 }

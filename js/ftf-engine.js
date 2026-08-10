@@ -418,6 +418,9 @@ function renderFTFChart(ftfResults, klineInfo) {
   else if (lastScore >= 20) { ratingText = '弱势·趋势向下'; ratingCls = 'ftf-rating-bearish'; ratingEmoji = '📉'; }
   else { ratingText = '超卖区·关注反弹'; ratingCls = 'ftf-rating-oversold'; ratingEmoji = '🧊'; }
 
+  // 生成得分详解
+  var breakdownHTML = generateFTFBreakdown(lastFTF, ftfResults);
+
   var html = '<div class="sd-ftf"><div class="sd-section sd-ftf-section">' +
     '<div class="sd-section-title">未来趋势因子 FTF' +
       '<span class="ftf-window-switch">' +
@@ -428,8 +431,8 @@ function renderFTFChart(ftfResults, klineInfo) {
       '</span>' +
     '</div>' +
 
-    // === 当前评级面板 ===
-    '<div class="ftf-current-panel">' +
+    // === 当前评级面板（大号醒目显示） ===
+    '<div class="ftf-current-panel ' + ratingCls + '-bg">' +
       '<div class="ftf-score-display">' +
         '<div class="ftf-score-num ' + ratingCls + '">' + lastScore + '</div>' +
         '<div class="ftf-score-meta">' +
@@ -438,6 +441,9 @@ function renderFTFChart(ftfResults, klineInfo) {
         '</div>' +
       '</div>' +
     '</div>' +
+
+    // === 得分详解面板 ===
+    breakdownHTML +
 
     // === 小白说明面板 ===
     '<div class="ftf-guide-panel">' +
@@ -453,26 +459,26 @@ function renderFTFChart(ftfResults, klineInfo) {
           '<div class="ftf-factor-desc">最近股价是不是在<b>持续往一个方向走</b>？就像推车，匀速前进比忽快忽慢更靠谱</div>' +
         '</div>' +
         '<div class="ftf-factor-card">' +
-          '<div class="ftf-factor-icon" style="color:#FF4D4D">💰</div>' +
+          '<div class="ftf-factor-icon" style="color:#FF0000">💰</div>' +
           '<div class="ftf-factor-name">资金流向 <span class="ftf-factor-wt">35%</span></div>' +
           '<div class="ftf-factor-desc"><b>大资金在买还是在卖</b>？主力持续流入=有人看好，持续流出=有人在跑</div>' +
         '</div>' +
         '<div class="ftf-factor-card">' +
-          '<div class="ftf-factor-icon" style="color:#4CAF50">⚡</div>' +
+          '<div class="ftf-factor-icon" style="color:#FF8C00">⚡</div>' +
           '<div class="ftf-factor-name">形态突破 <span class="ftf-factor-wt">25%</span></div>' +
           '<div class="ftf-factor-desc">股价是不是<b>冲破了天花板</b>？就像水坝决堤，突破阻力位=力量很强</div>' +
         '</div>' +
       '</div>' +
       '<div class="ftf-legend-bar">' +
-        '<div class="ftf-legend-label">分数区间：</div>' +
+        '<div class="ftf-legend-label">分数区间（红=看好，绿=看跌）：</div>' +
         '<div class="ftf-legend-gradient"></div>' +
         '<div class="ftf-legend-ticks">' +
-          '<span>0 超卖</span><span>20 弱势</span><span>50 中性</span><span>65 强势</span><span>80 超买</span><span>100</span>' +
+          '<span>0 看跌</span><span>20 弱势</span><span>50 中性</span><span>65 强势</span><span>80 超买</span><span>100 看好</span>' +
         '</div>' +
       '</div>' +
       '<div class="ftf-reading-tips">' +
         '<div class="ftf-tip-row"><b>📖 怎么看图：</b></div>' +
-        '<div class="ftf-tip-row">• <b>上方色带</b>：每天FTF分数的颜色，红色=弱、黄色=中性、绿色=强</div>' +
+        '<div class="ftf-tip-row">• <b>上方色带</b>：每天FTF分数的颜色，绿色=看跌、黄色=中性、红色=看好</div>' +
         '<div class="ftf-tip-row">• <b>下方折线</b>：FTF分数随时间的变化，蓝线是3日平滑线</div>' +
         '<div class="ftf-tip-row">• <b>红色虚线(80)</b>：超买警戒线，到这条线以上要小心回调</div>' +
         '<div class="ftf-tip-row">• <b>绿色虚线(20)</b>：超卖关注线，到这条线以下可能要反弹</div>' +
@@ -704,23 +710,24 @@ function drawFTFChart(ftfResults) {
 }
 
 /**
- * FTF值映射颜色: 红(0)→黄(50)→绿(100)
+ * FTF值映射颜色: 绿(0)→黄(50)→红(100)
+ * A股标准涨跌色：看好=大红，看跌=大绿
  */
 function ftfToColor(ftf) {
-  // 红色 #FF4D4D → 黄色 #FFD93D → 绿色 #4CAF50
+  // 绿色 #00AA00 → 黄色 #FFD93D → 红色 #FF0000
   var r, g, b;
   if (ftf <= 50) {
-    // 红→黄
+    // 绿→黄
     var t = ftf / 50;
-    r = Math.round(255 + (255 - 255) * t);   // 255→255
-    g = Math.round(77 + (217 - 77) * t);     // 77→217
-    b = Math.round(77 + (61 - 77) * t);      // 77→61
+    r = Math.round(0 + (255 - 0) * t);       // 0→255
+    g = Math.round(170 + (217 - 170) * t);   // 170→217
+    b = Math.round(0 + (61 - 0) * t);        // 0→61
   } else {
-    // 黄→绿
+    // 黄→红
     var t = (ftf - 50) / 50;
-    r = Math.round(255 + (76 - 255) * t);    // 255→76
-    g = Math.round(217 + (175 - 217) * t);   // 217→175
-    b = Math.round(61 + (80 - 61) * t);      // 61→80
+    r = Math.round(255 + (255 - 255) * t);   // 255→255
+    g = Math.round(217 + (0 - 217) * t);     // 217→0
+    b = Math.round(61 + (0 - 61) * t);       // 61→0
   }
   return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
@@ -816,6 +823,144 @@ function checkFTFFilter(stockData, klines) {
   }
 
   return null;
+}
+
+/**
+ * 生成FTF得分详解HTML
+ * 解释当前FTF分数是怎么算出来的，三因子各自贡献了多少
+ */
+function generateFTFBreakdown(lastFTF, ftfResults) {
+  if (!lastFTF) return '';
+
+  var mom = lastFTF.momentum || 0;        // 0-1
+  var cap = lastFTF.capitalFlow || 0;     // 0-1
+  var brk = lastFTF.breakthrough || 0;    // 0-1
+  var ftf = lastFTF.ftf;
+
+  // 三因子加权原始值
+  var momWeighted = 0.4 * mom;
+  var capWeighted = 0.35 * cap;
+  var brkWeighted = 0.25 * brk;
+  var rawTotal = momWeighted + capWeighted + brkWeighted;
+
+  // 百分制
+  var momPct = Math.round(mom * 100);
+  var capPct = Math.round(cap * 100);
+  var brkPct = Math.round(brk * 100);
+
+  // 贡献占比
+  var momContrib = rawTotal > 0 ? (momWeighted / rawTotal * 100) : 0;
+  var capContrib = rawTotal > 0 ? (capWeighted / rawTotal * 100) : 0;
+  var brkContrib = rawTotal > 0 ? (brkWeighted / rawTotal * 100) : 0;
+
+  // 5日变化
+  var changeRate = lastFTF.ftfChangeRate || 0;
+  var changeDir = changeRate > 0.5 ? '↑ 快速上升' : changeRate < -0.5 ? '↓ 快速下降' : '→ 基本持平';
+
+  // 各因子状态描述
+  var momDesc, momColor;
+  if (momPct >= 70) { momDesc = '上涨动量很强，股价近期持续上行'; momColor = '#FF0000'; }
+  else if (momPct >= 55) { momDesc = '上涨动量偏强，趋势逐步形成'; momColor = '#FF6600'; }
+  else if (momPct >= 45) { momDesc = '动量中性，方向不明朗'; momColor = '#FFD93D'; }
+  else if (momPct >= 30) { momDesc = '下跌动量偏强，股价持续走弱'; momColor = '#88AA00'; }
+  else { momDesc = '下跌动量很强，股价近期持续下行'; momColor = '#00AA00'; }
+
+  var capDesc, capColor;
+  if (capPct >= 70) { capDesc = '主力资金大幅净流入，买盘积极'; capColor = '#FF0000'; }
+  else if (capPct >= 55) { capDesc = '主力资金小幅流入，偏多'; capColor = '#FF6600'; }
+  else if (capPct >= 45) { capDesc = '资金流向中性，多空均衡'; capColor = '#FFD93D'; }
+  else if (capPct >= 30) { capDesc = '主力资金小幅流出，偏空'; capColor = '#88AA00'; }
+  else { capDesc = '主力资金大幅净流出，卖盘积极'; capColor = '#00AA00'; }
+
+  var brkDesc, brkColor;
+  if (brkPct >= 70) { brkDesc = '强势突破布林上轨，向上爆发力强'; brkColor = '#FF0000'; }
+  else if (brkPct >= 45) { brkDesc = '运行在布林带中上轨，偏强'; brkColor = '#FF6600'; }
+  else if (brkPct >= 25) { brkDesc = '在布林带内部运行，未突破'; brkColor = '#FFD93D'; }
+  else if (brkPct >= 10) { brkDesc = '运行在布林带中下轨，偏弱'; brkColor = '#88AA00'; }
+  else { brkDesc = '跌破布林下轨，超跌可能反弹'; brkColor = '#00AA00'; }
+
+  // 为什么低位也显示超卖/低分
+  var whyLowScore = '';
+  if (ftf < 35) {
+    whyLowScore = '<div class="ftf-breakdown-note">' +
+      '💡 <b>为什么分数低？</b> 当前三个信号整体偏弱' +
+      (momPct < 45 ? '：<b>动量</b>显示股价还在下跌' : '') +
+      (capPct < 45 ? '、<b>资金</b>在流出' : '') +
+      (brkPct < 25 ? '、<b>形态</b>未突破' : '') +
+      '。即使股价已经在低位，只要下跌趋势没有反转信号（资金回流+动量企稳+形态突破），FTF仍会给低分。' +
+      '<b>FTF不是预测底部，而是衡量当前趋势强度。</b>低位≠会涨，趋势反转才加分。' +
+    '</div>';
+  } else if (ftf > 80) {
+    whyLowScore = '<div class="ftf-breakdown-note">' +
+      '💡 <b>为什么分数高？</b> 三个信号全面走强' +
+      (momPct >= 55 ? '：<b>动量</b>持续向上' : '') +
+      (capPct >= 55 ? '、<b>资金</b>大幅流入' : '') +
+      (brkPct >= 45 ? '、<b>形态</b>突破阻力' : '') +
+      '。但分数超过80进入超买区，短期回调风险增加，需注意止盈。' +
+    '</div>';
+  }
+
+  var html = '<div class="ftf-breakdown-panel">' +
+    '<div class="ftf-breakdown-title">🔬 得分详解：为什么是这个分数？</div>' +
+
+    // 计算公式
+    '<div class="ftf-formula">' +
+      '<div class="ftf-formula-label">计算公式：</div>' +
+      '<div class="ftf-formula-eq">' +
+        'FTF = 动量×40% + 资金×35% + 突破×25% → Z标准化 → 0-100分' +
+      '</div>' +
+    '</div>' +
+
+    // 三因子明细
+    '<div class="ftf-breakdown-factors">' +
+      // 动量
+      '<div class="ftf-bf-row">' +
+        '<div class="ftf-bf-header">' +
+          '<span class="ftf-bf-name" style="color:' + momColor + '">📊 动量持续性</span>' +
+          '<span class="ftf-bf-score" style="color:' + momColor + '">' + momPct + '/100</span>' +
+        '</div>' +
+        '<div class="ftf-bf-bar"><div class="ftf-bf-fill" style="width:' + momPct + '%;background:' + momColor + '"></div></div>' +
+        '<div class="ftf-bf-detail">' +
+          '<span>权重40% · 贡献占比' + momContrib.toFixed(1) + '%</span>' +
+          '<span class="ftf-bf-desc">' + momDesc + '</span>' +
+        '</div>' +
+      '</div>' +
+      // 资金
+      '<div class="ftf-bf-row">' +
+        '<div class="ftf-bf-header">' +
+          '<span class="ftf-bf-name" style="color:' + capColor + '">💰 资金流向</span>' +
+          '<span class="ftf-bf-score" style="color:' + capColor + '">' + capPct + '/100</span>' +
+        '</div>' +
+        '<div class="ftf-bf-bar"><div class="ftf-bf-fill" style="width:' + capPct + '%;background:' + capColor + '"></div></div>' +
+        '<div class="ftf-bf-detail">' +
+          '<span>权重35% · 贡献占比' + capContrib.toFixed(1) + '%</span>' +
+          '<span class="ftf-bf-desc">' + capDesc + '</span>' +
+        '</div>' +
+      '</div>' +
+      // 突破
+      '<div class="ftf-bf-row">' +
+        '<div class="ftf-bf-header">' +
+          '<span class="ftf-bf-name" style="color:' + brkColor + '">⚡ 形态突破</span>' +
+          '<span class="ftf-bf-score" style="color:' + brkColor + '">' + brkPct + '/100</span>' +
+        '</div>' +
+        '<div class="ftf-bf-bar"><div class="ftf-bf-fill" style="width:' + brkPct + '%;background:' + brkColor + '"></div></div>' +
+        '<div class="ftf-bf-detail">' +
+          '<span>权重25% · 贡献占比' + brkContrib.toFixed(1) + '%</span>' +
+          '<span class="ftf-bf-desc">' + brkDesc + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // 5日趋势
+    '<div class="ftf-breakdown-trend">' +
+      '<span class="ftf-bt-label">近5日FTF变化：</span>' +
+      '<span class="ftf-bt-val">' + (changeRate >= 0 ? '+' : '') + changeRate.toFixed(2) + ' 分/日 ' + changeDir + '</span>' +
+    '</div>' +
+
+    whyLowScore +
+  '</div>';
+
+  return html;
 }
 
 /**
