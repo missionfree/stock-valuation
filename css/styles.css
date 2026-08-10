@@ -9992,3 +9992,121 @@ html {
   border-top: 1px solid rgba(0,200,255,0.08);
   padding-top: 0.2rem; margin-top: 0.1rem;
 }
+
+/* === FTF 当前评级面板 === */
+.ftf-current-panel {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0.5rem 0.6rem; margin: 0.4rem 0;
+  background: linear-gradient(135deg, rgba(0,200,255,0.04), rgba(0,0,0,0.15));
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0,200,255,0.08);
+}
+.ftf-score-display {
+  display: flex; align-items: center; gap: 0.8rem;
+}
+.ftf-score-num {
+  font-size: 2rem; font-weight: 900; font-family: 'Orbitron', Monaco, monospace;
+  line-height: 1; min-width: 3.5rem; text-align: center;
+}
+.ftf-score-meta {
+  display: flex; flex-direction: column; gap: 0.15rem;
+}
+.ftf-score-label {
+  font-size: 0.55rem; color: var(--muted); font-family: Monaco, monospace;
+}
+.ftf-score-rating {
+  font-size: 0.7rem; font-weight: 700;
+}
+
+/* FTF 评级颜色 */
+.ftf-rating-overbought { color: #FF4D4D; }
+.ftf-rating-strong { color: #4CAF50; }
+.ftf-rating-neutral { color: #FFD93D; }
+.ftf-rating-weak { color: #FFA940; }
+.ftf-rating-bearish { color: #FF6B6B; }
+.ftf-rating-oversold { color: #1E90FF; }
+
+/* === FTF 小白说明面板 === */
+.ftf-guide-panel {
+  padding: 0.5rem 0.6rem; margin: 0.3rem 0;
+  background: rgba(10,15,23,0.4);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0,200,255,0.06);
+}
+.ftf-guide-title {
+  font-size: 0.68rem; font-weight: 700; color: var(--ink);
+  margin-bottom: 0.3rem;
+}
+.ftf-guide-text {
+  font-size: 0.58rem; color: var(--muted); line-height: 1.6;
+  margin-bottom: 0.4rem;
+}
+.ftf-guide-text b { color: var(--ink); font-weight: 600; }
+
+/* 三因子卡片 */
+.ftf-factor-cards {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+@media (max-width: 520px) {
+  .ftf-factor-cards { grid-template-columns: 1fr; gap: 0.3rem; }
+}
+.ftf-factor-card {
+  padding: 0.4rem 0.5rem;
+  background: rgba(0,0,0,0.2);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(128,128,128,0.1);
+}
+.ftf-factor-icon {
+  font-size: 0.9rem; margin-bottom: 0.15rem;
+}
+.ftf-factor-name {
+  font-size: 0.6rem; font-weight: 700; color: var(--ink);
+  margin-bottom: 0.15rem;
+}
+.ftf-factor-wt {
+  font-size: 0.5rem; color: var(--muted); font-weight: 400;
+  margin-left: 0.15rem;
+}
+.ftf-factor-desc {
+  font-size: 0.52rem; color: var(--muted); line-height: 1.5;
+}
+.ftf-factor-desc b { color: var(--ink); font-weight: 600; }
+
+/* 渐变色图例条 */
+.ftf-legend-bar {
+  margin-bottom: 0.4rem;
+}
+.ftf-legend-label {
+  font-size: 0.52rem; color: var(--muted); margin-bottom: 0.15rem;
+}
+.ftf-legend-gradient {
+  height: 10px; border-radius: 3px;
+  background: linear-gradient(to right, #FF4D4D 0%, #FFD93D 50%, #4CAF50 100%);
+  margin-bottom: 0.1rem;
+  border: 1px solid rgba(128,128,128,0.15);
+}
+.ftf-legend-ticks {
+  display: flex; justify-content: space-between;
+  font-size: 0.45rem; color: var(--muted); font-family: Monaco, monospace;
+}
+
+/* 看图提示 */
+.ftf-reading-tips {
+  padding: 0.4rem 0.5rem;
+  background: rgba(0,200,255,0.03);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid rgba(0,200,255,0.2);
+  margin-bottom: 0.3rem;
+}
+.ftf-tip-row {
+  font-size: 0.53rem; color: var(--muted); line-height: 1.7;
+}
+.ftf-tip-row b { color: var(--ink); font-weight: 600; }
+
+/* 免责声明 */
+.ftf-disclaimer {
+  font-size: 0.48rem; color: rgba(128,128,128,0.6);
+  line-height: 1.5; margin-top: 0.2rem;
+  padding-top: 0.2rem; border-top: 1px solid rgba(128,128,128,0.08);
+}

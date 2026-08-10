@@ -407,6 +407,17 @@ function renderFTFChart(ftfResults, klineInfo) {
   var klineSection = detailEl.querySelector('.sd-kline');
   var addBtn = detailEl.querySelector('.sd-add-btn');
 
+  // 获取最新FTF值用于显示当前评级
+  var lastFTF = ftfResults[ftfResults.length - 1];
+  var lastScore = lastFTF.ftf;
+  var ratingText, ratingCls, ratingEmoji;
+  if (lastScore >= 80) { ratingText = '超买区·警惕回调'; ratingCls = 'ftf-rating-overbought'; ratingEmoji = '🔥'; }
+  else if (lastScore >= 65) { ratingText = '强势·趋势向上'; ratingCls = 'ftf-rating-strong'; ratingEmoji = '🚀'; }
+  else if (lastScore >= 50) { ratingText = '中性偏多·观望'; ratingCls = 'ftf-rating-neutral'; ratingEmoji = '⚖️'; }
+  else if (lastScore >= 35) { ratingText = '中性偏空·谨慎'; ratingCls = 'ftf-rating-weak'; ratingEmoji = '⚠️'; }
+  else if (lastScore >= 20) { ratingText = '弱势·趋势向下'; ratingCls = 'ftf-rating-bearish'; ratingEmoji = '📉'; }
+  else { ratingText = '超卖区·关注反弹'; ratingCls = 'ftf-rating-oversold'; ratingEmoji = '🧊'; }
+
   var html = '<div class="sd-ftf"><div class="sd-section sd-ftf-section">' +
     '<div class="sd-section-title">未来趋势因子 FTF' +
       '<span class="ftf-window-switch">' +
@@ -416,6 +427,60 @@ function renderFTFChart(ftfResults, klineInfo) {
         '<button class="ftf-win-btn" data-win="250">250日</button>' +
       '</span>' +
     '</div>' +
+
+    // === 当前评级面板 ===
+    '<div class="ftf-current-panel">' +
+      '<div class="ftf-score-display">' +
+        '<div class="ftf-score-num ' + ratingCls + '">' + lastScore + '</div>' +
+        '<div class="ftf-score-meta">' +
+          '<div class="ftf-score-label">当前FTF得分 / 100</div>' +
+          '<div class="ftf-score-rating ' + ratingCls + '">' + ratingEmoji + ' ' + ratingText + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // === 小白说明面板 ===
+    '<div class="ftf-guide-panel">' +
+      '<div class="ftf-guide-title">📌 一分钟看懂FTF</div>' +
+      '<div class="ftf-guide-text">' +
+        'FTF是一个<b>0-100分的趋势评分</b>，分数越高代表未来上涨概率越大。' +
+        '它把三个关键信号揉在一起算出一个总分：' +
+      '</div>' +
+      '<div class="ftf-factor-cards">' +
+        '<div class="ftf-factor-card">' +
+          '<div class="ftf-factor-icon" style="color:#1F77B4">📊</div>' +
+          '<div class="ftf-factor-name">动量持续性 <span class="ftf-factor-wt">40%</span></div>' +
+          '<div class="ftf-factor-desc">最近股价是不是在<b>持续往一个方向走</b>？就像推车，匀速前进比忽快忽慢更靠谱</div>' +
+        '</div>' +
+        '<div class="ftf-factor-card">' +
+          '<div class="ftf-factor-icon" style="color:#FF4D4D">💰</div>' +
+          '<div class="ftf-factor-name">资金流向 <span class="ftf-factor-wt">35%</span></div>' +
+          '<div class="ftf-factor-desc"><b>大资金在买还是在卖</b>？主力持续流入=有人看好，持续流出=有人在跑</div>' +
+        '</div>' +
+        '<div class="ftf-factor-card">' +
+          '<div class="ftf-factor-icon" style="color:#4CAF50">⚡</div>' +
+          '<div class="ftf-factor-name">形态突破 <span class="ftf-factor-wt">25%</span></div>' +
+          '<div class="ftf-factor-desc">股价是不是<b>冲破了天花板</b>？就像水坝决堤，突破阻力位=力量很强</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ftf-legend-bar">' +
+        '<div class="ftf-legend-label">分数区间：</div>' +
+        '<div class="ftf-legend-gradient"></div>' +
+        '<div class="ftf-legend-ticks">' +
+          '<span>0 超卖</span><span>20 弱势</span><span>50 中性</span><span>65 强势</span><span>80 超买</span><span>100</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ftf-reading-tips">' +
+        '<div class="ftf-tip-row"><b>📖 怎么看图：</b></div>' +
+        '<div class="ftf-tip-row">• <b>上方色带</b>：每天FTF分数的颜色，红色=弱、黄色=中性、绿色=强</div>' +
+        '<div class="ftf-tip-row">• <b>下方折线</b>：FTF分数随时间的变化，蓝线是3日平滑线</div>' +
+        '<div class="ftf-tip-row">• <b>红色虚线(80)</b>：超买警戒线，到这条线以上要小心回调</div>' +
+        '<div class="ftf-tip-row">• <b>绿色虚线(20)</b>：超卖关注线，到这条线以下可能要反弹</div>' +
+        '<div class="ftf-tip-row">• <b>鼠标悬停</b>：可查看每天的三因子贡献占比</div>' +
+      '</div>' +
+      '<div class="ftf-disclaimer">⚠️ FTF基于历史量价数据计算，仅供参考，不构成投资建议。过去表现不代表未来收益。</div>' +
+    '</div>' +
+
     '<canvas id="ftfCanvas" class="sd-ftf-canvas"></canvas>' +
     '<div class="ftf-tooltip" id="ftfTooltip" style="display:none"></div>' +
     '</div></div>';
@@ -801,7 +866,14 @@ function renderFTFEmpty(reason) {
 
   var html = '<div class="sd-ftf"><div class="sd-section sd-ftf-section">' +
     '<div class="sd-section-title">未来趋势因子 FTF</div>' +
-    '<div class="sd-loading">' + reason + '</div>' +
+    '<div class="ftf-guide-panel" style="margin-top:0.3rem">' +
+      '<div class="ftf-guide-title">📌 什么是FTF？</div>' +
+      '<div class="ftf-guide-text">' +
+        'FTF（Future Trend Factor）是一个<b>0-100分的趋势评分</b>，综合分析股价的动量持续性、资金流向和形态突破，' +
+        '帮助判断未来趋势方向。分数越高代表上涨概率越大。' +
+      '</div>' +
+      '<div class="ftf-disclaimer" style="border-top:none;padding-top:0;margin-top:0.2rem">⚠️ 当前暂无法计算：' + reason + '</div>' +
+    '</div>' +
     '</div></div>';
 
   var tempDiv = document.createElement('div');
