@@ -670,12 +670,312 @@ function analyzePatterns(rt, sent, klineData) {
   var bullCount = signals.filter(function(s) { return s.signal === 'bull'; }).length;
   var bearCount = signals.filter(function(s) { return s.signal === 'bear'; }).length;
 
+  // ========== 综合预测：融合16信号 + 历史回归 + 市场温度预警 ==========
+  var comprehensive = buildComprehensivePrediction(compositeScore, sent, level, levelColor, triggeredCount);
+
   return {
     signals: signals, compositeScore: compositeScore, level: level,
     levelColor: levelColor, levelIcon: levelIcon,
     bullCount: bullCount, bearCount: bearCount,
     neutralCount: 16 - triggeredCount, triggeredCount: triggeredCount,
-    bullScore: bullScore, bearScore: bearScore
+    bullScore: bullScore, bearScore: bearScore,
+    comprehensive: comprehensive
+  };
+}
+
+/* ============================================================
+   综合预测引擎：多源数据融合算法
+   融合维度：
+     1. 16口诀信号（盘口推演基础分）   权重 35%-60%（动态）
+     2. 历史回归预测（最小二乘法趋势）  权重  0%-25%（按置信度动态）
+     3. 市场温度+预警信号（情绪+顶底）  权重 25%-40%（动态）
+   设计理念：
+     - 单一信号源易失准，多源交叉验证提高准确率
+     - 回归预测置信度低时自动降权，避免噪声干扰
+     - 预警信号作为修正因子，捕捉极端市场状态
+   ============================================================ */
+function buildComprehensivePrediction(patternScore, sent, patternLevel, patternLevelColor, triggeredCount) {
+  // ---- 维度1：16口诀信号（基础分，已有） ----
+  var patternWeight = 0.40;
+
+  // ---- 维度2：历史回归预测 ----
+  var regressionWeight = 0.25;
+  var regressionData = null;
+  var regressionScore = 50;
+  var regressionConfidence = 0;
+  var regressionAvailable = false;
+
+  if (typeof predictSentimentTrend === 'function') {
+    try {
+      regressionData = predictSentimentTrend();
+      if (regressionData && regressionData.confidence > 0) {
+        regressionScore = regressionData.predicted;
+        regressionConfidence = regressionData.confidence; // 0-3
+        regressionAvailable = true;
+        // 置信度越低，权重越小（转移给patternScore）
+        if (regressionConfidence === 1) {
+          regressionWeight = 0.15;
+          patternWeight = 0.50;
+        }
+      } else {
+        // 无有效回归数据
+        regressionWeight = 0;
+        patternWeight = 0.55;
+      }
+    } catch(e) {
+      regressionWeight = 0;
+      patternWeight = 0.55;
+    }
+  } else {
+    regressionWeight = 0;
+    patternWeight = 0.55;
+  }
+
+  // ---- 维度3：市场温度 + 预警信号 ----
+  var sentimentWeight = 1 - patternWeight - regressionWeight;
+  var sentimentScore = 50;
+  var warnings = [];
+  var warningImpact = 0;
+  var warningDetails = [];
+
+  if (sent && typeof sent === 'object') {
+    sentimentScore = sent.score || 50;
+
+    // 获取预警信号
+    if (typeof checkEarlyWarnings === 'function') {
+      try {
+        warnings = checkEarlyWarnings(sent) || [];
+      } catch(e) {
+        warnings = [];
+      }
+    }
+
+    // 预警对分数的修正
+    warnings.forEach(function(w) {
+      if (w.type === 'bottom') {
+        // 底部预警：市场超卖，反弹概率增大 → 向上修正
+        var boost = w.level === 'extreme' ? 18 : w.level === 'high' ? 12 : 6;
+        warningImpact += boost;
+        warningDetails.push({
+          icon: w.icon, label: w.label, level: w.level,
+          detail: w.detail, impact: '+' + boost,
+          direction: 'bull'
+        });
+      } else if (w.type === 'top') {
+        // 顶部预警：市场过热，回调风险增大 → 向下修正
+        var penalty = w.level === 'extreme' ? 18 : w.level === 'high' ? 12 : 6;
+        warningImpact -= penalty;
+        warningDetails.push({
+          icon: w.icon, label: w.label, level: w.level,
+          detail: w.detail, impact: '-' + penalty,
+          direction: 'bear'
+        });
+      } else if (w.type === 'reversal') {
+        // 趋势反转：标记风险，轻微修正
+        warningDetails.push({
+          icon: w.icon, label: w.label, level: w.level,
+          detail: w.detail, impact: '±0',
+          direction: 'neutral'
+        });
+      }
+    });
+
+    // 预测预警（基于回归的预警）
+    if (typeof generatePredictionWarning === 'function') {
+      try {
+        var predWarning = generatePredictionWarning();
+        if (predWarning) {
+          // 避免与回归数据重复计算，仅作为信息展示
+          warningDetails.push({
+            icon: predWarning.icon, label: predWarning.label, level: predWarning.level,
+            detail: predWarning.detail, impact: '参考',
+            direction: predWarning.type === 'prediction_top' ? 'bear' :
+                       predWarning.type === 'prediction_bottom' ? 'bull' : 'neutral'
+          });
+        }
+      } catch(e) { /* 忽略 */ }
+    }
+  }
+
+  var sentimentAdjusted = Math.max(0, Math.min(100, sentimentScore + warningImpact));
+
+  // ---- 综合分数计算 ----
+  var comprehensiveScore = Math.round(
+    patternScore * patternWeight +
+    regressionScore * regressionWeight +
+    sentimentAdjusted * sentimentWeight
+  );
+
+  // ---- 多源一致性分析 ----
+  function getDirection(score) {
+    if (score >= 58) return 'bull';
+    if (score <= 42) return 'bear';
+    return 'neutral';
+  }
+
+  var sources = [
+    {
+      name: '16口诀信号',
+      icon: '⚡',
+      score: patternScore,
+      direction: getDirection(patternScore),
+      weight: patternWeight,
+      detail: patternLevel || '中性',
+      available: true
+    },
+    {
+      name: '历史回归预测',
+      icon: '📈',
+      score: regressionScore,
+      direction: getDirection(regressionScore),
+      weight: regressionWeight,
+      detail: regressionData ?
+        (regressionData.trend === 'strong_up' ? '强势上升' :
+         regressionData.trend === 'up' ? '上升' :
+         regressionData.trend === 'stable' ? '震荡' :
+         regressionData.trend === 'down' ? '下降' : '强势下降') +
+        '·R²=' + regressionData.rSquared + '·置信' + regressionConfidence + '/3' : '数据不足',
+      available: regressionAvailable,
+      data: regressionData
+    },
+    {
+      name: '市场温度预警',
+      icon: '🌡️',
+      score: sentimentAdjusted,
+      direction: getDirection(sentimentAdjusted),
+      weight: sentimentWeight,
+      detail: '温度' + sentimentScore + (warningImpact !== 0 ?
+        '→修正' + (warningImpact > 0 ? '+' : '') + warningImpact : ''),
+      available: !!sent,
+      warnings: warningDetails
+    }
+  ];
+
+  var bullSources = sources.filter(function(s) { return s.direction === 'bull'; }).length;
+  var bearSources = sources.filter(function(s) { return s.direction === 'bear'; }).length;
+  var neutralSources = sources.filter(function(s) { return s.direction === 'neutral'; }).length;
+
+  // 一致性：2/3以上同向 = 高一致性
+  var consensus;
+  if (bullSources >= 2) consensus = 'bull-strong';
+  else if (bearSources >= 2) consensus = 'bear-strong';
+  else consensus = 'mixed';
+
+  // ---- 综合评级 ----
+  var compLevel, compLevelColor, compLevelIcon;
+  if (comprehensiveScore >= 70) { compLevel = '看涨'; compLevelColor = 'bull'; compLevelIcon = '📈'; }
+  else if (comprehensiveScore >= 58) { compLevel = '偏多'; compLevelColor = 'bull-weak'; compLevelIcon = '🔅'; }
+  else if (comprehensiveScore >= 42) { compLevel = '中性'; compLevelColor = 'neutral'; compLevelIcon = '➡️'; }
+  else if (comprehensiveScore >= 30) { compLevel = '偏空'; compLevelColor = 'bear-weak'; compLevelIcon = '🔅'; }
+  else { compLevel = '看跌'; compLevelColor = 'bear'; compLevelIcon = '📉'; }
+
+  // ---- 操作建议（结合一致性和预警） ----
+  var action, actionCls, risk, riskCls;
+
+  // 检查是否有极端预警
+  var hasExtremeWarning = warningDetails.some(function(w) { return w.level === 'extreme'; });
+  var hasTopWarning = warningDetails.some(function(w) { return w.direction === 'bear'; });
+  var hasBottomWarning = warningDetails.some(function(w) { return w.direction === 'bull'; });
+
+  if (comprehensiveScore >= 65 && consensus === 'bull-strong') {
+    if (hasTopWarning) {
+      action = '适度买入，但注意止盈'; actionCls = 'comp-act-buy';
+      risk = '顶部预警生效中，回调风险中等'; riskCls = 'comp-risk-med';
+    } else {
+      action = '适合买入或加仓'; actionCls = 'comp-act-buy';
+      risk = '多源信号一致看多，风险较低'; riskCls = 'comp-risk-low';
+    }
+  } else if (comprehensiveScore >= 58 && bullSources >= 2) {
+    action = '小仓试探，逢低介入'; actionCls = 'comp-act-buy';
+    risk = hasTopWarning ? '顶部预警存在，注意控制仓位' : '信号偏多但需确认'; riskCls = 'comp-risk-med';
+  } else if (comprehensiveScore >= 42) {
+    if (hasBottomWarning && bullSources >= 1) {
+      action = '关注反弹机会，可左侧布局'; actionCls = 'comp-act-watch';
+      risk = '底部信号出现但趋势未确认'; riskCls = 'comp-risk-med';
+    } else {
+      action = '观望为主，等待方向明确'; actionCls = 'comp-act-watch';
+      risk = '多空分歧，方向不明'; riskCls = 'comp-risk-med';
+    }
+  } else if (comprehensiveScore >= 30 && bearSources >= 2) {
+    action = '减仓或回避'; actionCls = 'comp-act-sell';
+    risk = hasExtremeWarning ? '极端预警！大幅回调风险' : '多源看空，下行风险较大'; riskCls = 'comp-risk-high';
+  } else {
+    if (hasBottomWarning) {
+      action = '不急于抄底，关注企稳信号'; actionCls = 'comp-act-watch';
+      risk = '超卖区域但可能继续下探'; riskCls = 'comp-risk-high';
+    } else {
+      action = '空仓观望，等待企稳'; actionCls = 'comp-act-avoid';
+      risk = '趋势向下，抄底风险大'; riskCls = 'comp-risk-high';
+    }
+  }
+
+  // ---- 生成依据说明 ----
+  var reasons = [];
+  // 1. 口诀信号
+  reasons.push({
+      icon: '⚡', text: '16口诀信号得分' + patternScore + '（' + patternLevel + '），' +
+        '触发' + (triggeredCount || 0) + '条口诀，多空比反映盘口力量'
+    });
+  // 2. 回归预测
+  if (regressionData) {
+    var trendLabel = {strong_up:'强势上升', up:'上升', stable:'震荡', down:'下降', strong_down:'强势下降'};
+    reasons.push({
+      icon: '📈', text: '历史回归预测：基于近' + regressionData.sampleSize + '次情绪数据，' +
+        '趋势' + trendLabel[regressionData.trend] + '（斜率' + regressionData.slope + '/周期），' +
+        '预测情绪指数将达' + regressionData.predicted + '，拟合优度R²=' + regressionData.rSquared +
+        '，置信度' + regressionConfidence + '/3'
+    });
+  } else {
+    reasons.push({
+      icon: '📈', text: '历史回归预测：情绪历史数据不足（需≥5次记录），暂无法进行回归分析'
+    });
+  }
+  // 3. 市场温度
+  if (sent) {
+    reasons.push({
+      icon: '🌡️', text: '市场温度' + sentimentScore + '分' +
+        (warningImpact !== 0 ? '，预警修正' + (warningImpact > 0 ? '+' : '') + warningImpact + '分→' + sentimentAdjusted + '分' : '，无预警修正')
+    });
+  }
+  // 4. 预警详情
+  warningDetails.forEach(function(w) {
+    reasons.push({
+      icon: w.icon, text: w.label + '（' + w.level + '）：' + w.detail + ' → 影响' + w.impact
+    });
+  });
+  // 5. 一致性结论
+  if (consensus === 'bull-strong') {
+    reasons.push({
+      icon: '✅', text: '多源信号一致看多（' + bullSources + '/3源偏多），综合预测可信度较高'
+    });
+  } else if (consensus === 'bear-strong') {
+    reasons.push({
+      icon: '⚠️', text: '多源信号一致看空（' + bearSources + '/3源偏空），综合预测可信度较高'
+    });
+  } else {
+    reasons.push({
+      icon: '🔄', text: '多源信号存在分歧（多' + bullSources + '/空' + bearSources + '/中' + neutralSources + '），建议谨慎操作'
+    });
+  }
+
+  return {
+    score: comprehensiveScore,
+    level: compLevel,
+    levelColor: compLevelColor,
+    levelIcon: compLevelIcon,
+    action: action,
+    actionCls: actionCls,
+    risk: risk,
+    riskCls: riskCls,
+    consensus: consensus,
+    bullSources: bullSources,
+    bearSources: bearSources,
+    neutralSources: neutralSources,
+    sources: sources,
+    warnings: warningDetails,
+    reasons: reasons,
+    weights: { pattern: patternWeight, regression: regressionWeight, sentiment: sentimentWeight },
+    regressionData: regressionData
   };
 }
 
@@ -877,7 +1177,10 @@ function renderPatternAnalysis(result) {
     if (radarDots) { radarDots.innerHTML = dotsHtml; }
   }
 
-  // ===== 5. 渲染口诀列表（触发优先+未触发折叠） =====
+  // ===== 5. 渲染综合预测面板（三源融合） =====
+  renderComprehensivePanel(result.comprehensive);
+
+  // ===== 6. 渲染口诀列表（触发优先+未触发折叠） =====
   if (!rulesList) return;
 
   var triggeredIds = result.signals.map(function(s) { return s.ruleId; });
@@ -959,5 +1262,132 @@ function renderPatternAnalysis(result) {
       item.style.opacity = '1';
       item.style.transform = 'translateY(0)';
     }, idx * 60);
+  });
+}
+
+/* ============================================================
+   综合预测面板渲染
+   展示三源融合评分、多源一致性、操作建议、风险提示、依据说明
+   ============================================================ */
+function renderComprehensivePanel(comp) {
+  var body = document.getElementById('paCompBody');
+  if (!body) return;
+
+  if (!comp) {
+    body.innerHTML = '<div class="pa-comp-loading">⏳ 综合预测数据生成中…</div>';
+    return;
+  }
+
+  var scoreColor = comp.levelColor === 'bull' ? 'var(--neon-red)' :
+                   comp.levelColor === 'bear' ? 'var(--neon-green)' :
+                   comp.levelColor === 'neutral' ? 'var(--neon-cyan)' : 'var(--neon-yellow)';
+
+  var consensusText = comp.consensus === 'bull-strong' ? '多源一致看多' :
+                      comp.consensus === 'bear-strong' ? '多源一致看空' : '多源信号分歧';
+  var consensusColor = comp.consensus === 'bull-strong' ? 'var(--neon-red)' :
+                       comp.consensus === 'bear-strong' ? 'var(--neon-green)' : 'var(--neon-yellow)';
+  var consensusIcon = comp.consensus === 'bull-strong' ? '✅' :
+                      comp.consensus === 'bear-strong' ? '⚠️' : '🔄';
+
+  // === 1. 综合评分头部 ===
+  var html = '';
+  html += '<div class="pa-comp-score-row">';
+  html += '<div class="pa-comp-score-block">';
+  html += '<div class="pa-comp-score-num" style="color:' + scoreColor + '">' + comp.score + '</div>';
+  html += '<div class="pa-comp-score-label">' + comp.levelIcon + ' ' + comp.level + '</div>';
+  html += '</div>';
+  html += '<div class="pa-comp-consensus" style="border-color:' + consensusColor + '">';
+  html += '<span style="color:' + consensusColor + '">' + consensusIcon + ' ' + consensusText + '</span>';
+  html += '<span class="pa-comp-src-count">多' + comp.bullSources + ' · 空' + comp.bearSources + ' · 中' + comp.neutralSources + '</span>';
+  html += '</div>';
+  html += '</div>';
+
+  // === 2. 双维度：操作建议 + 风险提示 ===
+  html += '<div class="pa-comp-dual-row">';
+  html += '<div class="pa-comp-dual-card ' + comp.actionCls + '">';
+  html += '<div class="pa-comp-dual-label">📋 操作建议</div>';
+  html += '<div class="pa-comp-dual-value">' + comp.action + '</div>';
+  html += '</div>';
+  html += '<div class="pa-comp-dual-card ' + comp.riskCls + '">';
+  html += '<div class="pa-comp-dual-label">⚠️ 风险提示</div>';
+  html += '<div class="pa-comp-dual-value">' + comp.risk + '</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // === 3. 三源贡献分解 ===
+  html += '<div class="pa-comp-sources">';
+  html += '<div class="pa-comp-sources-title">📊 三源贡献分解</div>';
+  comp.sources.forEach(function(src) {
+    var srcColor = src.direction === 'bull' ? 'var(--neon-red)' :
+                   src.direction === 'bear' ? 'var(--neon-green)' : 'var(--neon-cyan)';
+    var srcArrow = src.direction === 'bull' ? '↑' :
+                   src.direction === 'bear' ? '↓' : '→';
+    var weightPct = Math.round(src.weight * 100);
+    var scoreBarWidth = src.score;
+
+    html += '<div class="pa-comp-source-item' + (src.available ? '' : ' unavailable') + '">';
+    html += '<div class="pa-comp-src-header">';
+    html += '<span class="pa-comp-src-icon">' + src.icon + '</span>';
+    html += '<span class="pa-comp-src-name">' + src.name + '</span>';
+    html += '<span class="pa-comp-src-weight">权重' + weightPct + '%</span>';
+    html += '<span class="pa-comp-src-score" style="color:' + srcColor + '">' + srcArrow + ' ' + src.score + '</span>';
+    html += '</div>';
+    html += '<div class="pa-comp-src-bar">';
+    html += '<div class="pa-comp-src-fill" style="width:' + scoreBarWidth + '%;background:' + srcColor + '"></div>';
+    html += '</div>';
+    if (src.detail) {
+      html += '<div class="pa-comp-src-detail">' + src.detail + '</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // === 4. 预警信号列表 ===
+  if (comp.warnings && comp.warnings.length > 0) {
+    html += '<div class="pa-comp-warnings">';
+    html += '<div class="pa-comp-warn-title">🚨 预警信号</div>';
+    comp.warnings.forEach(function(w) {
+      var wColor = w.direction === 'bull' ? 'var(--neon-red)' :
+                   w.direction === 'bear' ? 'var(--neon-green)' : 'var(--neon-yellow)';
+      var levelBadge = w.level === 'extreme' ? '极端' : w.level === 'high' ? '高级' : '中级';
+      var levelCls = w.level === 'extreme' ? 'warn-extreme' : w.level === 'high' ? 'warn-high' : 'warn-medium';
+      html += '<div class="pa-comp-warn-item ' + levelCls + '">';
+      html += '<div class="pa-comp-warn-header">';
+      html += '<span class="pa-comp-warn-icon">' + w.icon + '</span>';
+      html += '<span class="pa-comp-warn-label">' + w.label + '</span>';
+      html += '<span class="pa-comp-warn-badge ' + levelCls + '">' + levelBadge + '</span>';
+      html += '<span class="pa-comp-warn-impact" style="color:' + wColor + '">' + w.impact + '</span>';
+      html += '</div>';
+      html += '<div class="pa-comp-warn-detail">' + w.detail + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // === 5. 依据说明（可折叠） ===
+  html += '<div class="pa-comp-reasons-toggle" id="paReasonsToggle" onclick="var el=document.getElementById(\'paReasonsBody\');var tg=this;el.style.display=el.style.display===\'none\'?\'block\':\'none\';tg.classList.toggle(\'expanded\')">';
+  html += '<span class="pa-rt-icon">▸</span> 预测依据说明 <span class="pa-rt-count">' + comp.reasons.length + '</span> 条';
+  html += '</div>';
+  html += '<div class="pa-comp-reasons-body" id="paReasonsBody" style="display:none">';
+  comp.reasons.forEach(function(r) {
+    html += '<div class="pa-comp-reason-item">';
+    html += '<span class="pa-comp-reason-icon">' + r.icon + '</span>';
+    html += '<span class="pa-comp-reason-text">' + r.text + '</span>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  body.innerHTML = html;
+
+  // 触发入场动画
+  var sourceItems = body.querySelectorAll('.pa-comp-source-item');
+  sourceItems.forEach(function(item, idx) {
+    item.style.opacity = '0';
+    item.style.transform = 'translateX(-8px)';
+    Perf.trackedSetTimeout(function() {
+      item.style.transition = 'all 0.4s ease';
+      item.style.opacity = '1';
+      item.style.transform = 'translateX(0)';
+    }, 100 + idx * 80);
   });
 }

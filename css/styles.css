@@ -8938,6 +8938,317 @@ html {
 .pa-data-status.closed { color: var(--neon-cyan); }
 .pa-data-status.fallback { color: #FFAE00; background: rgba(255,174,0,0.06); border-color: rgba(255,174,0,0.15); }
 
+/* === 综合预测面板样式 === */
+.pa-comprehensive {
+  margin: 0.4rem 0;
+  border: 1px solid rgba(0,200,255,0.1);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(0,200,255,0.03), rgba(0,0,0,0.2));
+  overflow: hidden;
+}
+.pa-comp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  background: linear-gradient(90deg, rgba(0,200,255,0.06), rgba(0,0,0,0.1));
+  border-bottom: 1px solid rgba(0,200,255,0.06);
+}
+.pa-comp-title {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.pa-comp-subtitle {
+  font-size: 0.44rem;
+  color: var(--muted);
+}
+.pa-comp-body {
+  padding: 0.5rem 0.6rem;
+}
+.pa-comp-loading {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.5rem;
+  padding: 1rem 0;
+}
+
+/* 综合评分头部 */
+.pa-comp-score-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.pa-comp-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+}
+.pa-comp-score-num {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  line-height: 1;
+  text-shadow: 0 0 12px currentColor;
+}
+.pa-comp-score-label {
+  font-size: 0.48rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+.pa-comp-consensus {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.35rem 0.5rem;
+  border-left: 3px solid;
+  border-radius: 0 4px 4px 0;
+  background: rgba(255,255,255,0.02);
+}
+.pa-comp-consensus > span:first-child {
+  font-size: 0.56rem;
+  font-weight: 700;
+}
+.pa-comp-src-count {
+  font-size: 0.44rem;
+  color: var(--muted);
+}
+
+/* 双维度卡片 */
+.pa-comp-dual-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.pa-comp-dual-card {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.pa-comp-dual-card.comp-act-buy {
+  background: linear-gradient(135deg, rgba(255, 0, 0,0.06), rgba(255, 0, 0,0.02));
+  border-color: rgba(255, 0, 0,0.15);
+}
+.pa-comp-dual-card.comp-act-watch {
+  background: linear-gradient(135deg, rgba(255,174,0,0.06), rgba(255,174,0,0.02));
+  border-color: rgba(255,174,0,0.15);
+}
+.pa-comp-dual-card.comp-act-sell,
+.pa-comp-dual-card.comp-act-avoid {
+  background: linear-gradient(135deg, rgba(0, 170, 0,0.06), rgba(0, 170, 0,0.02));
+  border-color: rgba(0, 170, 0,0.15);
+}
+.pa-comp-dual-card.comp-risk-low {
+  background: linear-gradient(135deg, rgba(0,200,100,0.04), rgba(0,200,100,0.01));
+  border-color: rgba(0,200,100,0.12);
+}
+.pa-comp-dual-card.comp-risk-med {
+  background: linear-gradient(135deg, rgba(255,174,0,0.05), rgba(255,174,0,0.01));
+  border-color: rgba(255,174,0,0.12);
+}
+.pa-comp-dual-card.comp-risk-high {
+  background: linear-gradient(135deg, rgba(0, 170, 0,0.06), rgba(0, 170, 0,0.02));
+  border-color: rgba(0, 170, 0,0.15);
+}
+.pa-comp-dual-label {
+  font-size: 0.44rem;
+  color: var(--muted);
+  margin-bottom: 0.15rem;
+}
+.pa-comp-dual-value {
+  font-size: 0.54rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+/* 三源贡献分解 */
+.pa-comp-sources {
+  margin-bottom: 0.5rem;
+}
+.pa-comp-sources-title {
+  font-size: 0.52rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+}
+.pa-comp-source-item {
+  padding: 0.3rem 0.4rem;
+  margin-bottom: 0.25rem;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.pa-comp-source-item.unavailable {
+  opacity: 0.5;
+}
+.pa-comp-src-header {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.2rem;
+}
+.pa-comp-src-icon { font-size: 0.56rem; }
+.pa-comp-src-name {
+  flex: 1;
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.pa-comp-src-weight {
+  font-size: 0.44rem;
+  color: var(--muted);
+  padding: 0.05rem 0.3rem;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+}
+.pa-comp-src-score {
+  font-size: 0.56rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+.pa-comp-src-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.04);
+  overflow: hidden;
+  margin-bottom: 0.15rem;
+}
+.pa-comp-src-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  opacity: 0.7;
+}
+.pa-comp-src-detail {
+  font-size: 0.44rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* 预警信号列表 */
+.pa-comp-warnings {
+  margin-bottom: 0.5rem;
+}
+.pa-comp-warn-title {
+  font-size: 0.52rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+}
+.pa-comp-warn-item {
+  padding: 0.3rem 0.4rem;
+  margin-bottom: 0.25rem;
+  border-radius: 5px;
+  border-left: 3px solid;
+}
+.pa-comp-warn-item.warn-extreme {
+  border-color: var(--neon-red);
+  background: linear-gradient(90deg, rgba(255, 0, 0,0.05), rgba(255,255,255,0.01));
+}
+.pa-comp-warn-item.warn-high {
+  border-color: var(--neon-yellow);
+  background: linear-gradient(90deg, rgba(255,174,0,0.05), rgba(255,255,255,0.01));
+}
+.pa-comp-warn-item.warn-medium {
+  border-color: var(--neon-cyan);
+  background: linear-gradient(90deg, rgba(0,200,255,0.04), rgba(255,255,255,0.01));
+}
+.pa-comp-warn-header {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+.pa-comp-warn-icon { font-size: 0.52rem; }
+.pa-comp-warn-label {
+  flex: 1;
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.pa-comp-warn-badge {
+  font-size: 0.4rem;
+  font-weight: 700;
+  padding: 0.05rem 0.3rem;
+  border-radius: 8px;
+}
+.pa-comp-warn-badge.warn-extreme { background: rgba(255, 0, 0,0.15); color: var(--neon-red); }
+.pa-comp-warn-badge.warn-high { background: rgba(255,174,0,0.12); color: var(--neon-yellow); }
+.pa-comp-warn-badge.warn-medium { background: rgba(0,200,255,0.1); color: var(--neon-cyan); }
+.pa-comp-warn-impact {
+  font-size: 0.48rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.pa-comp-warn-detail {
+  font-size: 0.44rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* 依据说明折叠区 */
+.pa-comp-reasons-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.4rem;
+  cursor: pointer;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.5rem;
+  color: var(--muted);
+  transition: background 0.2s;
+}
+.pa-comp-reasons-toggle:hover { background: rgba(255,255,255,0.04); }
+.pa-comp-reasons-toggle.expanded .pa-rt-icon { transform: rotate(90deg); }
+.pa-comp-reasons-body {
+  padding: 0.3rem 0.4rem;
+  margin-top: 0.2rem;
+  border-radius: 5px;
+  background: rgba(0,0,0,0.15);
+}
+.pa-comp-reason-item {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-size: 0.46rem;
+  line-height: 1.5;
+}
+.pa-comp-reason-item:last-child { border-bottom: none; }
+.pa-comp-reason-icon { flex-shrink: 0; }
+.pa-comp-reason-text { color: var(--muted); }
+
+/* 综合面板响应式 */
+@media (max-width: 480px) {
+  .pa-comp-score-num { font-size: 1.3rem; }
+  .pa-comp-dual-row { flex-direction: column; gap: 0.25rem; }
+  .pa-comp-src-name { font-size: 0.46rem; }
+  .pa-comp-warn-detail { font-size: 0.42rem; }
+  .pa-comp-reason-text { font-size: 0.42rem; }
+}
+
+/* 综合面板主题适配 */
+[data-theme="light"] .pa-comprehensive {
+  background: linear-gradient(145deg, rgba(22,27,34,0.92), rgba(13,17,23,0.88));
+  border-color: rgba(88,166,255,0.1);
+}
+[data-theme="light"] .pa-comp-source-item { background: rgba(255,255,255,0.02); }
+[data-theme="light"] .pa-comp-consensus { background: rgba(255,255,255,0.02); }
+[data-theme="light"] .pa-comp-reasons-body { background: rgba(0,0,0,0.2); }
+
+[data-theme="classical"] .pa-comprehensive {
+  background: linear-gradient(145deg, rgba(36,28,22,0.92), rgba(26,20,16,0.88));
+  border-color: rgba(212,168,67,0.12);
+}
+[data-theme="classical"] .pa-comp-source-item { background: rgba(212,168,67,0.03); }
+
 /* === 响应式：小屏适配 === */
 @media (max-width: 480px) {
   .pa-guide-bar { gap: 0.3rem 0.4rem; padding: 0.3rem 0.5rem; }
