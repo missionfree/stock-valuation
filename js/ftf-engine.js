@@ -410,13 +410,46 @@ function renderFTFChart(ftfResults, klineInfo) {
   // 获取最新FTF值用于显示当前评级
   var lastFTF = ftfResults[ftfResults.length - 1];
   var lastScore = lastFTF.ftf;
-  var ratingText, ratingCls, ratingEmoji;
-  if (lastScore >= 80) { ratingText = '超买区·警惕回调'; ratingCls = 'ftf-rating-overbought'; ratingEmoji = '🔥'; }
-  else if (lastScore >= 65) { ratingText = '强势·趋势向上'; ratingCls = 'ftf-rating-strong'; ratingEmoji = '🚀'; }
-  else if (lastScore >= 50) { ratingText = '中性偏多·观望'; ratingCls = 'ftf-rating-neutral'; ratingEmoji = '⚖️'; }
-  else if (lastScore >= 35) { ratingText = '中性偏空·谨慎'; ratingCls = 'ftf-rating-weak'; ratingEmoji = '⚠️'; }
-  else if (lastScore >= 20) { ratingText = '弱势·趋势向下'; ratingCls = 'ftf-rating-bearish'; ratingEmoji = '📉'; }
-  else { ratingText = '超卖区·关注反弹'; ratingCls = 'ftf-rating-oversold'; ratingEmoji = '🧊'; }
+
+  // === 双维度评级：操作信号 + 风险提示（分开显示，不冲突） ===
+  var actionText, actionCls, actionEmoji;    // 操作信号：买/不买/观望
+  var riskText, riskCls, riskEmoji;          // 风险提示：有无风险
+  var trendText;                             // 趋势描述
+
+  if (lastScore >= 80) {
+    // 趋势很强但过热
+    actionText = '持有为主，不宜追高';  actionCls = 'ftf-act-hold';  actionEmoji = '✋';
+    riskText = '短期过热，回调风险大';  riskCls = 'ftf-risk-high';  riskEmoji = '⚠️';
+    trendText = '趋势强势但已超买';
+  } else if (lastScore >= 65) {
+    // 趋势强且健康
+    actionText = '适合买入或加仓';      actionCls = 'ftf-act-buy';   actionEmoji = '👍';
+    riskText = '趋势健康，风险较低';    riskCls = 'ftf-risk-low';   riskEmoji = '✅';
+    trendText = '趋势强势，向上动能充足';
+  } else if (lastScore >= 50) {
+    // 中性偏多
+    actionText = '观望为主，小仓试探';  actionCls = 'ftf-act-watch'; actionEmoji = '👀';
+    riskText = '方向未明，注意震荡';    riskCls = 'ftf-risk-med';   riskEmoji = '🔄';
+    trendText = '趋势偏多但不够强';
+  } else if (lastScore >= 35) {
+    // 中性偏空
+    actionText = '不建议买入';          actionCls = 'ftf-act-wait';  actionEmoji = '🛑';
+    riskText = '趋势偏弱，可能继续下探'; riskCls = 'ftf-risk-med';   riskEmoji = '📉';
+    trendText = '趋势偏空，向下压力存在';
+  } else if (lastScore >= 20) {
+    // 弱势
+    actionText = '不买，等待企稳信号';  actionCls = 'ftf-act-avoid'; actionEmoji = '🚫';
+    riskText = '下跌趋势中，抄底风险大'; riskCls = 'ftf-risk-high'; riskEmoji = '⚠️';
+    trendText = '趋势弱势，持续走低';
+  } else {
+    // 超卖
+    actionText = '关注反弹，但不急于抄底'; actionCls = 'ftf-act-watch'; actionEmoji = '🔍';
+    riskText = '极度超卖，反弹随时出现但需确认'; riskCls = 'ftf-risk-high'; riskEmoji = '⚠️';
+    trendText = '趋势极度弱势但可能触底';
+  }
+
+  // 兼容旧变量名（背景色用actionCls映射）
+  var ratingCls = actionCls.replace('ftf-act-', 'ftf-rating-');
 
   // 生成得分详解
   var breakdownHTML = generateFTFBreakdown(lastFTF, ftfResults);
@@ -431,13 +464,14 @@ function renderFTFChart(ftfResults, klineInfo) {
       '</span>' +
     '</div>' +
 
-    // === 当前评级面板（大号醒目显示） ===
+    // === 当前评级面板（双行：操作信号 + 风险提示） ===
     '<div class="ftf-current-panel ' + ratingCls + '-bg">' +
       '<div class="ftf-score-display">' +
         '<div class="ftf-score-num ' + ratingCls + '">' + lastScore + '</div>' +
         '<div class="ftf-score-meta">' +
-          '<div class="ftf-score-label">当前FTF得分 / 100</div>' +
-          '<div class="ftf-score-rating ' + ratingCls + '">' + ratingEmoji + ' ' + ratingText + '</div>' +
+          '<div class="ftf-score-label">当前FTF得分 / 100 · ' + trendText + '</div>' +
+          '<div class="ftf-action-line ' + actionCls + '">' + actionEmoji + ' <b>操作建议：</b>' + actionText + '</div>' +
+          '<div class="ftf-risk-line ' + riskCls + '">' + riskEmoji + ' <b>风险提示：</b>' + riskText + '</div>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -449,31 +483,44 @@ function renderFTFChart(ftfResults, klineInfo) {
     '<div class="ftf-guide-panel">' +
       '<div class="ftf-guide-title">📌 一分钟看懂FTF</div>' +
       '<div class="ftf-guide-text">' +
-        'FTF是一个<b>0-100分的趋势评分</b>，分数越高代表未来上涨概率越大。' +
-        '它把三个关键信号揉在一起算出一个总分：' +
+        'FTF是一个<b>0-100分的趋势评分</b>，分数越高代表趋势越强。' +
+        '<b>操作建议</b>告诉你买不买，<b>风险提示</b>告诉你要注意什么，两者分开看：' +
       '</div>' +
-      '<div class="ftf-factor-cards">' +
-        '<div class="ftf-factor-card">' +
-          '<div class="ftf-factor-icon" style="color:#1F77B4">📊</div>' +
-          '<div class="ftf-factor-name">动量持续性 <span class="ftf-factor-wt">40%</span></div>' +
-          '<div class="ftf-factor-desc">最近股价是不是在<b>持续往一个方向走</b>？就像推车，匀速前进比忽快忽慢更靠谱</div>' +
+      '<div class="ftf-action-table">' +
+        '<div class="ftf-at-header">' +
+          '<span class="ftf-at-col-score">分数</span>' +
+          '<span class="ftf-at-col-action">操作建议</span>' +
+          '<span class="ftf-at-col-risk">风险提示</span>' +
         '</div>' +
-        '<div class="ftf-factor-card">' +
-          '<div class="ftf-factor-icon" style="color:#FF0000">💰</div>' +
-          '<div class="ftf-factor-name">资金流向 <span class="ftf-factor-wt">35%</span></div>' +
-          '<div class="ftf-factor-desc"><b>大资金在买还是在卖</b>？主力持续流入=有人看好，持续流出=有人在跑</div>' +
+        '<div class="ftf-at-row">' +
+          '<span class="ftf-at-col-score ftf-act-buy">65-80</span>' +
+          '<span class="ftf-at-col-action">👍 适合买入/加仓</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-low">✅ 趋势健康</span>' +
         '</div>' +
-        '<div class="ftf-factor-card">' +
-          '<div class="ftf-factor-icon" style="color:#FF8C00">⚡</div>' +
-          '<div class="ftf-factor-name">形态突破 <span class="ftf-factor-wt">25%</span></div>' +
-          '<div class="ftf-factor-desc">股价是不是<b>冲破了天花板</b>？就像水坝决堤，突破阻力位=力量很强</div>' +
+        '<div class="ftf-at-row">' +
+          '<span class="ftf-at-col-score ftf-act-hold">80-100</span>' +
+          '<span class="ftf-at-col-action">✋ 持有，不追高</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-high">⚠️ 过热防回调</span>' +
         '</div>' +
-      '</div>' +
-      '<div class="ftf-legend-bar">' +
-        '<div class="ftf-legend-label">分数区间（红=看好，绿=看跌）：</div>' +
-        '<div class="ftf-legend-gradient"></div>' +
-        '<div class="ftf-legend-ticks">' +
-          '<span>0 看跌</span><span>20 弱势</span><span>50 中性</span><span>65 强势</span><span>80 超买</span><span>100 看好</span>' +
+        '<div class="ftf-at-row">' +
+          '<span class="ftf-at-col-score ftf-act-watch">50-65</span>' +
+          '<span class="ftf-at-col-action">👀 观望，小仓试探</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-med">🔄 方向未明</span>' +
+        '</div>' +
+        '<div class="ftf-at-row">' +
+          '<span class="ftf-at-col-score ftf-act-wait">35-50</span>' +
+          '<span class="ftf-at-col-action">🛑 不建议买入</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-med">📉 可能继续下探</span>' +
+        '</div>' +
+        '<div class="ftf-at-row">' +
+          '<span class="ftf-at-col-score ftf-act-avoid">20-35</span>' +
+          '<span class="ftf-at-col-action">🚫 不买，等企稳</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-high">⚠️ 抄底风险大</span>' +
+        '</div>' +
+        '<div class="ftf-at-row">' +
+          '<span class="ftf-at-col-score ftf-act-watch">0-20</span>' +
+          '<span class="ftf-at-col-action">🔍 关注反弹信号</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-high">⚠️ 需确认反转</span>' +
         '</div>' +
       '</div>' +
       '<div class="ftf-reading-tips">' +
@@ -483,6 +530,7 @@ function renderFTFChart(ftfResults, klineInfo) {
         '<div class="ftf-tip-row">• <b>红色虚线(80)</b>：超买警戒线，到这条线以上要小心回调</div>' +
         '<div class="ftf-tip-row">• <b>绿色虚线(20)</b>：超卖关注线，到这条线以下可能要反弹</div>' +
         '<div class="ftf-tip-row">• <b>鼠标悬停</b>：可查看每天的三因子贡献占比</div>' +
+        '<div class="ftf-tip-row" style="margin-top:0.2rem;padding-top:0.2rem;border-top:1px solid rgba(0,200,255,0.08)"><b>💡 核心理念：</b>FTF衡量的是<b>当前趋势强度</b>，不是预测底部。分数高=趋势强=值得买，但超过80说明涨太多了要防短期回调。低位不等于会涨，趋势反转才加分。</div>' +
       '</div>' +
       '<div class="ftf-disclaimer">⚠️ FTF基于历史量价数据计算，仅供参考，不构成投资建议。过去表现不代表未来收益。</div>' +
     '</div>' +
@@ -879,24 +927,43 @@ function generateFTFBreakdown(lastFTF, ftfResults) {
   else if (brkPct >= 10) { brkDesc = '运行在布林带中下轨，偏弱'; brkColor = '#88AA00'; }
   else { brkDesc = '跌破布林下轨，超跌可能反弹'; brkColor = '#00AA00'; }
 
-  // 为什么低位也显示超卖/低分
-  var whyLowScore = '';
-  if (ftf < 35) {
-    whyLowScore = '<div class="ftf-breakdown-note">' +
-      '💡 <b>为什么分数低？</b> 当前三个信号整体偏弱' +
-      (momPct < 45 ? '：<b>动量</b>显示股价还在下跌' : '') +
-      (capPct < 45 ? '、<b>资金</b>在流出' : '') +
-      (brkPct < 25 ? '、<b>形态</b>未突破' : '') +
-      '。即使股价已经在低位，只要下跌趋势没有反转信号（资金回流+动量企稳+形态突破），FTF仍会给低分。' +
-      '<b>FTF不是预测底部，而是衡量当前趋势强度。</b>低位≠会涨，趋势反转才加分。' +
-    '</div>';
-  } else if (ftf > 80) {
-    whyLowScore = '<div class="ftf-breakdown-note">' +
+  // 分数解读：分开解释"为什么是这个分数"和"操作建议"
+  var whyNote = '';
+  if (ftf >= 80) {
+    whyNote = '<div class="ftf-breakdown-note ftf-note-overbought">' +
       '💡 <b>为什么分数高？</b> 三个信号全面走强' +
       (momPct >= 55 ? '：<b>动量</b>持续向上' : '') +
       (capPct >= 55 ? '、<b>资金</b>大幅流入' : '') +
       (brkPct >= 45 ? '、<b>形态</b>突破阻力' : '') +
-      '。但分数超过80进入超买区，短期回调风险增加，需注意止盈。' +
+      '。趋势确实很强，所以分数高是对的。<b>但为什么建议持有而不追高？</b> 因为分数超过80说明短期涨幅已大，获利盘多，随时可能回调洗盘。<b>已经持仓的可以持有享受趋势，但新买入的话性价比较低——追在高位的风险大于收益。</b>' +
+    '</div>';
+  } else if (ftf >= 65) {
+    whyNote = '<div class="ftf-breakdown-note ftf-note-buy">' +
+      '💡 <b>为什么适合买入？</b> 趋势强且未过热，三个信号配合良好' +
+      (momPct >= 55 ? '：<b>动量</b>向上' : '') +
+      (capPct >= 55 ? '、<b>资金</b>流入' : '') +
+      (brkPct >= 45 ? '、<b>形态</b>走强' : '') +
+      '。这是FTF最理想的买入区间——趋势已确认但还没涨太多，上涨空间大于下跌风险。' +
+    '</div>';
+  } else if (ftf >= 50) {
+    whyNote = '<div class="ftf-breakdown-note ftf-note-neutral">' +
+      '💡 <b>为什么观望？</b> 趋势偏多但信号不够强，方向还不明确。此时买入像赌方向，不如等FTF升到65以上趋势确认了再动手，或者用极小仓位试探。' +
+    '</div>';
+  } else if (ftf >= 35) {
+    whyNote = '<div class="ftf-breakdown-note ftf-note-weak">' +
+      '💡 <b>为什么不建议买入？</b> 趋势偏空' +
+      (momPct < 45 ? '：<b>动量</b>向下' : '') +
+      (capPct < 45 ? '、<b>资金</b>流出' : '') +
+      (brkPct < 25 ? '、<b>形态</b>偏弱' : '') +
+      '。此时买入是逆势操作，胜率低。等FTF回升到50以上再考虑。' +
+    '</div>';
+  } else {
+    whyNote = '<div class="ftf-breakdown-note ftf-note-oversold">' +
+      '💡 <b>为什么分数低？</b> 三个信号整体偏弱' +
+      (momPct < 45 ? '：<b>动量</b>显示股价还在下跌' : '') +
+      (capPct < 45 ? '、<b>资金</b>在流出' : '') +
+      (brkPct < 25 ? '、<b>形态</b>未突破' : '') +
+      '。即使股价已经在低位，<b>低位≠会涨</b>。FTF衡量的是趋势强度而非预测底部——下跌趋势中的低位可能还会更低。只有等到资金回流+动量企稳+形态突破同时出现，FTF才会回升，那才是真正的反转信号。<b>关注反弹信号，但不急于抄底。</b>' +
     '</div>';
   }
 
@@ -957,7 +1024,7 @@ function generateFTFBreakdown(lastFTF, ftfResults) {
       '<span class="ftf-bt-val">' + (changeRate >= 0 ? '+' : '') + changeRate.toFixed(2) + ' 分/日 ' + changeDir + '</span>' +
     '</div>' +
 
-    whyLowScore +
+    whyNote +
   '</div>';
 
   return html;

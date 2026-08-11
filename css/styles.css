@@ -10040,8 +10040,78 @@ html {
 .ftf-score-label {
   font-size: 0.6rem; color: var(--muted); font-family: Monaco, monospace;
 }
-.ftf-score-rating {
-  font-size: 0.8rem; font-weight: 700;
+
+/* 操作建议行 */
+.ftf-action-line {
+  font-size: 0.65rem; font-weight: 600; margin-top: 0.15rem;
+}
+.ftf-action-line b { font-weight: 700; }
+
+/* 风险提示行 */
+.ftf-risk-line {
+  font-size: 0.58rem; margin-top: 0.1rem; opacity: 0.9;
+}
+.ftf-risk-line b { font-weight: 700; }
+
+/* 操作建议颜色 */
+.ftf-act-buy { color: #FF0000; }        /* 买入=大红 */
+.ftf-act-hold { color: #FF6600; }       /* 持有=橙红 */
+.ftf-act-watch { color: #FFD93D; }      /* 观望=黄 */
+.ftf-act-wait { color: #88AA00; }       /* 不建议=黄绿 */
+.ftf-act-avoid { color: #00AA00; }      /* 不买=绿 */
+
+/* 风险等级颜色 */
+.ftf-risk-low { color: #FF4444; }       /* 低风险=偏红（好方向） */
+.ftf-risk-med { color: #FFD93D; }       /* 中风险=黄 */
+.ftf-risk-high { color: #00CC00; }      /* 高风险=绿（警示） */
+
+/* 操作建议表格 */
+.ftf-action-table {
+  margin-bottom: 0.4rem;
+  border: 1px solid rgba(128,128,128,0.1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.ftf-at-header {
+  display: grid; grid-template-columns: 0.7fr 1.5fr 1.3fr;
+  background: rgba(0,200,255,0.06);
+  padding: 0.3rem 0.4rem;
+  font-size: 0.5rem; font-weight: 700; color: var(--ink);
+  font-family: Monaco, monospace;
+}
+.ftf-at-row {
+  display: grid; grid-template-columns: 0.7fr 1.5fr 1.3fr;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.52rem;
+  border-top: 1px solid rgba(128,128,128,0.06);
+  align-items: center;
+}
+.ftf-at-col-score {
+  font-weight: 700; font-family: Monaco, monospace;
+}
+.ftf-at-col-action { color: var(--ink); }
+.ftf-at-col-risk { color: var(--muted); }
+
+/* 得分详解note变体 */
+.ftf-note-overbought {
+  background: rgba(255,0,0,0.05);
+  border-left-color: rgba(255,0,0,0.3);
+}
+.ftf-note-buy {
+  background: rgba(255,50,50,0.05);
+  border-left-color: rgba(255,50,50,0.3);
+}
+.ftf-note-neutral {
+  background: rgba(255,217,61,0.04);
+  border-left-color: rgba(255,217,61,0.25);
+}
+.ftf-note-weak {
+  background: rgba(100,150,0,0.04);
+  border-left-color: rgba(100,150,0,0.2);
+}
+.ftf-note-oversold {
+  background: rgba(0,170,0,0.05);
+  border-left-color: rgba(0,170,0,0.25);
 }
 
 /* FTF 评级颜色：看好大红，看跌大绿 */
