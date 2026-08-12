@@ -582,49 +582,50 @@ function analyzePatterns(rt, sent, klineData) {
     }
   }
 
-  // ========== 基础信号：市场方向（确保非极端日也有信号触发）==========
-  // 市场上涨 + 涨多跌少 = 偏多
-  if (chgPct > 0.1 && breadthRatio > 55) {
+  // ========== 基础信号：市场方向（提高阈值，避免普通日也触发）==========
+  // 此前阈值过低（chgPct>0.1即触发），导致几乎所有上涨日都出看涨信号
+  // 修正：收紧至chgPct>0.3且breadthRatio>60才触发偏多信号
+  if (chgPct > 0.3 && breadthRatio > 60) {
     signals.push({ ruleId: 3, triggered: true, signal: 'bull', confidence: 0.45,
-      detail: '大盘涨' + chgPct.toFixed(2) + '%，上涨' + upCount + '家多于下跌' + downCount + '家，市场偏强' });
+      detail: '大盘涨' + chgPct.toFixed(2) + '%且' + breadthRatio.toFixed(0) + '%个股上涨，市场偏强' });
   }
-  // 市场下跌 + 跌多涨少 = 偏空
-  if (chgPct < -0.1 && breadthRatio < 45) {
+  // 市场下跌 + 跌多涨少 = 偏空（对称阈值）
+  if (chgPct < -0.3 && breadthRatio < 40) {
     signals.push({ ruleId: 6, triggered: true, signal: 'bear', confidence: 0.45,
-      detail: '大盘跌' + chgPct.toFixed(2) + '%，下跌' + downCount + '家多于上涨' + upCount + '家，市场偏弱' });
+      detail: '大盘跌' + chgPct.toFixed(2) + '%且仅' + breadthRatio.toFixed(0) + '%个股上涨，市场偏弱' });
   }
-  // 放量上涨 = 多头强势
-  if (chgPct > 0.3 && avg20Amount > 0 && totalAmount > avg20Amount * 1.1) {
+  // 放量上涨 = 多头强势（收紧：需涨>0.5%+放量1.2倍）
+  if (chgPct > 0.5 && avg20Amount > 0 && totalAmount > avg20Amount * 1.2) {
     signals.push({ ruleId: 12, triggered: true, signal: 'bull', confidence: 0.55,
-      detail: '大盘涨' + chgPct.toFixed(2) + '%且成交量超20日均量' + ((totalAmount / avg20Amount - 1) * 100).toFixed(0) + '%，多头放量' });
+      detail: '大盘涨' + chgPct.toFixed(2) + '%且放量' + ((totalAmount / avg20Amount - 1) * 100).toFixed(0) + '%，多头强势' });
   }
-  // 放量下跌 = 空头强势
-  if (chgPct < -0.3 && avg20Amount > 0 && totalAmount > avg20Amount * 1.1) {
+  // 放量下跌 = 空头强势（对称）
+  if (chgPct < -0.5 && avg20Amount > 0 && totalAmount > avg20Amount * 1.2) {
     signals.push({ ruleId: 13, triggered: true, signal: 'bear', confidence: 0.55,
-      detail: '大盘跌' + chgPct.toFixed(2) + '%且成交量超20日均量' + ((totalAmount / avg20Amount - 1) * 100).toFixed(0) + '%，空头放量' });
+      detail: '大盘跌' + chgPct.toFixed(2) + '%且放量' + ((totalAmount / avg20Amount - 1) * 100).toFixed(0) + '%，空头强势' });
   }
-  // 涨停远多于跌停 = 情绪高涨
-  if (limitUp > 0 && limitUp > limitDown * 2) {
+  // 涨停远多于跌停 = 情绪高涨（收紧：需涨停>30家且3倍于跌停）
+  if (limitUp > 30 && limitUp > limitDown * 3) {
     signals.push({ ruleId: 4, triggered: true, signal: 'bull', confidence: 0.6,
       detail: '涨停' + limitUp + '家远超跌停' + limitDown + '家，赚钱效应强' });
   }
-  // 跌停远多于涨停 = 情绪恐慌
-  if (limitDown > 0 && limitDown > limitUp * 2) {
+  // 跌停远多于涨停 = 情绪恐慌（对称）
+  if (limitDown > 30 && limitDown > limitUp * 3) {
     signals.push({ ruleId: 5, triggered: true, signal: 'bear', confidence: 0.6,
       detail: '跌停' + limitDown + '家远超涨停' + limitUp + '家，恐慌情绪蔓延' });
   }
-  // 收盘价高于开盘价 = 多头日内占优
-  if (open > 0 && price > open && chgPct > 0) {
+  // 收盘价高于开盘价 = 多头日内占优（收紧：需涨幅>0.3%才有意义）
+  if (open > 0 && price > open * 1.003 && chgPct > 0.3) {
     signals.push({ ruleId: 9, triggered: true, signal: 'bull', confidence: 0.4,
-      detail: '收盘' + price.toFixed(2) + '高于开盘' + open.toFixed(2) + '，日内多头占优' });
+      detail: '收盘' + price.toFixed(2) + '高于开盘' + open.toFixed(2) + '且涨' + chgPct.toFixed(2) + '%，日内多头占优' });
   }
-  // 收盘价低于开盘价 = 空头日内占优
-  if (open > 0 && price < open && chgPct < 0) {
+  // 收盘价低于开盘价 = 空头日内占优（对称）
+  if (open > 0 && price < open * 0.997 && chgPct < -0.3) {
     signals.push({ ruleId: 10, triggered: true, signal: 'bear', confidence: 0.4,
-      detail: '收盘' + price.toFixed(2) + '低于开盘' + open.toFixed(2) + '，日内空头占优' });
+      detail: '收盘' + price.toFixed(2) + '低于开盘' + open.toFixed(2) + '且跌' + chgPct.toFixed(2) + '%，日内空头占优' });
   }
-  // 缩量 = 观望情绪（无论涨跌都标记为弱信号）
-  if (avg20Amount > 0 && totalAmount > 0 && totalAmount < avg20Amount * 0.7) {
+  // 缩量 = 观望情绪（收紧：需低于20日均量60%才算缩量）
+  if (avg20Amount > 0 && totalAmount > 0 && totalAmount < avg20Amount * 0.6) {
     if (chgPct >= 0) {
       signals.push({ ruleId: 7, triggered: true, signal: 'bull', confidence: 0.35,
         detail: '成交量低于20日均量' + ((1 - totalAmount / avg20Amount) * 100).toFixed(0) + '%，缩量上涨抛压轻' });
@@ -634,37 +635,62 @@ function analyzePatterns(rt, sent, klineData) {
     }
   }
 
-  // ========== 数据状态标记（不再生成虚构兜底信号）==========
-  // K线数据缺失时，仅标记数据状态，不强制生成低置信度虚构信号
-  // 某分类无信号时，该分类强度保持50（中性），不添加虚假信号
+  // ========== 数据状态标记 ==========
   var hasKline = closes.length >= 4;
 
-  // Calculate composite score
+  // ========== 信号去重：同一ruleId只保留置信度最高的信号 ==========
+  // 修复：此前主规则和基础信号区可能对同一ruleId各触发一次，
+  // 导致bullScore/bearScore被双重累加，严重偏向信号较多的一侧
+  var dedupedSignals = [];
+  var ruleBestConf = {};
+  signals.forEach(function(s) {
+    var existing = ruleBestConf[s.ruleId];
+    if (existing === undefined || s.confidence > existing.confidence) {
+      ruleBestConf[s.ruleId] = s;
+    }
+  });
+  Object.keys(ruleBestConf).forEach(function(k) {
+    dedupedSignals.push(ruleBestConf[k]);
+  });
+  signals = dedupedSignals;
+
+  // ========== 计算综合得分 ==========
   var bullScore = 0, bearScore = 0;
   var triggeredCount = signals.length;
 
+  // A股结构性偏差修正：
+  // A股历史统计：上涨交易日约占40-45%，下跌约占50-55%（其余平盘）
+  // 16口诀本身9看涨vs7看跌，存在结构性偏多
+  // 修正方案：看跌信号权重×1.15补偿，基线从50降至45
+  var BEAR_WEIGHT_BONUS = 1.15;
+  var A_SHARE_BASELINE = 45;
+
   signals.forEach(function(s) {
     var weight = PATTERN_RULES[s.ruleId - 1].weight;
-    if (s.signal === 'bull') bullScore += weight * s.confidence;
-    else if (s.signal === 'bear') bearScore += weight * s.confidence;
+    if (s.signal === 'bull') {
+      bullScore += weight * s.confidence;
+    } else if (s.signal === 'bear') {
+      bearScore += weight * s.confidence * BEAR_WEIGHT_BONUS;
+    }
   });
 
   var totalScore = bullScore + bearScore;
   var netScore = bullScore - bearScore;
-  var compositeScore = 50;
+  var compositeScore = A_SHARE_BASELINE;
   if (totalScore > 0) {
-    // 信号覆盖率修正：触发3条信号即不压缩，下限0.5保证单信号也保留50%信号强度
-    var coverageFactor = Math.min(1, Math.max(0.5, triggeredCount / 3));
-    var rawScore = 50 + netScore / totalScore * 50;
-    compositeScore = Math.round(50 + (rawScore - 50) * coverageFactor);
+    // 信号覆盖率修正：触发5条信号才不压缩，下限0.3
+    // 比此前/3更保守，避免少量信号就大幅偏离基线
+    var coverageFactor = Math.min(1, Math.max(0.3, triggeredCount / 5));
+    var rawScore = A_SHARE_BASELINE + netScore / totalScore * (100 - A_SHARE_BASELINE);
+    compositeScore = Math.round(A_SHARE_BASELINE + (rawScore - A_SHARE_BASELINE) * coverageFactor);
     compositeScore = Math.max(0, Math.min(100, compositeScore));
   }
 
   var level, levelColor, levelIcon;
-  if (compositeScore >= 70) { level = '看涨'; levelColor = 'bull'; levelIcon = '📈'; }
-  else if (compositeScore >= 58) { level = '偏多'; levelColor = 'bull-weak'; levelIcon = '🔅'; }
-  else if (compositeScore >= 42) { level = '中性'; levelColor = 'neutral'; levelIcon = '➡️'; }
-  else if (compositeScore >= 30) { level = '偏空'; levelColor = 'bear-weak'; levelIcon = '🔅'; }
+  if (compositeScore >= 68) { level = '看涨'; levelColor = 'bull'; levelIcon = '📈'; }
+  else if (compositeScore >= 55) { level = '偏多'; levelColor = 'bull-weak'; levelIcon = '🔅'; }
+  else if (compositeScore >= 40) { level = '中性'; levelColor = 'neutral'; levelIcon = '➡️'; }
+  else if (compositeScore >= 28) { level = '偏空'; levelColor = 'bear-weak'; levelIcon = '🔅'; }
   else { level = '看跌'; levelColor = 'bear'; levelIcon = '📉'; }
 
   var bullCount = signals.filter(function(s) { return s.signal === 'bull'; }).length;
@@ -806,10 +832,20 @@ function buildComprehensivePrediction(patternScore, sent, patternLevel, patternL
     sentimentAdjusted * sentimentWeight
   );
 
+  // A股结构性偏差修正：综合分也需微调向下
+  // 三源加权后若全中性约为48，再扣2分使基线更贴近A股实际
+  comprehensiveScore = Math.max(0, Math.min(100, comprehensiveScore - 2));
+
   // ---- 多源一致性分析 ----
-  function getDirection(score) {
-    if (score >= 58) return 'bull';
-    if (score <= 42) return 'bear';
+  // 各源方向阈值不同：口诀信号基线已降至45，阈值相应调低
+  function getDirection(score, sourceType) {
+    if (sourceType === 'pattern') {
+      if (score >= 55) return 'bull';
+      if (score <= 40) return 'bear';
+    } else {
+      if (score >= 58) return 'bull';
+      if (score <= 42) return 'bear';
+    }
     return 'neutral';
   }
 
@@ -818,7 +854,7 @@ function buildComprehensivePrediction(patternScore, sent, patternLevel, patternL
       name: '16口诀信号',
       icon: '⚡',
       score: patternScore,
-      direction: getDirection(patternScore),
+      direction: getDirection(patternScore, 'pattern'),
       weight: patternWeight,
       detail: patternLevel || '中性',
       available: true
@@ -827,7 +863,7 @@ function buildComprehensivePrediction(patternScore, sent, patternLevel, patternL
       name: '历史回归预测',
       icon: '📈',
       score: regressionScore,
-      direction: getDirection(regressionScore),
+      direction: getDirection(regressionScore, 'regression'),
       weight: regressionWeight,
       detail: regressionData ?
         (regressionData.trend === 'strong_up' ? '强势上升' :
@@ -842,7 +878,7 @@ function buildComprehensivePrediction(patternScore, sent, patternLevel, patternL
       name: '市场温度预警',
       icon: '🌡️',
       score: sentimentAdjusted,
-      direction: getDirection(sentimentAdjusted),
+      direction: getDirection(sentimentAdjusted, 'sentiment'),
       weight: sentimentWeight,
       detail: '温度' + sentimentScore + (warningImpact !== 0 ?
         '→修正' + (warningImpact > 0 ? '+' : '') + warningImpact : ''),
@@ -861,12 +897,12 @@ function buildComprehensivePrediction(patternScore, sent, patternLevel, patternL
   else if (bearSources >= 2) consensus = 'bear-strong';
   else consensus = 'mixed';
 
-  // ---- 综合评级 ----
+  // ---- 综合评级（阈值与口诀信号对齐，体现A股跌多涨少特征） ----
   var compLevel, compLevelColor, compLevelIcon;
-  if (comprehensiveScore >= 70) { compLevel = '看涨'; compLevelColor = 'bull'; compLevelIcon = '📈'; }
-  else if (comprehensiveScore >= 58) { compLevel = '偏多'; compLevelColor = 'bull-weak'; compLevelIcon = '🔅'; }
-  else if (comprehensiveScore >= 42) { compLevel = '中性'; compLevelColor = 'neutral'; compLevelIcon = '➡️'; }
-  else if (comprehensiveScore >= 30) { compLevel = '偏空'; compLevelColor = 'bear-weak'; compLevelIcon = '🔅'; }
+  if (comprehensiveScore >= 65) { compLevel = '看涨'; compLevelColor = 'bull'; compLevelIcon = '📈'; }
+  else if (comprehensiveScore >= 52) { compLevel = '偏多'; compLevelColor = 'bull-weak'; compLevelIcon = '🔅'; }
+  else if (comprehensiveScore >= 38) { compLevel = '中性'; compLevelColor = 'neutral'; compLevelIcon = '➡️'; }
+  else if (comprehensiveScore >= 25) { compLevel = '偏空'; compLevelColor = 'bear-weak'; compLevelIcon = '🔅'; }
   else { compLevel = '看跌'; compLevelColor = 'bear'; compLevelIcon = '📉'; }
 
   // ---- 操作建议（结合一致性和预警） ----
