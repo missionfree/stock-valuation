@@ -1172,6 +1172,45 @@ var LI_DAXIAO_QUOTES = {
     { q: '高位还在追涨的，谢谢你们帮我抬轿子', sub: '奇迹对高位追涨者的感谢' },
     { q: '这只票我玩腻了，你们接着玩吧', sub: '奇迹对获利个股的态度' },
     { q: '泡沫？我制造泡沫，你们接泡沫', sub: '奇迹对泡沫的定义' }
+  ],
+  // ========== 量能点评系列 ==========
+  // 缩量上涨——奇迹最鄙视的形态
+  zhangYangVolShrinkUp: [
+    { q: '缩量上涨？那叫放屁！没有量能支撑的上涨，就像没有地基的楼，看着高实际一推就倒', sub: '奇迹谈缩量上涨的本质' },
+    { q: '别跟我扯什么缩量上涨是抛压轻，说白了就是没人愿意在这个价位接货，空头懒得卖而已', sub: '奇迹对缩量上涨的解读' },
+    { q: '缩量涨的那点幅度，主力一个卖单就给你打回原形，信不信？', sub: '奇迹对缩量上涨的脆弱性' },
+    { q: '缩量上涨就像纸糊的老虎，看着唬人，戳一下就破，追进去的就是接盘侠', sub: '奇迹对缩量上涨的比喻' },
+    { q: '什么缩量上涨是蓄势？蓄个屁的势！主力都没进场蓄什么势？等放量了再说', sub: '奇迹对缩量上涨"蓄势论"的批判' },
+    { q: '缩量涨三天不如放量涨一天，量是价的先行指标，没量的涨都是耍流氓', sub: '奇迹谈量价关系' },
+    { q: '看着缩量涨就追进去的散户，你们就是主力出货时的接盘大军', sub: '奇迹对追涨缩量的散户的嘲讽' },
+    { q: '缩量上涨就是市场在说：我不认可这个价格，只是没人卖而已', sub: '奇迹对缩量上涨的市场解读' }
+  ],
+  // 缩量下跌——奇迹认为抛压枯竭，机会将至
+  zhangYangVolShrinkDown: [
+    { q: '缩量下跌才是真机会！卖的人都不愿意卖了，底部还远吗？', sub: '奇迹对缩量下跌的逆向思维' },
+    { q: '缩量下跌说明恐慌盘已经出尽，剩下的人都是铁了心不卖的，这种时候我偏要抄底', sub: '奇迹对缩量下跌的抄底逻辑' },
+    { q: '跌成这样都没量，说明空头已经是强弩之末了，就差最后一击', sub: '奇迹对缩量下跌的判断' },
+    { q: '缩量跌不可怕，可怕的是放量跌还去接飞刀——那才叫蠢', sub: '奇迹谈缩量跌vs放量跌' },
+    { q: '缩量下跌就是市场在说：该跑的都跑了，剩下的都是死多头', sub: '奇迹对缩量下跌的解读' },
+    { q: '别怕缩量跌，这种跌法跌不深的，反而要准备好子弹等放量反弹', sub: '奇迹对缩量下跌的操作建议' }
+  ],
+  // 放量上涨——奇迹认为这才是真行情
+  zhangYangVolSurgeUp: [
+    { q: '放量上涨才是真涨！资金真金白银往里冲，这叫市场用脚投票', sub: '奇迹对放量上涨的认可' },
+    { q: '终于放量了！这才是我等的机会，量价齐升才是主升浪的标配', sub: '奇迹对放量上涨的兴奋' },
+    { q: '放量涨说明主力在抢筹，散户还在犹豫的时候，大资金已经动手了', sub: '奇迹对放量上涨的解读' },
+    { q: '有量的涨才是实的，没量的涨是虚的——这个道理不懂，活该亏钱', sub: '奇迹谈量价真伪' },
+    { q: '放量突破就追，缩量突破就跑，就这么简单，散户非要把简单的事搞复杂', sub: '奇迹的量价操作法则' },
+    { q: '放量上涨就是市场在说：我认可这个价格，而且还要往上买', sub: '奇迹对放量上涨的市场解读' }
+  ],
+  // 放量下跌——奇迹认为主力出逃，危险信号
+  zhangYangVolSurgeDown: [
+    { q: '放量下跌！主力在跑路！这都不跑还等什么？等主力把货出完再给你砸跌停？', sub: '奇迹对放量下跌的警觉' },
+    { q: '放量下跌就是有人在大量抛售，不管是谁在卖，你跟着跑就对了', sub: '奇迹对放量下跌的操作建议' },
+    { q: '放量跌说明多头已经认输了，空头在疯狂出货，这时候去接盘就是找死', sub: '奇迹对放量下跌的风险提示' },
+    { q: '放量下跌就像洪水决堤，你挡不住的，唯一能做的就是跑到高处去', sub: '奇迹对放量下跌的比喻' },
+    { q: '别跟我扯什么放量下跌是抄底机会，主力都在跑了你去抄底？抄个屁', sub: '奇迹对放量抄底的批判' },
+    { q: '放量下跌就是市场在说：这个价格太高了，我要不计成本地卖', sub: '奇迹对放量下跌的解读' }
   ]
 };
 
@@ -1422,6 +1461,85 @@ function getZhangYangStockQuote(pe, pb) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+/**
+ * 量能点评：根据量价关系生成奇迹狂言式犀利点评
+ * @param {number} changePct - 大盘涨跌幅%
+ * @param {number} volRatio - 量比（今日成交额/20日均量）
+ * @returns {object|null} { q, sub, context, volLabel, volLevel } 或 null
+ */
+function getVolumeCommentary(changePct, volRatio) {
+  if (!volRatio || volRatio <= 0) return null;
+
+  var category, context, volLabel, volLevel;
+
+  // 缩量：volRatio < 0.7
+  // 放量：volRatio > 1.3
+  // 极端缩量：volRatio < 0.5
+  // 极端放量：volRatio > 1.8
+
+  var isShrink = volRatio < 0.7;
+  var isSurge = volRatio > 1.3;
+  var isExtremeShrink = volRatio < 0.5;
+  var isExtremeSurge = volRatio > 1.8;
+  var isUp = changePct > 0.1;
+  var isDown = changePct < -0.1;
+  var isFlat = !isUp && !isDown;
+
+  var volPct = ((volRatio - 1) * 100).toFixed(0);
+  var chgStr = Math.abs(changePct).toFixed(2);
+
+  if (isShrink && isUp) {
+    // 缩量上涨——奇迹最鄙视的形态
+    category = 'zhangYangVolShrinkUp';
+    volLabel = '缩量上涨';
+    volLevel = isExtremeShrink ? '极端缩量' : '缩量';
+    context = '大盘涨' + chgStr + '%但成交量仅20日均量的' + (volRatio * 100).toFixed(0) + '%，典型的缩量上涨';
+  } else if (isShrink && isDown) {
+    // 缩量下跌——抛压枯竭
+    category = 'zhangYangVolShrinkDown';
+    volLabel = '缩量下跌';
+    volLevel = isExtremeShrink ? '极端缩量' : '缩量';
+    context = '大盘跌' + chgStr + '%但成交量仅20日均量的' + (volRatio * 100).toFixed(0) + '%，缩量下跌';
+  } else if (isSurge && isUp) {
+    // 放量上涨——真行情
+    category = 'zhangYangVolSurgeUp';
+    volLabel = '放量上涨';
+    volLevel = isExtremeSurge ? '极端放量' : '放量';
+    context = '大盘涨' + chgStr + '%且成交量达20日均量的' + (volRatio * 100).toFixed(0) + '%，放量上涨';
+  } else if (isSurge && isDown) {
+    // 放量下跌——主力出逃
+    category = 'zhangYangVolSurgeDown';
+    volLabel = '放量下跌';
+    volLevel = isExtremeSurge ? '极端放量' : '放量';
+    context = '大盘跌' + chgStr + '%且成交量达20日均量的' + (volRatio * 100).toFixed(0) + '%，放量下跌';
+  } else if (isShrink && isFlat) {
+    // 缩量横盘——无趋势
+    category = 'zhangYangVolShrinkDown';
+    volLabel = '缩量横盘';
+    volLevel = '缩量';
+    context = '大盘几乎平盘，成交量仅20日均量的' + (volRatio * 100).toFixed(0) + '%，缩量观望';
+  } else if (isSurge && isFlat) {
+    // 放量横盘——变盘信号
+    category = 'zhangYangVolSurgeUp';
+    volLabel = '放量横盘';
+    volLevel = '放量';
+    context = '大盘几乎平盘但成交量达20日均量的' + (volRatio * 100).toFixed(0) + '%，放量横盘酝酿变盘';
+  } else {
+    // 正常量能，不生成量能点评
+    return null;
+  }
+
+  var pool = LI_DAXIAO_QUOTES[category];
+  if (!pool || pool.length === 0) return null;
+
+  var quote = pool[Math.floor(Math.random() * pool.length)];
+  quote.context = context;
+  quote.volLabel = volLabel;
+  quote.volLevel = volLevel;
+  quote.category = category;
+  return quote;
+}
+
 /* ============================================================
    十、智能解读生成
    ============================================================ */
@@ -1579,6 +1697,36 @@ function generateInsights(realtimeData) {
       '<div class="zy-zone-quote">"' + escHTML(zyQuote.q) + '"</div>' +
       '<div class="zy-zone-sub">' + escHTML(zyQuote.sub) + '</div>' +
       '<div class="zy-zone-author">胜天资本 · 奇迹</div>';
+  }
+
+  // 量能点评专区——基于量价关系的犀利点评
+  var volZone = document.getElementById('volumeCommentaryZone');
+  if (volZone) {
+    // 从情绪数据中获取量比
+    var volRatioForCommentary = 1;
+    var sentData = (typeof _lastSentimentData !== 'undefined') ? _lastSentimentData : null;
+    if (sentData && sentData.avg20Amount > 0 && sentData.totalAmount > 0) {
+      volRatioForCommentary = sentData.totalAmount / sentData.avg20Amount;
+    }
+
+    var volCommentary = getVolumeCommentary(marketChange, volRatioForCommentary);
+    if (volCommentary) {
+      var volLabelEl = document.getElementById('volZoneLabel');
+      var volContextEl = document.getElementById('volZoneContext');
+      var volQuoteEl = document.getElementById('volZoneQuote');
+      var volSubEl = document.getElementById('volZoneSub');
+
+      if (volLabelEl) volLabelEl.innerHTML =
+        '<span class="vol-label-tag ' + (volCommentary.volLevel === '极端缩量' || volCommentary.volLevel === '极端放量' ? 'vol-label-extreme' : 'vol-label-normal') + '">' +
+        volCommentary.volLabel + '</span>' +
+        '<span class="vol-level-tag">' + volCommentary.volLevel + '</span>';
+      if (volContextEl) volContextEl.textContent = volCommentary.context;
+      if (volQuoteEl) volQuoteEl.innerHTML = '"' + escHTML(volCommentary.q) + '"';
+      if (volSubEl) volSubEl.textContent = volCommentary.sub;
+      volZone.style.display = 'block';
+    } else {
+      volZone.style.display = 'none';
+    }
   }
 }
 

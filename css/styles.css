@@ -5544,6 +5544,73 @@ body {
   border-radius: 2px; letter-spacing: 0.02em;
 }
 
+/* === 量能点评专区 === */
+.vol-zone {
+  margin: 0.5rem 0; padding: 0.6rem 0.8rem;
+  background: linear-gradient(135deg, rgba(0,200,255,0.05), rgba(255,140,0,0.04));
+  border: 1px solid rgba(0,200,255,0.15); border-radius: 4px;
+  position: relative; overflow: hidden;
+}
+.vol-zone::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,200,255,0.5), transparent);
+}
+.vol-zone-title {
+  font-size: 0.5rem; color: var(--muted, #A0B0C8); letter-spacing: 0.1em;
+  margin-bottom: 0.3rem; text-transform: uppercase;
+}
+.vol-zone-label {
+  display: flex; align-items: center; gap: 0.35rem;
+  margin-bottom: 0.3rem;
+}
+.vol-label-tag {
+  font-size: 0.62rem; font-weight: 800;
+  padding: 0.1rem 0.45rem; border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+.vol-label-tag.vol-label-normal {
+  color: var(--neon-cyan, #00C8FF);
+  background: rgba(0,200,255,0.1);
+  border: 1px solid rgba(0,200,255,0.25);
+}
+.vol-label-tag.vol-label-extreme {
+  color: var(--neon-red, #FF0000);
+  background: rgba(255,0,0,0.1);
+  border: 1px solid rgba(255,0,0,0.3);
+  animation: volPulse 1.5s ease-in-out infinite;
+}
+@keyframes volPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+.vol-level-tag {
+  font-size: 0.46rem; font-weight: 600;
+  color: var(--muted, #A0B0C8);
+  padding: 0.05rem 0.3rem; border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+}
+.vol-zone-context {
+  font-size: 0.52rem; color: #FFB347; font-weight: 600;
+  margin-bottom: 0.3rem; padding: 0.15rem 0.4rem;
+  background: rgba(255,140,0,0.06); border-left: 2px solid rgba(255,140,0,0.35);
+  border-radius: 2px; letter-spacing: 0.02em;
+}
+.vol-zone-quote {
+  font-size: 0.72rem; color: var(--ink, #F0F4FA); font-weight: 600;
+  line-height: 1.5; margin-bottom: 0.2rem;
+  text-shadow: 0 0 8px rgba(0,200,255,0.08);
+}
+.vol-zone-sub {
+  font-size: 0.58rem; color: var(--muted, #A0B0C8); margin-bottom: 0.3rem;
+}
+.vol-zone-author {
+  font-size: 0.52rem; color: #FF8C00; font-weight: 700;
+  display: flex; align-items: center; gap: 0.3rem;
+}
+.vol-zone-author::before {
+  content: '——'; color: var(--muted, #A0B0C8); font-weight: 400;
+}
+
 /* 奇迹个股语录（紧凑版） */
 .zy-quote {
   display: flex; align-items: center; flex-wrap: wrap; gap: 0.2rem;
