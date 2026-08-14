@@ -48,7 +48,8 @@
 <link rel="preconnect" href="https://push2delay.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2his.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://datacenter-web.eastmoney.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=20260812b">
+<link rel="stylesheet" href="css/styles.css?v=20260814a">
+<link rel="stylesheet" href="css/fund.css?v=20260814b">
 
 </head>
 <body>
@@ -304,6 +305,7 @@
     <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="industry" onclick="switchTab('industry')">🏭 行业全景<span class="tab-key-badge">2</span></button>
     <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="strategy" onclick="switchTab('strategy')">⚡ 策略信号<span class="tab-key-badge">3</span></button>
     <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="portfolio" onclick="switchTab('portfolio')">💼 我的组合<span class="tab-key-badge">4</span></button>
+    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="fund" onclick="switchTab('fund')">🛒 基金超市<span class="tab-key-badge">5</span></button>
   </div>
 
   <!-- ====== Tab1: 估值强度 ====== -->
@@ -978,6 +980,99 @@
     </div>
   </div><!-- /tab-portfolio -->
 
+  <!-- ====== Tab5: 基金超市 ====== -->
+  <div class="tab-content" id="tab-fund">
+    <div class="fund-wrap">
+      <!-- 基金搜索 -->
+      <div class="fund-search-bar">
+        <span class="fund-search-icon">🔍</span>
+        <input type="text" id="fundSearchInput" placeholder="输入基金代码/名称/基金经理/基金公司（如 002910 / 易方达 / 张坤）" aria-label="搜索基金">
+        <button id="fundSearchBtn">搜索</button>
+      </div>
+
+      <!-- 筛选栏 -->
+      <div class="fund-filter-bar">
+        <div class="fund-filter-row">
+          <select id="fundFilterType" class="fund-select" aria-label="投资类型">
+            <option value="all">全部类型</option>
+            <option value="gp">股票型</option>
+            <option value="hh">混合型</option>
+            <option value="zq">债券型</option>
+            <option value="zs">指数型</option>
+            <option value="qdii">QDII</option>
+            <option value="fof">FOF</option>
+            <option value="hb">货币型</option>
+          </select>
+          <select id="fundFilterCompany" class="fund-select fund-select-wide" aria-label="基金公司">
+            <option value="">基金公司</option>
+          </select>
+          <select id="fundSortSel" class="fund-select" aria-label="排序">
+            <option value="dwjz">单位净值</option>
+            <option value="rzzf">日涨跌幅</option>
+            <option value="ret1m">近1月收益</option>
+            <option value="ret3m">近3月收益</option>
+            <option value="ret6m">近6月收益</option>
+            <option value="ret1y">近1年收益</option>
+            <option value="sharp">夏普比率</option>
+          </select>
+          <button id="fundOrderBtn" class="fund-order-btn">↓ 降序</button>
+          <button id="fundFilterReset" class="fund-reset-btn">重置</button>
+        </div>
+        <div class="fund-filter-row fund-filter-row2">
+          <span class="fund-filter-label">风险等级</span>
+          <div class="fund-risk-group" id="fundRiskGroup">
+            <button data-risk="1">R1</button>
+            <button data-risk="2">R2</button>
+            <button data-risk="3">R3</button>
+            <button data-risk="4">R4</button>
+            <button data-risk="5">R5</button>
+          </div>
+          <span class="fund-filter-label">晨星评级</span>
+          <div class="fund-rating-group" id="fundRatingGroup">
+            <button data-rating="0" class="active">不限</button>
+            <button data-rating="5">★★★★★</button>
+            <button data-rating="4">★★★★</button>
+            <button data-rating="3">★★★</button>
+          </div>
+        </div>
+        <div class="fund-filter-row">
+          <span class="fund-filter-label">规模(亿)</span>
+          <input type="number" id="fundScaleMin" class="fund-num-input" placeholder="最小" min="0">
+          <span class="fund-sep">—</span>
+          <input type="number" id="fundScaleMax" class="fund-num-input" placeholder="最大" min="0">
+          <span class="fund-filter-label fund-filter-label-2">成立日期</span>
+          <input type="date" id="fundDateFrom" class="fund-date-input">
+          <span class="fund-sep">—</span>
+          <input type="date" id="fundDateTo" class="fund-date-input">
+        </div>
+      </div>
+
+      <div class="fund-list-meta">
+        <span id="fundCount">加载中...</span>
+        <span id="fundSortInfo" class="fund-sort-info"></span>
+      </div>
+
+      <!-- 列表 -->
+      <div class="fund-list-wrap" id="fundListWrap">
+        <div class="fund-list-head">
+          <span class="frh-main">基金</span>
+          <span class="frh-quote">净值 / 涨跌</span>
+          <span class="frh-rets">近1月 · 近3月 · 近6月 · 近1年</span>
+        </div>
+        <div id="fundListBody" class="fund-list-body"></div>
+        <div class="fund-list-empty" id="fundListEmpty" style="display:none">暂无符合条件的基金</div>
+        <div class="fund-list-loading" id="fundListLoading" style="display:none"><span class="fdl-spinner"></span>正在加载基金数据...</div>
+        <div class="fund-pagination" id="fundPagination"></div>
+      </div>
+
+      <!-- 详情视图 -->
+      <div class="fund-detail-view" id="fundDetailView" style="display:none">
+        <button id="fundDetailBack" class="fund-detail-back" style="display:none">← 返回列表</button>
+        <div id="fundDetail" class="fund-detail"></div>
+      </div>
+    </div>
+  </div><!-- /tab-fund -->
+
 </main>
 
 <!-- ==================== 底部 ==================== -->
@@ -1028,8 +1123,10 @@
 <script defer src="js/earnings-report.js?v=20260810k"></script>
 <script defer src="js/rotation.js?v=20260810k"></script>
 <script defer src="js/pattern-analysis.js?v=20260812a"></script>
-<script defer src="js/ftf-engine.js?v=20260810k"></script>
-<script defer src="js/ui.js?v=20260810k"></script>
+<script defer src="js/ftf-engine.js?v=20260814a"></script>
+<script defer src="js/fund-data.js?v=20260814b"></script>
+<script defer src="js/fund-ui.js?v=20260814b"></script>
+<script defer src="js/ui.js?v=20260814a"></script>
 <script defer src="js/app.js?v=20260810k"></script>
 </body>
 </html>

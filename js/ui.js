@@ -53,13 +53,18 @@ function switchTab(tabName, direction) {
       Perf.trackedSetTimeout(function() { refreshPortfolioPrices(); }, 200);
     }
   }
+  // 切换到基金超市时初始化（仅首次）
+  if (tabName === 'fund' && typeof FundUI !== 'undefined' && !window._fundInited) {
+    window._fundInited = true;
+    Perf.trackedSetTimeout(function() { FundUI.init(); }, 100);
+  }
   // 不再使用 scrollIntoView 滚动页面，改由穿透式特效完成视觉切换
 }
 
 /* ============================================================
    触摸滑动切换 Tab
    ============================================================ */
-var _tabOrder = ['valuation', 'industry', 'strategy', 'portfolio'];
+var _tabOrder = ['valuation', 'industry', 'strategy', 'portfolio', 'fund'];
 var _swipeStartX = 0;
 var _swipeStartY = 0;
 var _swipeStartT = 0;
