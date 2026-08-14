@@ -3296,7 +3296,6 @@ function runAnalysis(forceRefresh) {
       renderSpotlight(data);
       renderIndustryLeaders(data);
       updateHeaderTime(true);
-      generateDailyReview(false);
       // 独立备份触发：确保盘口推演即使复盘失败也能启动
       Perf.trackedSetTimeout(function() {
         if (typeof runPatternAnalysis === 'function') runPatternAnalysis(false);
@@ -3321,7 +3320,6 @@ function runAnalysis(forceRefresh) {
         showToast('⚠️ 实时API暂时不可用，已使用上次缓存数据');
         // 缓存数据也触发盘口推演
         Perf.trackedSetTimeout(function() {
-          if (typeof generateDailyReview === 'function') generateDailyReview(false);
           if (typeof runPatternAnalysis === 'function') runPatternAnalysis(false);
         }, 800);
       } else {
@@ -3341,6 +3339,8 @@ function runAnalysis(forceRefresh) {
     renderOverview(realtimeData);
     renderDashboard(realtimeData);
     renderKlineFromCache();
+    // 国债数据已就绪，生成每日复盘（确保格雷厄姆指数等使用最新国债收益率）
+    generateDailyReview(false);
 
     if (quoteSuccess) {
       if(__DEBUG__)console.log('实时行情自动获取完成');
@@ -3359,6 +3359,8 @@ function runAnalysis(forceRefresh) {
     }).catch(function() {
       renderMarketFlow(null);
       renderSectorCapitalAnalysis(null);
+      // 资金流向失败也要刷新复盘（国债数据已在阶段1就绪）
+      generateDailyReview(false);
     }).then(function() {
       // 阶段2.5：消息面分析（基于已有数据快速渲染，同时获取动态新闻）
       renderNewsAnalysis();

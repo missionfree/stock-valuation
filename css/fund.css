@@ -3,6 +3,76 @@
    A股涨跌色：上涨=红 下跌=绿
    ============================================================ */
 
+/* ---- 行业优选基金推荐 ---- */
+.fund-industry-recommend {
+  background: linear-gradient(135deg, rgba(0,200,255,0.06), rgba(255,174,0,0.04));
+  border: 1px solid rgba(0,200,255,0.18);
+  border-radius: 10px; padding: 0.5rem 0.6rem; margin-bottom: 0.5rem;
+  box-shadow: 0 0 18px rgba(0,200,255,0.06);
+}
+.fund-industry-header {
+  display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;
+}
+.fund-industry-title { font-size: 0.85rem; font-weight: 700; color: var(--accent, #00C8FF); }
+.fund-industry-hint { font-size: 0.6rem; color: var(--muted, #6B7D99); flex: 1; }
+.fund-industry-refresh-btn {
+  background: rgba(0,200,255,0.1); color: var(--accent, #00C8FF);
+  border: 1px solid rgba(0,200,255,0.25); border-radius: 5px;
+  padding: 0.2rem 0.5rem; font-size: 0.65rem; cursor: pointer; white-space: nowrap;
+}
+.fund-industry-refresh-btn:hover { background: rgba(0,200,255,0.2); }
+.fund-industry-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.fund-industry-card {
+  background: rgba(15,22,35,0.6); border: 1px solid rgba(0,200,255,0.1);
+  border-radius: 8px; padding: 0.4rem 0.5rem;
+}
+.fund-ind-card-header {
+  display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.3rem;
+  padding-bottom: 0.25rem; border-bottom: 1px solid rgba(0,200,255,0.08);
+}
+.fund-ind-name { font-size: 0.78rem; font-weight: 700; color: var(--ink, #E0E8F5); }
+.fund-ind-val-tag {
+  font-size: 0.58rem; padding: 0.1rem 0.35rem; border-radius: 3px; white-space: nowrap;
+}
+.fund-ind-val-tag.low { background: rgba(255,50,50,0.15); color: #ff6b6b; }
+.fund-ind-val-tag.mid { background: rgba(255,174,0,0.15); color: #ffae00; }
+.fund-ind-val-tag.high { background: rgba(0,200,100,0.15); color: #00c864; }
+.fund-ind-funds { display: flex; flex-direction: column; gap: 0.3rem; }
+.fund-rec-card {
+  background: rgba(0,0,0,0.25); border: 1px solid rgba(0,200,255,0.08);
+  border-radius: 6px; padding: 0.35rem 0.4rem; cursor: pointer;
+  transition: border-color 0.2s;
+}
+.fund-rec-card:hover { border-color: rgba(0,200,255,0.3); }
+.fund-rec-top {
+  display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; margin-bottom: 0.2rem;
+}
+.fund-rec-name { font-size: 0.72rem; font-weight: 600; color: var(--ink, #E0E8F5); }
+.fund-rec-code { font-size: 0.6rem; color: var(--muted, #6B7D99); }
+.fund-rec-badge {
+  font-size: 0.52rem; padding: 0.08rem 0.3rem; border-radius: 3px;
+  background: rgba(0,200,255,0.1); color: var(--accent, #00C8FF);
+}
+.fund-rec-badge.etf { background: rgba(255,174,0,0.12); color: #ffae00; }
+.fund-rec-metrics {
+  display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.2rem;
+  font-size: 0.6rem; color: var(--muted, #6B7D99);
+}
+.fund-rec-metrics span b { color: var(--ink, #E0E8F5); font-weight: 600; }
+.fund-rec-metrics .up { color: #ff6b6b; }
+.fund-rec-metrics .down { color: #00c864; }
+.fund-rec-tags { display: flex; gap: 0.2rem; flex-wrap: wrap; }
+.fund-rec-tag {
+  font-size: 0.55rem; padding: 0.08rem 0.3rem; border-radius: 3px; line-height: 1.3;
+}
+.fund-rec-tag.adv { background: rgba(0,200,100,0.1); color: #00c864; }
+.fund-rec-tag.warn { background: rgba(255,174,0,0.12); color: #ffae00; }
+.fund-rec-tag.danger { background: rgba(255,50,50,0.12); color: #ff6b6b; }
+.fund-industry-loading {
+  text-align: center; padding: 1rem 0; color: var(--muted, #6B7D99);
+  font-size: 0.7rem;
+}
+
 /* ---- 整体容器 ---- */
 .fund-wrap { padding: 0.4rem 0; }
 

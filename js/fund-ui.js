@@ -67,6 +67,14 @@ var FundUI = (function() {
       loadingEl.style.display = 'flex';
     }
     load();
+    // 加载行业优选基金推荐
+    Perf.trackedSetTimeout(function() { renderIndustryFunds(); }, 500);
+    // 绑定刷新按钮
+    var refreshBtn = document.getElementById('fundIndustryRefresh');
+    if (refreshBtn) refreshBtn.addEventListener('click', function() {
+      _industryFundCache = null;
+      renderIndustryFunds();
+    });
   }
 
   function bindEvents() {
@@ -932,8 +940,242 @@ var FundUI = (function() {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  /* ============================================================
+     行业优选基金推荐
+     - 每个行业精选3只基金（ETF优先 + 主动基金补充）
+     - 评分维度：规模/评级/收益/夏普/回撤/费率/成立年限
+     - 风险排雷：小规模老鼠仓/高费率/短任期/高回撤
+     ============================================================ */
+  var INDUSTRY_FUND_SECTORS = [
+    { name: '半导体', keywords: ['半导体', '芯片'], etfCode: '512480', pct10: 99 },
+    { name: '医药生物', keywords: ['医药', '医疗', '创新药'], etfCode: '512010', pct10: 20 },
+    { name: '新能源', keywords: ['新能源', '光伏', '锂电'], etfCode: '516160', pct10: 55 },
+    { name: '银行', keywords: ['银行'], etfCode: '512800', pct10: 25 },
+    { name: '食品饮料', keywords: ['食品', '白酒', '消费'], etfCode: '515170', pct10: 5 },
+    { name: '国防军工', keywords: ['军工', '国防'], etfCode: '512660', pct10: 58 },
+    { name: '通信', keywords: ['通信', '5G'], etfCode: '515880', pct10: 85 },
+    { name: '人工智能', keywords: ['人工智能', 'AI'], etfCode: '515980', pct10: 75 },
+    { name: '机器人', keywords: ['机器人'], etfCode: '562500', pct10: 60 },
+    { name: '黄金', keywords: ['黄金'], etfCode: '518880', pct10: 90 }
+  ];
+  var _industryFundCache = null;
+  var _industryFundLoading = false;
+
+  function renderIndustryFunds() {
+    if (_industryFundLoading) return;
+    _industryFundLoading = true;
+    var container = document.getElementById('fundIndustryList');
+    if (!container) { _industryFundLoading = false; return; }
+
+    // 使用缓存（10分钟内）
+    if (_industryFundCache && Date.now() - _industryFundCache.ts < 10 * 60 * 1000) {
+      renderIndustryCards(_industryFundCache.data);
+      _industryFundLoading = false;
+      return;
+    }
+
+    container.innerHTML = '<div class="fund-industry-loading">⏳ 正在搜索各行业优质基金，请稍候...</div>';
+    var results = [];
+    var industries = INDUSTRY_FUND_SECTORS.slice();
+
+    function processNext() {
+      if (industries.length === 0) {
+        _industryFundCache = { ts: Date.now(), data: results };
+        renderIndustryCards(results);
+        _industryFundLoading = false;
+        return;
+      }
+      // 每次处理2个行业（避免请求风暴）
+      var batch = industries.splice(0, 2);
+      Promise.all(batch.map(function(ind) { return loadIndustryFunds(ind); })).then(function(batchRes) {
+        batchRes.forEach(function(r) { if (r && r.funds.length > 0) results.push(r); });
+        renderIndustryCards(results); // 增量渲染
+        processNext();
+      }).catch(function() { processNext(); });
+    }
+    processNext();
+  }
+
+  function loadIndustryFunds(industry) {
+    // 1. 按关键词搜索基金
+    var searchPromises = industry.keywords.map(function(kw) {
+      return FundData.search(kw).catch(function() { return []; });
+    });
+    return Promise.all(searchPromises).then(function(searchResults) {
+      // 合并去重
+      var allFunds = [];
+      var seen = {};
+      searchResults.forEach(function(list) {
+        list.forEach(function(f) {
+          if (!seen[f.code]) { seen[f.code] = true; allFunds.push(f); }
+        });
+      });
+      // 加入ETF代码
+      if (industry.etfCode && !seen[industry.etfCode]) {
+        allFunds.unshift({ code: industry.etfCode, name: industry.name + 'ETF' });
+        seen[industry.etfCode] = true;
+      }
+      // 取前8个候选
+      var codes = allFunds.slice(0, 8).map(function(f) { return f.code; });
+      if (codes.length === 0) return { industry: industry, funds: [] };
+      // 2. 批量增强
+      return FundData.enrichBatch(codes, 8).then(function(rows) {
+        // 3. 评分排序，选前3
+        var ranked = rankIndustryFunds(rows);
+        return { industry: industry, funds: ranked.slice(0, 3) };
+      });
+    });
+  }
+
+  function rankIndustryFunds(rows) {
+    rows = rows.filter(function(r) { return r && r.code && r.name; });
+    rows.forEach(function(r) {
+      r._score = 0;
+      r._advantages = [];
+      r._warnings = [];
+
+      var scale = r.scaleYi || 0;
+      var rating = parseInt(r.rating) || 0;
+      var ret1y = r.ret1y;
+      var sharp = r.sharp;
+      var mdd = r.maxDrawdown;
+      var fee = parseFloat(r.purchaseFee) || 0;
+      var isETF = (r.cat === 'zs' || r.type === 'ETF' || (r.name && r.name.indexOf('ETF') >= 0));
+
+      // 规模评分（核心防老鼠仓指标）
+      if (scale > 100) { r._score += 25; r._advantages.push('规模' + Math.round(scale) + '亿，流动性极佳'); }
+      else if (scale > 50) { r._score += 22; r._advantages.push('规模' + Math.round(scale) + '亿，运作稳健'); }
+      else if (scale > 10) { r._score += 18; r._advantages.push('规模' + Math.round(scale) + '亿，适中稳定'); }
+      else if (scale > 5) { r._score += 8; }
+      else if (scale > 0 && scale < 2) { r._score -= 20; r._warnings.push('⚠️ 规模不足2亿，高度警惕老鼠仓接盘'); }
+      else if (scale > 0 && scale < 5) { r._score -= 8; r._warnings.push('规模偏小，警惕清盘及大额申赎冲击'); }
+
+      // ETF加分（被动管理，无老鼠仓风险）
+      if (isETF) { r._score += 15; r._advantages.push('ETF被动跟踪，无老鼠仓风险'); }
+
+      // 晨星评级
+      if (rating >= 5) { r._score += 15; r._advantages.push('晨星五星'); }
+      else if (rating >= 4) { r._score += 10; r._advantages.push('晨星四星'); }
+      else if (rating >= 3) { r._score += 5; }
+
+      // 收益
+      if (ret1y != null && !isNaN(ret1y)) {
+        if (ret1y > 30) { r._score += 15; }
+        else if (ret1y > 15) { r._score += 10; }
+        else if (ret1y > 0) { r._score += 5; }
+        // 小规模+高收益=可疑
+        if (ret1y > 50 && scale > 0 && scale < 10 && !isETF) {
+          r._score -= 25;
+          r._warnings.push('⚠️ 小规模短期暴利，高度警惕接盘老鼠仓');
+        }
+      }
+
+      // 夏普比率
+      if (sharp != null && !isNaN(sharp)) {
+        if (sharp > 1.5) { r._score += 12; r._advantages.push('夏普' + sharp.toFixed(2) + '，风险收益比优'); }
+        else if (sharp > 1) { r._score += 8; r._advantages.push('夏普' + sharp.toFixed(2) + '，收益风险比良'); }
+        else if (sharp > 0.5) { r._score += 4; }
+        else if (sharp < 0) { r._score -= 5; r._warnings.push('夏普为负，收益不及无风险利率'); }
+      }
+
+      // 最大回撤
+      if (mdd != null && !isNaN(mdd) && mdd > 0) {
+        if (mdd < 15) { r._score += 8; r._advantages.push('最大回撤' + mdd.toFixed(1) + '%，风控出色'); }
+        else if (mdd > 40) { r._score -= 5; r._warnings.push('最大回撤' + mdd.toFixed(1) + '%，波动大'); }
+      }
+
+      // 费率
+      if (fee === 0) { r._score += 8; r._advantages.push('零申购费'); }
+      else if (fee > 0 && fee < 0.5) { r._score += 6; r._advantages.push('低费率' + fee + '%'); }
+      else if (fee > 1.5) { r._score -= 5; r._warnings.push('费率' + fee + '%偏高'); }
+
+      // 成立年限
+      if (r.estabDate) {
+        var years = (Date.now() - new Date(r.estabDate).getTime()) / (365.25 * 86400000);
+        if (years > 5) { r._score += 8; r._advantages.push('成立' + Math.floor(years) + '年，历经牛熊'); }
+        else if (years > 3) { r._score += 4; }
+        else if (years < 1) { r._score -= 5; r._warnings.push('成立不足1年，业绩参考有限'); }
+      }
+
+      // 经理
+      if (r.manager) r._advantages.push('经理: ' + r.manager);
+    });
+    rows.sort(function(a, b) { return (b._score || 0) - (a._score || 0); });
+    return rows;
+  }
+
+  function renderIndustryCards(results) {
+    var container = document.getElementById('fundIndustryList');
+    if (!container) return;
+    if (results.length === 0) {
+      container.innerHTML = '<div class="fund-industry-loading">正在搜索...</div>';
+      return;
+    }
+    var html = results.map(function(item) {
+      var ind = item.industry;
+      var pct = ind.pct10 || 50;
+      var valTag = pct < 30
+        ? '<span class="fund-ind-val-tag low">低估 ' + pct + '%分位</span>'
+        : pct > 70
+        ? '<span class="fund-ind-val-tag high">高估 ' + pct + '%分位</span>'
+        : '<span class="fund-ind-val-tag mid">中位 ' + pct + '%分位</span>';
+
+      var fundsHtml = item.funds.map(function(r) {
+        var isETF = (r.cat === 'zs' || (r.name && r.name.indexOf('ETF') >= 0));
+        var badge = isETF ? '<span class="fund-rec-badge etf">ETF</span>'
+                          : '<span class="fund-rec-badge">' + esc(r.cat || '基金') + '</span>';
+        var scaleText = r.scaleYi ? (r.scaleYi > 100 ? Math.round(r.scaleYi) + '亿' : r.scaleYi.toFixed(1) + '亿') : '—';
+        var ret1yText = (r.ret1y != null && !isNaN(r.ret1y))
+          ? '<span class="' + (r.ret1y >= 0 ? 'up' : 'down') + '">近1年 ' + (r.ret1y > 0 ? '+' : '') + r.ret1y.toFixed(1) + '%</span>'
+          : '<span>近1年 —</span>';
+        var sharpText = (r.sharp != null && !isNaN(r.sharp)) ? '夏普 ' + r.sharp.toFixed(2) : '夏普 —';
+        var fee = parseFloat(r.purchaseFee) || 0;
+        var feeText = fee === 0 ? '费率 0%' : '费率 ' + fee + '%';
+
+        var tagsHtml = '';
+        (r._advantages || []).slice(0, 3).forEach(function(a) {
+          tagsHtml += '<span class="fund-rec-tag adv">✓ ' + esc(a) + '</span>';
+        });
+        (r._warnings || []).slice(0, 3).forEach(function(w) {
+          var cls = w.indexOf('⚠️') >= 0 ? 'danger' : 'warn';
+          tagsHtml += '<span class="fund-rec-tag ' + cls + '">' + esc(w) + '</span>';
+        });
+
+        return '<div class="fund-rec-card" onclick="FundUI.openFundDetail(\'' + r.code + '\')">' +
+          '<div class="fund-rec-top">' +
+            '<span class="fund-rec-name">' + esc(r.name) + '</span>' +
+            '<span class="fund-rec-code">' + esc(r.code) + '</span>' +
+            badge +
+          '</div>' +
+          '<div class="fund-rec-metrics">' +
+            '<span>规模 <b>' + scaleText + '</b></span>' +
+            ret1yText +
+            '<span>' + sharpText + '</span>' +
+            '<span>' + feeText + '</span>' +
+          '</div>' +
+          '<div class="fund-rec-tags">' + tagsHtml + '</div>' +
+        '</div>';
+      }).join('');
+
+      return '<div class="fund-industry-card">' +
+        '<div class="fund-ind-card-header">' +
+          '<span class="fund-ind-name">' + esc(ind.name) + '</span>' +
+          valTag +
+        '</div>' +
+        '<div class="fund-ind-funds">' + fundsHtml + '</div>' +
+      '</div>';
+    }).join('');
+    container.innerHTML = html;
+  }
+
+  function openFundDetail(code) {
+    if (code) openDetail(code);
+  }
+
   return {
     init: init,
-    backToSearch: function() { closeDetail(); }
+    backToSearch: function() { closeDetail(); },
+    openFundDetail: openFundDetail,
+    renderIndustryFunds: renderIndustryFunds
   };
 })();

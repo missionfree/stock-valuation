@@ -64,7 +64,7 @@ function switchTab(tabName, direction) {
 /* ============================================================
    触摸滑动切换 Tab
    ============================================================ */
-var _tabOrder = ['valuation', 'industry', 'strategy', 'portfolio', 'fund'];
+var _tabOrder = ['valuation', 'industry', 'strategy', 'fund', 'portfolio'];
 var _swipeStartX = 0;
 var _swipeStartY = 0;
 var _swipeStartT = 0;
