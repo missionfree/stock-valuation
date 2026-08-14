@@ -3332,7 +3332,7 @@ function runAnalysis(forceRefresh) {
         updateHeaderTime(false);
       }
     }),
-    fetchTreasuryYield().catch(function(err) { console.warn('[国债] Promise.all内捕获失败，使用默认值', err); })
+    fetchTreasuryYield(forceRefresh).catch(function(err) { console.warn('[国债] Promise.all内捕获失败，使用默认值', err); })
   ]).then(function() {
     // 阶段1完成：渲染核心图表和解读
     drawHeatmap();
@@ -3428,9 +3428,10 @@ function forceRefreshAll() {
   _globalReqActive = 0;
   _globalReqQueue = [];
 
-  // 清除行情缓存
+  // 清除所有缓存（含国债、行情、板块资金流）
   try { localStorage.removeItem('quote_cache_v4'); } catch(e) {}
   try { localStorage.removeItem('sector_flow_cache_v2'); } catch(e) {}
+  try { localStorage.removeItem('treasury_10y_cache_v3'); } catch(e) {}
 
   showToast('🔄 正在重新拉取数据…');
   runAnalysis(true);
@@ -3445,6 +3446,7 @@ function refreshModule(module) {
     case 'quote':
       _isFetching = false;
       try { localStorage.removeItem('quote_cache_v4'); } catch(e) {}
+      try { localStorage.removeItem('treasury_10y_cache_v3'); } catch(e) {}
       runAnalysis(true);
       break;
     case 'flow':

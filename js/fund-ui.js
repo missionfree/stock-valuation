@@ -31,7 +31,8 @@ var FundUI = (function() {
 
   var TYPE_MAP = {
     all: '全部', gp: '股票型', hh: '混合型', zq: '债券型',
-    zs: '指数型', qdii: 'QDII', fof: 'FOF', hb: '货币型'
+    zs: '指数型', qdii: 'QDII', fof: 'FOF', hb: '货币型',
+    lof: 'LOF', closed: '封闭式'
   };
 
   var SORT_OPTIONS = [
@@ -45,6 +46,7 @@ var FundUI = (function() {
   ];
 
   var _companies = [];
+  var _searchSeq = 0;  // 请求序列号，防止旧请求覆盖新结果
 
   /* ---------- 初始化 ---------- */
   function init() {
@@ -110,6 +112,20 @@ var FundUI = (function() {
     if (dateFrom) dateFrom.addEventListener('change', function() { state.dateFrom = dateFrom.value; state.page = 1; doSearch(); });
     if (dateTo) dateTo.addEventListener('change', function() { state.dateTo = dateTo.value; state.page = 1; doSearch(); });
 
+    // 基金经理输入（防抖 500ms）
+    var mgrInput = get('fundManagerInput');
+    if (mgrInput) {
+      var mgrTimer = null;
+      mgrInput.addEventListener('input', function() {
+        if (mgrTimer) clearTimeout(mgrTimer);
+        mgrTimer = setTimeout(function() {
+          state.manager = mgrInput.value.trim();
+          state.page = 1;
+          doSearch();
+        }, 500);
+      });
+    }
+
     var sortSel = get('fundSortSel');
     if (sortSel) sortSel.addEventListener('change', function() {
       state.sort = sortSel.value;
@@ -132,14 +148,16 @@ var FundUI = (function() {
 
   function resetFilters() {
     state.keyword = ''; state.type = 'all'; state.riskSet = []; state.rating = 0;
-    state.company = ''; state.scaleMin = null; state.scaleMax = null;
+    state.company = ''; state.manager = ''; state.scaleMin = null; state.scaleMax = null;
     state.dateFrom = ''; state.dateTo = ''; state.sort = 'dwjz'; state.order = 'desc'; state.page = 1;
     var get = function(id) { return document.getElementById(id); };
     var kw = get('fundSearchInput'); if (kw) kw.value = '';
     var typeSel = get('fundFilterType'); if (typeSel) typeSel.value = 'all';
     var companySel = get('fundFilterCompany'); if (companySel) companySel.value = '';
+    var mgrInput = get('fundManagerInput'); if (mgrInput) mgrInput.value = '';
     var rg = get('fundRiskGroup'); if (rg) Array.prototype.forEach.call(rg.querySelectorAll('button'), function(b) { b.classList.remove('active'); });
     var rtg = get('fundRatingGroup'); if (rtg) Array.prototype.forEach.call(rtg.querySelectorAll('button'), function(b) { b.classList.remove('active'); });
+    var rtgActive = get('fundRatingGroup'); if (rtgActive) { var btn = rtgActive.querySelector('button[data-rating="0"]'); if (btn) btn.classList.add('active'); }
     var sm = get('fundScaleMin'), sx = get('fundScaleMax'); if (sm) sm.value = ''; if (sx) sx.value = '';
     var df = get('fundDateFrom'), dt = get('fundDateTo'); if (df) df.value = ''; if (dt) dt.value = '';
     var ss = get('fundSortSel'); if (ss) ss.value = 'dwjz';
@@ -148,25 +166,33 @@ var FundUI = (function() {
   }
 
   function doSearch() {
+    _searchSeq++;  // 新请求，旧请求的结果将被忽略
+    state.loading = false;  // 允许新搜索（即使旧请求还在进行中）
     if (state.keyword) {
-      loadSearchMode();
+      loadSearchMode(state.keyword);
+    } else if (state.manager) {
+      // 有经理筛选但没有搜索关键词 → 独立经理搜索流程
+      // searchManager(m=7) 找到经理ID → managerFunds 获取管理的基金列表
+      loadManagerMode(state.manager);
     } else {
       load();
     }
   }
 
-  /* 是否需要高级增强（财务字段排序 / 规模 风险 评级 日期 公司筛选） */
+  /* 是否需要高级增强（财务字段排序 / 规模 风险 评级 日期 公司 经理筛选） */
   function needAdvancedCriteria() {
     return state.sort !== 'dwjz' || state.scaleMin != null || state.scaleMax != null ||
-      state.riskSet.length > 0 || state.rating > 0 || state.dateFrom || state.dateTo || state.company;
+      state.riskSet.length > 0 || state.rating > 0 || state.dateFrom || state.dateTo || state.company || state.manager;
   }
 
   /* ---------- 浏览模式（fundcode_search.js 全量库 + 客户端处理） ---------- */
   function load() {
     if (state.loading) return;
     state.loading = true;
+    var mySeq = _searchSeq;
     showListLoading(true);
     FundData.loadUniverse().then(function(universe) {
+      if (mySeq !== _searchSeq) return;  // 被新搜索取消
       // 1. 类型过滤
       var candidates = universe.filter(function(u) {
         return state.type === 'all' || u.cat === state.type;
@@ -182,6 +208,7 @@ var FundUI = (function() {
       if (needAdvancedCriteria()) {
         var codes = candidates.map(function(u) { return u.code; });
         return FundData.enrichBatch(codes, 150).then(function(rows) {
+          if (mySeq !== _searchSeq) return;  // 被新搜索取消
           var filtered = applyClientFilters(rows);
           applyClientSort(filtered);
           var pages = Math.max(1, Math.ceil(filtered.length / state.size));
@@ -200,6 +227,7 @@ var FundUI = (function() {
       var pageFunds = candidates.slice(start, start + state.size);
       var pageCodes = pageFunds.map(function(u) { return u.code; });
       return FundData.enrichBatch(pageCodes, state.size).then(function(rows) {
+        if (mySeq !== _searchSeq) return;  // 被新搜索取消
         var merged = pageFunds.map(function(u) {
           var enr = null;
           for (var i = 0; i < rows.length; i++) { if (rows[i].code === u.code) { enr = rows[i]; break; } }
@@ -210,6 +238,7 @@ var FundUI = (function() {
         state.loading = false;
       });
     }).catch(function(err) {
+      if (mySeq !== _searchSeq) return;
       showListLoading(false);
       showListError('加载失败：' + (err && err.message ? err.message : '网络异常'));
       state.loading = false;
@@ -217,22 +246,25 @@ var FundUI = (function() {
   }
 
   /* ---------- 关键词模式（搜索接口：代码/名称/基金经理/基金公司 + 全量库补充） ---------- */
-  function loadSearchMode() {
+  function loadSearchMode(searchKeyword) {
     if (state.loading) return;
     state.loading = true;
-    showListLoading(true);
+    var mySeq = _searchSeq;
+    var keyword = searchKeyword || state.keyword;
+    showListLoading(true, '正在搜索「' + keyword + '」...');
     Promise.all([
       FundData.loadUniverse().then(function(u) {
-        var kw = state.keyword.trim();
+        var kw = keyword.trim();
         return u.filter(function(x) {
           return x.code.indexOf(kw) >= 0 || x.name.indexOf(kw) >= 0 ||
             (x.pinyin || '').toLowerCase().indexOf(kw.toLowerCase()) >= 0;
         }).map(function(x) { return x.code; });
-      }),
-      FundData.search(state.keyword).then(function(found) {
+      }).catch(function() { return []; }),
+      FundData.search(keyword).then(function(found) {
         return (found || []).map(function(f) { return f.code; });
       }).catch(function() { return []; })
     ]).then(function(parts) {
+      if (mySeq !== _searchSeq) return;  // 被新搜索取消
       var codes = Array.prototype.concat.apply([], parts);
       codes = codes.filter(function(c, i) { return c && codes.indexOf(c) === i; }).slice(0, 60);
       if (codes.length === 0) {
@@ -244,6 +276,7 @@ var FundUI = (function() {
         return;
       }
       return FundData.enrichBatch(codes, 60).then(function(rows) {
+        if (mySeq !== _searchSeq) return;  // 被新搜索取消
         // 类型过滤（使用 cat 分类字段，而非 fundType 编码）
         if (state.type !== 'all') { rows = rows.filter(function(r) { return r.cat === state.type; }); }
         var filtered = applyClientFilters(rows);
@@ -256,8 +289,70 @@ var FundUI = (function() {
         state.loading = false;
       });
     }).catch(function(err) {
+      if (mySeq !== _searchSeq) return;
       showListLoading(false);
       showListError('搜索失败：' + (err && err.message ? err.message : '网络异常'));
+      state.loading = false;
+    });
+  }
+
+  /* ---------- 经理模式（searchManager m=7 → managerFunds 获取基金列表） ---------- */
+  function loadManagerMode(managerName) {
+    if (state.loading) return;
+    state.loading = true;
+    var mySeq = _searchSeq;
+    showListLoading(true, '正在搜索基金经理「' + managerName + '」...');
+
+    FundData.searchManager(managerName).then(function(managers) {
+      if (mySeq !== _searchSeq) return;
+      if (!managers || managers.length === 0) {
+        renderList([], 0, 0, 1, true);
+        showListLoading(false);
+        var el = document.getElementById('fundListEmpty');
+        if (el) { el.style.display = 'flex'; el.textContent = '未找到基金经理「' + managerName + '」'; }
+        state.loading = false;
+        return;
+      }
+
+      // 取第一个匹配的经理
+      var mgr = managers[0];
+      showListLoading(true, '正在获取「' + mgr.mgrName + '」管理的基金列表...');
+
+      // 获取经理管理的基金列表
+      return FundData.managerFunds(mgr.mgrId).then(function(funds) {
+        if (mySeq !== _searchSeq) return;
+        if (!funds || funds.length === 0) {
+          renderList([], 0, 0, 1, true);
+          showListLoading(false);
+          var el2 = document.getElementById('fundListEmpty');
+          if (el2) {
+            el2.style.display = 'flex';
+            el2.textContent = '无法获取「' + mgr.mgrName + '」管理的基金列表（网络限制）。请尝试用基金代码/名称搜索。';
+          }
+          state.loading = false;
+          return;
+        }
+
+        // 提取基金代码并增强
+        var codes = funds.map(function(f) { return f.code; });
+        return FundData.enrichBatch(codes, codes.length).then(function(rows) {
+          if (mySeq !== _searchSeq) return;
+          // 类型过滤
+          if (state.type !== 'all') { rows = rows.filter(function(r) { return r.cat === state.type; }); }
+          var filtered = applyClientFilters(rows);
+          applyClientSort(filtered);
+          var pages = Math.max(1, Math.ceil(filtered.length / state.size));
+          var page = Math.min(state.page, pages);
+          var start = (page - 1) * state.size;
+          renderList(filtered.slice(start, start + state.size), filtered.length, pages, page, true);
+          showListLoading(false);
+          state.loading = false;
+        });
+      });
+    }).catch(function(err) {
+      if (mySeq !== _searchSeq) return;
+      showListLoading(false);
+      showListError('经理搜索失败：' + (err && err.message ? err.message : '网络异常'));
       state.loading = false;
     });
   }
@@ -813,11 +908,11 @@ var FundUI = (function() {
   }
 
   /* ---------- 工具 ---------- */
-  function showListLoading(show) {
+  function showListLoading(show, msg) {
     var el = document.getElementById('fundListLoading');
     if (!el) return;
     if (show) {
-      el.innerHTML = '<span class="fdl-spinner"></span>正在加载基金数据...';
+      el.innerHTML = '<span class="fdl-spinner"></span>' + (msg || '正在加载基金数据...');
       el.style.display = 'flex';
     } else {
       el.style.display = 'none';

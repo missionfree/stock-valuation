@@ -49,7 +49,7 @@
 <link rel="preconnect" href="https://push2his.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://datacenter-web.eastmoney.com" crossorigin>
 <link rel="stylesheet" href="css/styles.css?v=20260814a">
-<link rel="stylesheet" href="css/fund.css?v=20260814c">
+<link rel="stylesheet" href="css/fund.css?v=20260814d">
 
 </head>
 <body>
@@ -1002,6 +1002,8 @@
             <option value="qdii">QDII</option>
             <option value="fof">FOF</option>
             <option value="hb">货币型</option>
+            <option value="lof">LOF</option>
+            <option value="closed">封闭式</option>
           </select>
           <select id="fundFilterCompany" class="fund-select fund-select-wide" aria-label="基金公司">
             <option value="">基金公司</option>
@@ -1044,6 +1046,10 @@
           <input type="date" id="fundDateFrom" class="fund-date-input">
           <span class="fund-sep">—</span>
           <input type="date" id="fundDateTo" class="fund-date-input">
+        </div>
+        <div class="fund-filter-row fund-filter-row3">
+          <span class="fund-filter-label">基金经理</span>
+          <input type="text" id="fundManagerInput" class="fund-manager-input" placeholder="输入基金经理姓名（如 张坤）" aria-label="基金经理筛选">
         </div>
       </div>
 
@@ -1118,14 +1124,14 @@
 <script defer src="js/performance.js?v=20260810k"></script>
 <script defer src="js/config.js?v=20260810k"></script>
 <script defer src="js/utils.js?v=20260810k"></script>
-<script defer src="js/render.js?v=20260812b"></script>
+<script defer src="js/render.js?v=20260814h"></script>
 <script defer src="js/stock-analysis.js?v=20260810k"></script>
 <script defer src="js/earnings-report.js?v=20260810k"></script>
-<script defer src="js/rotation.js?v=20260810k"></script>
-<script defer src="js/pattern-analysis.js?v=20260812a"></script>
+<script defer src="js/rotation.js?v=20260814h"></script>
+<script defer src="js/pattern-analysis.js?v=20260814h"></script>
 <script defer src="js/ftf-engine.js?v=20260814a"></script>
-<script defer src="js/fund-data.js?v=20260814c"></script>
-<script defer src="js/fund-ui.js?v=20260814c"></script>
+<script defer src="js/fund-data.js?v=20260814h"></script>
+<script defer src="js/fund-ui.js?v=20260814h"></script>
 <script defer src="js/ui.js?v=20260814a"></script>
 <script defer src="js/app.js?v=20260810k"></script>
 </body>

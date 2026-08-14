@@ -426,6 +426,19 @@ function analyzePatterns(rt, sent, klineData) {
     }
   }
 
+  // PE分位后备：当无法从情绪数据或基准数据获取时，用价格在60日区间的位置估算
+  // 这样位置/突破类口诀不会因pePct=50而完全不触发
+  if (pePct === 50 && closes.length >= 20) {
+    var lookback = Math.min(closes.length, 60);
+    var recentCloses = closes.slice(-lookback);
+    var pMax = Math.max.apply(null, recentCloses);
+    var pMin = Math.min.apply(null, recentCloses);
+    var curPrice = closes[closes.length - 1];
+    if (pMax > pMin) {
+      pePct = (curPrice - pMin) / (pMax - pMin) * 100;
+    }
+  }
+
   var totalStocks = upCount + downCount + flatCount;
   var breadthChg = totalStocks > 0 ? (upCount - downCount) / totalStocks * 100 : 0;
   var breadthRatio = totalStocks > 0 ? upCount / totalStocks * 100 : 50;
@@ -1107,18 +1120,28 @@ function renderPatternAnalysis(result) {
   // ===== 4. 分类强度计算 =====
   var categories = ['trend', 'relative', 'volume', 'intraday', 'position', 'breakout'];
   var catStrength = {};
+  var BEAR_BONUS = 1.15; // 与综合分一致，看跌信号补偿
   categories.forEach(function(cat) {
     var catRules = PATTERN_RULES.filter(function(r) { return r.category === cat; });
-    var catBull = 0, catBear = 0, catTotal = 0;
+    var catBull = 0, catBear = 0, catTriggered = 0;
     catRules.forEach(function(r) {
-      catTotal += r.weight;
       var sig = result.signals.filter(function(s) { return s.ruleId === r.id; })[0];
       if (sig) {
+        catTriggered++;
         if (sig.signal === 'bull') catBull += r.weight * sig.confidence;
-        else catBear += r.weight * sig.confidence;
+        else catBear += r.weight * sig.confidence * BEAR_BONUS;
       }
     });
-    var netScore = catTotal > 0 ? ((catBull - catBear) / catTotal * 50 + 50) : 50;
+    // 分母只含已触发口诀的权重和，避免未触发口诀稀释信号
+    var totalActive = catBull + catBear;
+    var netScore;
+    if (totalActive > 0) {
+      // 净比率 [-1,1] → [0,100]，50为中性
+      netScore = (catBull - catBear) / totalActive * 50 + 50;
+    } else {
+      // 无触发信号：该维度无信息，返回50
+      netScore = 50;
+    }
     catStrength[cat] = Math.max(0, Math.min(100, Math.round(netScore)));
   });
 

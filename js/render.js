@@ -1746,7 +1746,7 @@ var TREASURY_30Y = 0;
 
 /* 国债收益率30分钟缓存（日内波动小，延长缓存减少请求） */
 var TREASURY_CACHE_KEY = 'treasury_10y_cache_v3';
-var TREASURY_CACHE_TTL = 30 * 60 * 1000; // 30分钟
+var TREASURY_CACHE_TTL = 10 * 60 * 1000; // 10分钟（与行情刷新频率更匹配）
 
 /**
  * 获取10年期国债收益率（带30分钟缓存）
@@ -1767,8 +1767,9 @@ var TREASURY_CACHE_TTL = 30 * 60 * 1000; // 30分钟
  *
  * @returns {Promise}
  */
-function fetchTreasuryYield() {
-  // 方案0：先查30分钟缓存
+function fetchTreasuryYield(forceRefresh) {
+  // 方案0：先查30分钟缓存（forceRefresh 时跳过）
+  if (!forceRefresh) {
   try {
     var raw = localStorage.getItem(TREASURY_CACHE_KEY);
     if (raw) {
@@ -1785,6 +1786,7 @@ function fetchTreasuryYield() {
       }
     }
   } catch(e) {}
+  } // end if (!forceRefresh)
 
   /**
    * 验证国债收益率数值有效性
@@ -1982,9 +1984,13 @@ function renderDashboard(realtimeData) {
   var spread = earningsYieldAllA * 100 - TREASURY_10Y;        // 股债利差(百分点，市值加权口径)
   if (isNaN(spread)) spread = 0;
 
-  // 显示国债收益率
+  // 显示国债收益率（含日期，提升数据透明度）
   var trEl = document.getElementById('dashTreasury');
-  if (trEl) trEl.textContent = '国债 ' + TREASURY_10Y.toFixed(4) + '%';
+  if (trEl) {
+    var trText = '国债 ' + TREASURY_10Y.toFixed(4) + '%';
+    if (TREASURY_DATE) trText += '（' + TREASURY_DATE + '）';
+    trEl.textContent = trText;
+  }
 
   // === 格雷厄姆指数 ===
   // 阈值校准：低利率环境下graham天然偏高（PE14/国债1.7%≈4.2），需提高阈值避免长期"黄金买入区"

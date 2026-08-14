@@ -57,6 +57,13 @@
   padding: 0.28rem 0.3rem; font-size: 0.7rem; outline: none;
   color-scheme: dark;
 }
+.fund-manager-input {
+  width: 160px; background: rgba(0,0,0,0.35); color: var(--ink, #E0E8F5);
+  border: 1px solid rgba(0,200,255,0.15); border-radius: 6px;
+  padding: 0.3rem 0.4rem; font-size: 0.75rem; outline: none;
+}
+.fund-manager-input:focus { border-color: var(--accent, #00C8FF); }
+.fund-manager-input::placeholder { color: var(--muted, #6B7D99); font-size: 0.7rem; }
 .fund-sep { color: var(--muted, #6B7D99); font-size: 0.7rem; }
 .fund-order-btn, .fund-reset-btn {
   background: rgba(0,200,255,0.08); color: var(--accent, #00C8FF);

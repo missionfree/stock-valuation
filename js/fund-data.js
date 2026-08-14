@@ -181,6 +181,70 @@ var FundData = (function() {
     });
   }
 
+  /* ---------- 2b. 基金经理搜索（m=7） ---------- */
+  // 返回: [{ mgrId, mgrName, company, companyId }]
+  function searchManager(name) {
+    var url = 'https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx' +
+      '?m=7&key=' + encodeURIComponent(name) + '&v=' + Math.random();
+    return jsonp(url, 'callback', 8000).then(function(data) {
+      if (!data || data.ErrCode !== 0 || !data.Datas) return [];
+      return data.Datas.map(function(d) {
+        return {
+          mgrId: d.MgrId,
+          mgrName: d.MgrName,
+          company: d.JJGS,
+          companyId: d.JJGSID
+        };
+      });
+    }).catch(function() { return []; });
+  }
+
+  /* ---------- 2c. 通过经理ID获取管理的基金列表 ----------
+     经理页面是 HTML（非 JS），不能通过 <script> 标签加载。
+     方案：fetch + CORS 代理获取页面文本，正则提取 mgrlists 变量。
+     返回: [{ code, name }]
+  */
+  function parseMgrLists(html) {
+    if (!html) return [];
+    var m = html.match(/var\s+mgrlists\s*=\s*(\[[\s\S]*?\]);/);
+    if (!m) return [];
+    try {
+      // mgrlists 是 JS 对象字面量，非 JSON：
+      // 1) 属性名无引号: {valueField:'xxx'} → {"valueField":"xxx"}
+      // 2) 字符串用单引号: 'xxx' → "xxx"
+      var json = m[1]
+        .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')  // 给属性名加双引号
+        .replace(/'/g, '"');  // 单引号转双引号
+      var lists = JSON.parse(json);
+      return lists.map(function(item) {
+        return { code: item.valueField, name: item.name };
+      });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function managerFunds(mgrId) {
+    var pageUrl = 'https://fund.eastmoney.com/manager/' + encodeURIComponent(mgrId) + '.html';
+    // 方案1：直接 fetch（同源或 CORS 允许时生效）
+    return fetch(pageUrl, { credentials: 'omit', mode: 'cors' })
+      .then(function(r) { return r.text(); })
+      .then(function(html) { return parseMgrLists(html); })
+      .catch(function() {
+        // 方案2：CORS 代理 proxy.cors.sh（最稳定）
+        return fetch('https://proxy.cors.sh/' + pageUrl, { credentials: 'omit' })
+          .then(function(r) { return r.text(); })
+          .then(function(html) { return parseMgrLists(html); })
+          .catch(function() {
+            // 方案3：CORS 代理 allorigins.win
+            return fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(pageUrl), { credentials: 'omit' })
+              .then(function(r) { return r.text(); })
+              .then(function(html) { return parseMgrLists(html); })
+              .catch(function() { return []; });
+          });
+      });
+  }
+
   /* ---------- 3. 基金基础信息（风险/评级/夏普/回撤/波动/费率/经理/公司） ---------- */
   function basicInfo(code) {
     var cached = cacheGet(code);
@@ -197,7 +261,7 @@ var FundData = (function() {
         name: d.SHORTNAME,
         type: d.FTYPE,
         fundType: d.FUNDTYPE,
-        cat: typeCategory(d.FTYPE),
+        cat: typeCategory(d.FTYPE, d.FCODE),
         date: d.FSRQ,
         unitNav: parseFloat(d.DWJZ),
         accNav: parseFloat(d.LJJZ),
@@ -335,7 +399,7 @@ var FundData = (function() {
             name: row[2],
             style: row[3],
             fullname: row[4],
-            cat: typeCategory(row[3])
+            cat: typeCategory(row[3], row[0])
           });
         });
         _universe = map;
@@ -346,9 +410,13 @@ var FundData = (function() {
     return _universeLoading;
   }
 
-  function typeCategory(style) {
-    if (!style) return 'other';
-    style = String(style);
+  function typeCategory(style, code) {
+    if (!style && !code) return 'other';
+    style = String(style || '');
+    code = String(code || '');
+    // 封闭式基金代码：50xxxx（上交所封闭式）、15xxxx/16xxxx（深交所封闭式/LOF）
+    // LOF 代码：16xxxx（深交所LOF）、50xxxx（上交所LOF/ETF）
+    // 但 fundcode_search.js 中 ETF 和 LOF 可能混在一起，通过 style 进一步区分
     if (style.indexOf('QDII') >= 0) return 'qdii';
     if (style.indexOf('FOF') >= 0) return 'fof';
     if (style.indexOf('货币') >= 0) return 'hb';
@@ -356,6 +424,11 @@ var FundData = (function() {
     if (style.indexOf('股票') >= 0) return 'gp';
     if (style.indexOf('混合') >= 0) return 'hh';
     if (style.indexOf('债券') >= 0) return 'zq';
+    // 通过代码前缀识别 LOF 和封闭式
+    if (/^(15|16|50)/.test(code)) {
+      if (style.indexOf('封闭') >= 0) return 'closed';
+      return 'lof';
+    }
     return 'other';
   }
 
@@ -385,6 +458,8 @@ var FundData = (function() {
   return {
     getList: getList,
     search: search,
+    searchManager: searchManager,
+    managerFunds: managerFunds,
     basicInfo: basicInfo,
     pingzhong: pingzhong,
     holdingsAndIndustry: holdingsAndIndustry,
