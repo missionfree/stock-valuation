@@ -163,6 +163,13 @@
 .fund-page-btn.active { background: rgba(0,200,255,0.2); color: var(--accent, #00C8FF); border-color: var(--accent, #00C8FF); }
 .fund-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .fund-page-info { font-size: 0.68rem; color: var(--muted, #6B7D99); margin: 0 0.2rem; }
+.fund-page-jump {
+  width: 52px; background: rgba(0,0,0,0.35); color: var(--ink, #E0E8F5);
+  border: 1px solid rgba(0,200,255,0.15); border-radius: 5px;
+  padding: 0.2rem 0.3rem; font-size: 0.68rem; outline: none; text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+.fund-page-jump:focus { border-color: var(--accent, #00C8FF); }
 
 /* ---- 详情视图 ---- */
 .fund-detail-view { margin-top: 0.3rem; }
@@ -290,13 +297,22 @@
   .fund-list-head .frh-rets { display: none; }
   .fund-risk-cards { grid-template-columns: repeat(3, 1fr); }
   .fund-ind-row { grid-template-columns: 90px 1fr 50px; }
+  .fund-filter-row2 { flex-wrap: wrap; }
+  .fund-select-wide { max-width: 140px; }
 }
 @media (max-width: 560px) {
   .fund-search-bar input { font-size: 0.72rem; }
+  .fund-search-bar button { padding: 0.4rem 0.6rem; font-size: 0.72rem; }
   .fund-filter-row { gap: 0.3rem; }
+  .fund-filter-row > * { margin-bottom: 0.2rem; }
   .fund-select-wide { max-width: 130px; }
   .fund-risk-cards { grid-template-columns: 1fr; }
-  .fund-detail-rets { grid-template-columns: repeat(4, 1fr); }
+  .fund-detail-rets { grid-template-columns: repeat(2, 1fr); }
   .fund-hold-head, .fund-hold-row { grid-template-columns: 24px 1fr 70px; }
   .fund-ind-row { grid-template-columns: 80px 1fr 46px; }
+  .fund-detail-nav { font-size: 1.2rem; }
+  .fund-detail-title { font-size: 0.92rem; }
+  .fund-nav-chart { height: 180px; }
+  .fund-mgr-prow { grid-template-columns: 44px 1fr 36px; }
+  .fund-page-jump { width: 44px; }
 }

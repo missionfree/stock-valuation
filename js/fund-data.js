@@ -1,16 +1,48 @@
 /* ============================================================
    基金数据层（fund-data.js）
    数据源：东方财富/天天基金公开接口（全部通过 script/JSONP 加载，绕过 CORS）
-   - 列表/筛选/排序/分页：rankhandler.aspx（script 标签，读 window.rankData）
-   - 关键词搜索（代码/名称/经理/公司）：FundSearchAPI（JSONP callback）
+   - 全量基金代码库：fundcode_search.js（27530+ 基金，含代码/名称/类型，作为浏览基础）
+   - 关键词搜索（代码/名称/经理/公司）：FundSearchAPI（JSONP callback，上限10条）
    - 详情基础信息（风险/评级/夏普/回撤/波动/费率/经理/公司）：FundMNBasicInformation（JSONP）
+     ※ 带 localStorage 缓存（6小时TTL），大幅减少重复请求
    - 前十大重仓 + 行业分布：FundMNInverstPosition（JSONP，按行业聚合）
-   - 净值历史/经理履历/同类排名：pingzhongdata（script 标签，读全局变量）
-   - 实时估值：fundgz.1234567.com.cn（JSONP jsonpgz）
-   更新延迟：净值每日更新、行情/估值实时，满足 ≤15 分钟要求
+   - 净值历史/经理履历/同类排名：pingzhongdata（script 标签，读全局变量后清理）
+   注意：rankhandler 全量列表接口需 Referer 校验，静态页面无法使用
+   更新延迟：净值每日更新，满足 ≤15 分钟要求
    ============================================================ */
 var FundData = (function() {
   'use strict';
+
+  /* ---------- localStorage 缓存（TTL 6小时） ---------- */
+  var _CACHE_TTL = 6 * 3600 * 1000;
+  var _memCache = {};  // code -> { data, ts }
+
+  function cacheGet(code) {
+    // 内存缓存优先
+    if (_memCache[code]) {
+      if (Date.now() - _memCache[code].ts < _CACHE_TTL) return _memCache[code].data;
+      delete _memCache[code];
+    }
+    // localStorage 备用
+    try {
+      var raw = localStorage.getItem('_fund_bi_' + code);
+      if (raw) {
+        var obj = JSON.parse(raw);
+        if (obj && obj.ts && Date.now() - obj.ts < _CACHE_TTL) {
+          _memCache[code] = obj;
+          return obj.data;
+        }
+        localStorage.removeItem('_fund_bi_' + code);
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function cacheSet(code, data) {
+    var obj = { data: data, ts: Date.now() };
+    _memCache[code] = obj;
+    try { localStorage.setItem('_fund_bi_' + code, JSON.stringify(obj)); } catch (e) {}
+  }
 
   /* ---------- 通用 script / JSONP 加载器 ---------- */
   function loadScript(url, timeout) {
@@ -151,6 +183,8 @@ var FundData = (function() {
 
   /* ---------- 3. 基金基础信息（风险/评级/夏普/回撤/波动/费率/经理/公司） ---------- */
   function basicInfo(code) {
+    var cached = cacheGet(code);
+    if (cached) return Promise.resolve(cached);
     var url = 'https://fundmobapi.eastmoney.com/FundMNewApi/FundMNBasicInformation' +
       '?FCODE=' + encodeURIComponent(code) +
       '&deviceid=t&plat=Web&product=EFund&version=6.2.8&v=' + Math.random();
@@ -158,11 +192,12 @@ var FundData = (function() {
       var d = data && data.Datas;
       if (!d) return null;
       var scale = d.FEGM ? (parseFloat(d.FEGM) / 100000000) : null;
-      return {
+      var info = {
         code: d.FCODE,
         name: d.SHORTNAME,
         type: d.FTYPE,
         fundType: d.FUNDTYPE,
+        cat: typeCategory(d.FTYPE),
         date: d.FSRQ,
         unitNav: parseFloat(d.DWJZ),
         accNav: parseFloat(d.LJJZ),
@@ -193,6 +228,8 @@ var FundData = (function() {
         retAll: parseFloat(d.SYL_LN),
         minBuy: d.MINSG
       };
+      cacheSet(code, info);
+      return info;
     });
   }
 
@@ -200,7 +237,7 @@ var FundData = (function() {
   function pingzhong(code) {
     var url = 'https://fund.eastmoney.com/pingzhongdata/' + encodeURIComponent(code) + '.js?v=' + Math.random();
     return loadScript(url, 12000).then(function() {
-      return {
+      var result = {
         netWorthTrend: window.Data_netWorthTrend || [],
         accWorthTrend: window.Data_ACWorthTrend || [],
         currentManager: window.Data_currentFundManager || [],
@@ -212,6 +249,20 @@ var FundData = (function() {
         rate: window.fund_Rate,
         minBuy: window.fund_minsg
       };
+      // 清理全局变量，避免下次加载残留
+      try {
+        delete window.Data_netWorthTrend;
+        delete window.Data_ACWorthTrend;
+        delete window.Data_currentFundManager;
+        delete window.Data_rateInSimilarPersent;
+        delete window.Data_assetAllocation;
+        delete window.stockCodes;
+        delete window.fS_name;
+        delete window.fund_sourceRate;
+        delete window.fund_Rate;
+        delete window.fund_minsg;
+      } catch (e) {}
+      return result;
     });
   }
 
@@ -245,34 +296,10 @@ var FundData = (function() {
     });
   }
 
-  /* ---------- 6. 实时估值（fundgz） ---------- */
+  /* ---------- 6. 实时估值（fundgz 已失效，保留占位） ---------- */
   function estimateQuote(code) {
-    var url = 'https://fundgz.1234567.com.cn/js/' + encodeURIComponent(code) + '.js?v=' + Math.random();
-    return new Promise(function(resolve, reject) {
-      var timer = null;
-      var script = document.createElement('script');
-      function cleanup() {
-        if (timer) { clearTimeout(timer); timer = null; }
-        delete window.jsonpgz;
-        if (script.parentNode) script.parentNode.removeChild(script);
-      }
-      timer = setTimeout(function() { cleanup(); reject(new Error('超时')); }, 6000);
-      window.jsonpgz = function(d) { cleanup(); resolve(d); };
-      script.src = url;
-      script.onerror = function() { cleanup(); reject(new Error('加载失败')); };
-      document.head.appendChild(script);
-    }).then(function(d) {
-      if (!d) return null;
-      return {
-        code: d.fundcode,
-        name: d.name,
-        estNav: parseFloat(d.gsz),
-        estChange: parseFloat(d.gszzl),
-        estDate: d.gztime,
-        unitNav: parseFloat(d.dwjz),
-        date: d.jzrq
-      };
-    }).catch(function() { return null; });
+    // fundgz.1234567.com.cn 接口已返回 404，暂不可用
+    return Promise.resolve(null);
   }
 
   /* ---------- 7. 基金公司列表 ---------- */
@@ -334,15 +361,17 @@ var FundData = (function() {
 
   /* ---------- 9. 批量增强：为一批基金补充基础信息 ---------- */
   // codes: 基金代码数组；cap: 最多增强数量；返回 Promise<rows>
+  // 使用 localStorage 缓存，已缓存的基金立即返回，大幅减少网络请求
   function enrichBatch(codes, cap) {
     cap = cap || 150;
     var list = (codes || []).slice(0, cap);
     var results = [];
     var i = 0;
+    var BATCH = 8;  // 每批8个并发
     function next() {
       if (i >= list.length) return Promise.resolve(results);
-      var batch = list.slice(i, i + 6);
-      i += 6;
+      var batch = list.slice(i, i + BATCH);
+      i += BATCH;
       return Promise.all(batch.map(function(code) {
         return basicInfo(code).then(function(b) { return b; }).catch(function() { return null; });
       })).then(function(bs) {

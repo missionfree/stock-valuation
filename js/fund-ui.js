@@ -1,12 +1,12 @@
 /* ============================================================
    基金功能 UI（fund-ui.js）
-   - 多维筛选：类型/风险等级R1-R5/晨星评级/基金公司/基金经理/规模区间/成立日期区间
+   - 多维筛选：类型/风险等级R1-R5/晨星评级/基金公司/规模区间/成立日期区间
    - 排序：单位净值/日涨跌幅/近1月/近3月/近6月/近1年/夏普比率
    - 分页：每页20条
    - 详情：净值曲线(1M/3M/6M/1Y/3Y/5Y)/持仓行业/前十大重仓/经理履历/费率/风险收益/同类排名
    两种模式：
-   - 关键词模式：代码/名称/经理/公司 → 搜索命中 → 基础信息全量 → 客户端筛选排序分页
-   - 浏览模式：无关键词 → rankhandler 服务端类型+排序+分页；风险/评级/夏普等特殊字段经基础信息增强
+   - 关键词模式：代码/名称/经理/公司 → 搜索API+全量库匹配 → 基础信息增强 → 客户端筛选排序分页
+   - 浏览模式：无关键词 → 全量基金库(fundcode_search.js) → 类型过滤 → 增强当前页/高级筛选增强前150只
    ============================================================ */
 var FundUI = (function() {
   'use strict';
@@ -44,18 +44,12 @@ var FundUI = (function() {
     { key: 'sharp', label: '夏普比率' }
   ];
 
-  // rankhandler 服务端排序键（sharp 走客户端）
-  var SERVER_SORT_MAP = {
-    dwjz: 'dwjz', rzzf: 'rzzf', ret1m: '1yzf', ret3m: '3yzf', ret6m: '6yzf', ret1y: '1nzf'
-  };
-
   var _companies = [];
-  var _detailCache = {};   // code -> basicInfo
-  var _chartCache = {};    // code -> pingzhong
 
   /* ---------- 初始化 ---------- */
   function init() {
     bindEvents();
+    // 预加载基金公司列表
     FundData.companyList().then(function(list) {
       _companies = list || [];
       var sel = document.getElementById('fundFilterCompany');
@@ -64,6 +58,12 @@ var FundUI = (function() {
           _companies.map(function(c) { return '<option value="' + esc(c.name) + '">' + esc(c.name) + '</option>'; }).join('');
       }
     }).catch(function() {});
+    // 首次加载时提示正在下载数据库
+    var loadingEl = document.getElementById('fundListLoading');
+    if (loadingEl) {
+      loadingEl.innerHTML = '<span class="fdl-spinner"></span>正在加载基金数据库（约3MB，首次需数秒）...';
+      loadingEl.style.display = 'flex';
+    }
     load();
   }
 
@@ -155,10 +155,10 @@ var FundUI = (function() {
     }
   }
 
-  /* 是否需要高级增强（财务字段排序 / 规模 风险 评级 日期 经理筛选） */
+  /* 是否需要高级增强（财务字段排序 / 规模 风险 评级 日期 公司筛选） */
   function needAdvancedCriteria() {
     return state.sort !== 'dwjz' || state.scaleMin != null || state.scaleMax != null ||
-      state.riskSet.length > 0 || state.rating > 0 || state.dateFrom || state.dateTo || state.manager;
+      state.riskSet.length > 0 || state.rating > 0 || state.dateFrom || state.dateTo || state.company;
   }
 
   /* ---------- 浏览模式（fundcode_search.js 全量库 + 客户端处理） ---------- */
@@ -244,8 +244,8 @@ var FundUI = (function() {
         return;
       }
       return FundData.enrichBatch(codes, 60).then(function(rows) {
-        // 类型过滤
-        if (state.type !== 'all') { rows = rows.filter(function(r) { return r.fundType === state.type; }); }
+        // 类型过滤（使用 cat 分类字段，而非 fundType 编码）
+        if (state.type !== 'all') { rows = rows.filter(function(r) { return r.cat === state.type; }); }
         var filtered = applyClientFilters(rows);
         applyClientSort(filtered);
         var pages = Math.max(1, Math.ceil(filtered.length / state.size));
@@ -262,36 +262,20 @@ var FundUI = (function() {
     });
   }
 
-  /* ---------- 增强：为每只基金补充基础信息 ---------- */
-  function enrichRows(rows) {
-    var tasks = (rows || []).map(function(r) {
-      var code = r.code;
-      if (_detailCache[code]) { return Promise.resolve(Object.assign({}, r, _detailCache[code])); }
-      return FundData.basicInfo(code).then(function(b) {
-        if (b) _detailCache[code] = b;
-        return Object.assign({}, r, b || {});
-      }).catch(function() { return Object.assign({}, r); });
-    });
-    // 分批并发（每批6个），避免瞬时大量请求
-    var results = [];
-    var i = 0;
-    function next() {
-      if (i >= tasks.length) return Promise.resolve(results);
-      var batch = tasks.slice(i, i + 6);
-      i += 6;
-      return Promise.all(batch).then(function(b) { results = results.concat(b); return next(); });
-    }
-    return next();
-  }
-
-  /* ---------- 客户端过滤（风险/评级/规模/日期/经理） ---------- */
+  /* ---------- 客户端过滤（风险/评级/规模/日期/经理/公司） ---------- */
   function applyClientFilters(rows) {
     var s = state;
     return (rows || []).filter(function(r) {
-      if (s.riskSet.length && r.riskLevel && s.riskSet.indexOf(String(r.riskLevel)) < 0) return false;
+      // 风险等级：筛选激活时排除无风险等级的基金
+      if (s.riskSet.length && (!r.riskLevel || s.riskSet.indexOf(String(r.riskLevel)) < 0)) return false;
+      // 晨星评级：筛选激活时排除无评级的基金
       if (s.rating > 0 && (!r.rating || parseInt(r.rating, 10) < s.rating)) return false;
+      // 基金公司
+      if (s.company && (!r.company || r.company.indexOf(s.company) < 0)) return false;
+      // 规模区间
       if (s.scaleMin != null && (r.scaleYi == null || r.scaleYi < s.scaleMin)) return false;
       if (s.scaleMax != null && (r.scaleYi == null || r.scaleYi > s.scaleMax)) return false;
+      // 成立日期区间
       if (s.dateFrom) {
         var dFrom = s.dateFrom.replace(/-/g, '');
         var dEst = r.estabDate ? String(r.estabDate).replace(/-/g, '') : '';
@@ -302,27 +286,8 @@ var FundUI = (function() {
         var dEst2 = r.estabDate ? String(r.estabDate).replace(/-/g, '') : '';
         if (dEst2 && dEst2 > dTo) return false;
       }
-      if (s.manager && r.manager && r.manager.indexOf(s.manager) < 0) return false;
-      return true;
-    });
-  }
-
-  // 浏览模式下的轻量过滤（仅使用 rankhandler 已有字段）
-  function applyBasicFilters(rows) {
-    var s = state;
-    return (rows || []).filter(function(r) {
-      if (s.scaleMin != null && (r.scaleYi == null || r.scaleYi < s.scaleMin)) return false;
-      if (s.scaleMax != null && (r.scaleYi == null || r.scaleYi > s.scaleMax)) return false;
-      if (s.dateFrom) {
-        var dFrom = s.dateFrom.replace(/-/g, '');
-        var dEst = r.estabDate ? String(r.estabDate).replace(/-/g, '') : '';
-        if (dEst && dEst < dFrom) return false;
-      }
-      if (s.dateTo) {
-        var dTo = s.dateTo.replace(/-/g, '');
-        var dEst2 = r.estabDate ? String(r.estabDate).replace(/-/g, '') : '';
-        if (dEst2 && dEst2 > dTo) return false;
-      }
+      // 基金经理
+      if (s.manager && (!r.manager || r.manager.indexOf(s.manager) < 0)) return false;
       return true;
     });
   }
@@ -360,8 +325,13 @@ var FundUI = (function() {
     if (sortInfo) {
       var label = '';
       SORT_OPTIONS.forEach(function(o) { if (o.key === state.sort) label = o.label; });
-      sortInfo.textContent = '按「' + label + (state.order === 'desc' ? '降序' : '升序') + '」' +
-        (enrichedMode ? '· 基于代码序前150只样本做财务排序/筛选' : '· 按代码序浏览');
+      var hint = '';
+      if (enrichedMode) {
+        hint = '· 已加载前' + total + '只符合条件的基金';
+      } else if (total > 100) {
+        hint = '· 按代码序浏览，可搜索精确查找';
+      }
+      sortInfo.textContent = '按「' + label + (state.order === 'desc' ? '降序' : '升序') + '」' + hint;
     }
 
     if (empty) empty.style.display = (rows.length === 0) ? 'flex' : 'none';
@@ -431,6 +401,11 @@ var FundUI = (function() {
     nums.forEach(function(n) {
       html += '<button class="fund-page-btn' + (n === page ? ' active' : '') + '" data-page="' + n + '">' + n + '</button>';
     });
+    // 页码跳转输入（页数多时显示）
+    if (pages > 10) {
+      html += '<input type="number" class="fund-page-jump" min="1" max="' + pages + '" placeholder="跳转" value="' + page + '" id="fundPageJump">';
+      html += '<button class="fund-page-btn" id="fundPageJumpBtn">Go</button>';
+    }
     html += next;
     wrap.innerHTML = html;
     Array.prototype.forEach.call(wrap.querySelectorAll('[data-page]'), function(b) {
@@ -440,6 +415,17 @@ var FundUI = (function() {
         if (p >= 1 && p <= pages) { state.page = p; doSearch(); }
       });
     });
+    // 跳转按钮
+    var jumpBtn = document.getElementById('fundPageJumpBtn');
+    var jumpInput = document.getElementById('fundPageJump');
+    if (jumpBtn && jumpInput) {
+      function doJump() {
+        var p = parseInt(jumpInput.value, 10);
+        if (p >= 1 && p <= pages) { state.page = p; doSearch(); }
+      }
+      jumpBtn.addEventListener('click', doJump);
+      jumpInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') doJump(); });
+    }
   }
 
   function pageNums(cur, total) {
@@ -817,7 +803,7 @@ var FundUI = (function() {
     rows.push({ label: '管理费', value: manageFee || '--' });
     rows.push({ label: '最低申购', value: b.minBuy ? b.minBuy + ' 元' : (p && p.minBuy ? p.minBuy + ' 元' : '--') });
     rows.push({ label: '申购状态', value: b.buyStatus || '--' });
-    rows.push({ label: '赎回状态', value: b.redeemFee || '--' });
+    rows.push({ label: '赎回状态', value: b.redeemStatus || '--' });
 
     // 从 rankhandler/manageFee 补充分
     var html = rows.map(function(r) {
@@ -829,7 +815,13 @@ var FundUI = (function() {
   /* ---------- 工具 ---------- */
   function showListLoading(show) {
     var el = document.getElementById('fundListLoading');
-    if (el) el.style.display = show ? 'flex' : 'none';
+    if (!el) return;
+    if (show) {
+      el.innerHTML = '<span class="fdl-spinner"></span>正在加载基金数据...';
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+    }
   }
   function showListError(msg) {
     var empty = document.getElementById('fundListEmpty');
