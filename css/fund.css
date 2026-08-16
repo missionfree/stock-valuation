@@ -29,6 +29,12 @@
 .fund-ind-card-header {
   display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.3rem;
   padding-bottom: 0.25rem; border-bottom: 1px solid rgba(0,200,255,0.08);
+  cursor: pointer; user-select: none;
+}
+.fund-ind-card-header:hover { background: rgba(0,200,255,0.04); }
+.fund-ind-toggle {
+  font-size: 0.65rem; color: var(--accent, #00C8FF); width: 0.8rem; text-align: center;
+  transition: transform 0.2s;
 }
 .fund-ind-name { font-size: 0.78rem; font-weight: 700; color: var(--ink, #E0E8F5); }
 .fund-ind-val-tag {
@@ -37,7 +43,18 @@
 .fund-ind-val-tag.low { background: rgba(255,50,50,0.15); color: #ff6b6b; }
 .fund-ind-val-tag.mid { background: rgba(255,174,0,0.15); color: #ffae00; }
 .fund-ind-val-tag.high { background: rgba(0,200,100,0.15); color: #00c864; }
-.fund-ind-funds { display: flex; flex-direction: column; gap: 0.3rem; }
+.fund-ind-fund-count {
+  font-size: 0.55rem; color: var(--muted, #6B7D99); margin-left: auto;
+}
+.fund-ind-warn-icon { font-size: 0.65rem; }
+/* 折叠状态：隐藏基金列表 */
+.fund-industry-card .fund-ind-funds { display: flex; flex-direction: column; gap: 0.3rem; }
+.fund-industry-card:not(.expanded) .fund-ind-funds { display: none; }
+.fund-industry-card:not(.expanded) .fund-ind-card-header { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+.fund-rec-score {
+  font-size: 0.52rem; padding: 0.06rem 0.3rem; border-radius: 3px;
+  background: rgba(0,200,255,0.08); color: var(--accent, #00C8FF); margin-left: auto;
+}
 .fund-rec-card {
   background: rgba(0,0,0,0.25); border: 1px solid rgba(0,200,255,0.08);
   border-radius: 6px; padding: 0.35rem 0.4rem; cursor: pointer;
@@ -71,6 +88,39 @@
 .fund-industry-loading {
   text-align: center; padding: 1rem 0; color: var(--muted, #6B7D99);
   font-size: 0.7rem;
+}
+
+/* ---- 基金点评（张扬视角） ---- */
+.fund-commentary-section {
+  border: 1px solid rgba(0,200,255,0.15); border-radius: 8px;
+  padding: 0.4rem 0.5rem; margin-bottom: 0.5rem;
+  background: rgba(15,22,35,0.5);
+}
+.fund-commentary-verdict {
+  display: flex; align-items: center; gap: 0.3rem;
+  padding: 0.4rem 0.5rem; border-radius: 6px; margin-bottom: 0.35rem;
+  font-size: 0.8rem; font-weight: 700;
+}
+.fund-commentary-verdict .fc-verdict-icon { font-size: 1rem; }
+.fc-verdict-buy { background: rgba(0,200,100,0.12); color: #00c864; border: 1px solid rgba(0,200,100,0.25); }
+.fc-verdict-hold { background: rgba(255,200,0,0.1); color: #ffc800; border: 1px solid rgba(255,200,0,0.2); }
+.fc-verdict-caution { background: rgba(255,174,0,0.12); color: #ffae00; border: 1px solid rgba(255,174,0,0.25); }
+.fc-verdict-avoid { background: rgba(255,50,50,0.12); color: #ff6b6b; border: 1px solid rgba(255,50,50,0.25); }
+.fund-commentary-body { display: flex; flex-direction: column; gap: 0.2rem; }
+.fc-point {
+  display: flex; align-items: flex-start; gap: 0.25rem;
+  font-size: 0.65rem; line-height: 1.5; padding: 0.15rem 0;
+}
+.fc-point-icon { flex-shrink: 0; width: 1rem; text-align: center; }
+.fc-point-text { flex: 1; color: var(--ink, #E0E8F5); }
+.fc-point-good .fc-point-text { color: #00c864; }
+.fc-point-warn .fc-point-text { color: #ffae00; }
+.fc-point-danger .fc-point-text { color: #ff6b6b; font-weight: 500; }
+.fc-point-neutral .fc-point-text { color: var(--muted, #6B7D99); }
+.fund-commentary-summary {
+  margin-top: 0.3rem; padding: 0.3rem 0.4rem; border-radius: 5px;
+  background: rgba(0,200,255,0.05); border-left: 3px solid var(--accent, #00C8FF);
+  font-size: 0.65rem; line-height: 1.5; color: var(--ink, #E0E8F5);
 }
 
 /* ---- 整体容器 ---- */

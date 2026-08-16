@@ -261,20 +261,49 @@ var FundUI = (function() {
     var keyword = searchKeyword || state.keyword;
     showListLoading(true, '正在搜索「' + keyword + '」...');
     Promise.all([
+      // 来源1：全量库客户端过滤 + 相关度排序
       FundData.loadUniverse().then(function(u) {
-        var kw = keyword.trim();
-        return u.filter(function(x) {
-          return x.code.indexOf(kw) >= 0 || x.name.indexOf(kw) >= 0 ||
-            (x.pinyin || '').toLowerCase().indexOf(kw.toLowerCase()) >= 0;
-        }).map(function(x) { return x.code; });
+        var kw = keyword.trim().toLowerCase();
+        var isNumeric = /^\d+$/.test(kw);
+        var scored = [];
+        u.forEach(function(x) {
+          var score = -1;
+          var code = (x.code || '').toLowerCase();
+          var name = (x.name || '').toLowerCase();
+          var pinyin = (x.pinyin || '').toLowerCase();
+          var fullname = (x.fullname || '').toLowerCase();
+          if (isNumeric) {
+            // 数字搜索：代码精确匹配优先
+            if (code === kw) score = 100;
+            else if (code.indexOf(kw) === 0) score = 80;
+            else if (code.indexOf(kw) > 0) score = 60;
+          } else {
+            // 文字搜索：名称匹配优先
+            if (name === kw) score = 100;
+            else if (name.indexOf(kw) === 0) score = 90;
+            else if (name.indexOf(kw) > 0) score = 70;
+            else if (fullname.indexOf(kw) >= 0) score = 65;
+            else if (pinyin === kw) score = 55;
+            else if (pinyin.indexOf(kw) === 0) score = 50;
+            else if (pinyin.indexOf(kw) > 0) score = 40;
+          }
+          if (score >= 0) scored.push({ code: x.code, score: score });
+        });
+        scored.sort(function(a, b) { return b.score - a.score; });
+        return scored.slice(0, 80).map(function(s) { return s.code; });
       }).catch(function() { return []; }),
+      // 来源2：搜索API（利用返回的company/manager字段）
       FundData.search(keyword).then(function(found) {
         return (found || []).map(function(f) { return f.code; });
       }).catch(function() { return []; })
     ]).then(function(parts) {
-      if (mySeq !== _searchSeq) return;  // 被新搜索取消
-      var codes = Array.prototype.concat.apply([], parts);
-      codes = codes.filter(function(c, i) { return c && codes.indexOf(c) === i; }).slice(0, 60);
+      if (mySeq !== _searchSeq) return;
+      // 合并去重，保留来源1的相关度排序
+      var seen = {};
+      var codes = [];
+      parts[0].forEach(function(c) { if (c && !seen[c]) { seen[c] = true; codes.push(c); } });
+      parts[1].forEach(function(c) { if (c && !seen[c]) { seen[c] = true; codes.push(c); } });
+      codes = codes.slice(0, 100); // 上限提高到100
       if (codes.length === 0) {
         renderList([], 0, 0, 1, true);
         showListLoading(false);
@@ -283,9 +312,9 @@ var FundUI = (function() {
         state.loading = false;
         return;
       }
-      return FundData.enrichBatch(codes, 60).then(function(rows) {
-        if (mySeq !== _searchSeq) return;  // 被新搜索取消
-        // 类型过滤（使用 cat 分类字段，而非 fundType 编码）
+      return FundData.enrichBatch(codes, 100).then(function(rows) {
+        if (mySeq !== _searchSeq) return;
+        // 类型过滤
         if (state.type !== 'all') { rows = rows.filter(function(r) { return r.cat === state.type; }); }
         var filtered = applyClientFilters(rows);
         applyClientSort(filtered);
@@ -613,6 +642,27 @@ var FundUI = (function() {
     html += '</div>';
     html += '</div>';
 
+    // 基金点评（张扬视角）
+    var commentary = generateCommentary(b, p, holdings, ind);
+    html += '<div class="fund-detail-section fund-commentary-section">';
+    html += '<div class="fund-sec-title">📝 基金点评 · 张扬视角</div>';
+    html += '<div class="fund-commentary-verdict ' + commentary.verdictClass + '">';
+    html += '<span class="fc-verdict-icon">' + commentary.verdictIcon + '</span>';
+    html += '<span class="fc-verdict-text">' + commentary.verdict + '</span>';
+    html += '</div>';
+    html += '<div class="fund-commentary-body">';
+    commentary.points.forEach(function(pt) {
+      html += '<div class="fc-point fc-point-' + pt.type + '">';
+      html += '<span class="fc-point-icon">' + pt.icon + '</span>';
+      html += '<span class="fc-point-text">' + esc(pt.text) + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    if (commentary.summary) {
+      html += '<div class="fund-commentary-summary">' + esc(commentary.summary) + '</div>';
+    }
+    html += '</div>';
+
     // 风险收益特征
     html += '<div class="fund-detail-section"><div class="fund-sec-title">📊 风险收益特征</div>';
     html += '<div class="fund-risk-cards">';
@@ -682,6 +732,274 @@ var FundUI = (function() {
     renderManager(p);
     // 费率
     renderFees(b, p, manageFee);
+  }
+
+  /* ============================================================
+     基金点评生成器（张扬视角）
+     基于多维数据生成：推荐/谨慎/不推荐 判定 + 优势/风险/建议
+     ============================================================ */
+  function generateCommentary(b, p, holdings, ind) {
+    var points = [];
+    var score = 0;
+    var maxScore = 0;
+    var isETF = (b.cat === 'zs' || (b.name && b.name.indexOf('ETF') >= 0));
+    var scale = b.scaleYi || 0;
+    var rating = parseInt(b.rating) || 0;
+    var sharp = b.sharp;
+    var mdd = b.maxDrawdown;
+    var vol = b.volatility;
+    var ret1y = b.ret1y;
+    var ret3y = b.ret3y;
+    var fee = parseFloat(b.purchaseFee) || 0;
+    var riskLevel = parseInt(b.riskLevel) || 3;
+    var years = 0;
+    if (b.estabDate) {
+      years = (Date.now() - new Date(b.estabDate).getTime()) / (365.25 * 86400000);
+    }
+
+    // === 规模评估（核心防老鼠仓） ===
+    maxScore += 20;
+    if (scale > 100) {
+      score += 20;
+      points.push({ type: 'good', icon: '✅', text: '规模' + Math.round(scale) + '亿，流动性极佳，大资金运作空间充足，无老鼠仓顾虑' });
+    } else if (scale > 50) {
+      score += 18;
+      points.push({ type: 'good', icon: '✅', text: '规模' + Math.round(scale) + '亿，运作稳健，不存在清盘风险' });
+    } else if (scale > 10) {
+      score += 14;
+      points.push({ type: 'good', icon: '✅', text: '规模' + scale.toFixed(1) + '亿，适中水平，正常运作无碍' });
+    } else if (scale > 5) {
+      score += 8;
+      points.push({ type: 'warn', icon: '⚡', text: '规模' + scale.toFixed(1) + '亿偏小，需关注大额申赎对净值的冲击' });
+    } else if (scale > 0 && scale < 2) {
+      score -= 15;
+      points.push({ type: 'danger', icon: '🚨', text: '规模不足2亿！高度警惕——小规模基金最容易被用来接盘老鼠仓，基金经理可能通过此基金为其利益方输送筹码' });
+    } else if (scale > 0 && scale < 5) {
+      score -= 5;
+      points.push({ type: 'danger', icon: '⚠️', text: '规模' + scale.toFixed(1) + '亿偏小，存在清盘风险，且大额申赎会显著影响净值' });
+    }
+
+    // === ETF vs 主动管理 ===
+    maxScore += 15;
+    if (isETF) {
+      score += 15;
+      points.push({ type: 'good', icon: '✅', text: 'ETF被动跟踪指数，透明度高，不存在老鼠仓/利益输送风险，管理费低' });
+    } else {
+      maxScore += 5;
+      // 主动管理基金需额外审查
+      if (scale > 0 && scale < 10 && ret1y != null && ret1y > 50) {
+        score -= 20;
+        points.push({ type: 'danger', icon: '🚨', text: '小规模+短期暴利（近1年' + ret1y.toFixed(0) + '%）——这是老鼠仓的经典特征！小基金突然业绩爆发，极可能是接盘方在拉升出货，强烈建议回避' });
+      }
+    }
+
+    // === 晨星评级 ===
+    maxScore += 10;
+    if (rating >= 5) {
+      score += 10;
+      points.push({ type: 'good', icon: '✅', text: '晨星五星评级，长期风险调整收益位居同类前10%，获得权威认可' });
+    } else if (rating >= 4) {
+      score += 7;
+      points.push({ type: 'good', icon: '✅', text: '晨星四星评级，长期表现位居同类前32.5%，属于优质基金' });
+    } else if (rating >= 3) {
+      score += 4;
+      points.push({ type: 'neutral', icon: '➡️', text: '晨星三星评级，表现中规中矩，处于同类平均水平' });
+    } else if (rating > 0) {
+      score -= 3;
+      points.push({ type: 'warn', icon: '⚠️', text: '晨星评级低于三星，长期风险调整收益低于同类平均，需谨慎' });
+    }
+
+    // === 夏普比率 ===
+    maxScore += 15;
+    if (sharp != null && !isNaN(sharp)) {
+      if (sharp > 2) {
+        score += 15;
+        points.push({ type: 'good', icon: '✅', text: '夏普比率' + sharp.toFixed(2) + '，极高！每承担1单位风险获得' + sharp.toFixed(1) + '单位超额回报，风险收益比卓越' });
+      } else if (sharp > 1.5) {
+        score += 12;
+        points.push({ type: 'good', icon: '✅', text: '夏普比率' + sharp.toFixed(2) + '，优秀！风险调整后收益显著优于同类' });
+      } else if (sharp > 1) {
+        score += 8;
+        points.push({ type: 'good', icon: '✅', text: '夏普比率' + sharp.toFixed(2) + '，良好，收益风险比优于市场平均' });
+      } else if (sharp > 0.5) {
+        score += 4;
+        points.push({ type: 'neutral', icon: '➡️', text: '夏普比率' + sharp.toFixed(2) + '，中等水平，超额回报有限' });
+      } else if (sharp >= 0) {
+        score -= 2;
+        points.push({ type: 'warn', icon: '⚠️', text: '夏普比率' + sharp.toFixed(2) + '偏低，承担的风险未能获得足够的超额回报' });
+      } else {
+        score -= 10;
+        points.push({ type: 'danger', icon: '🚨', text: '夏普比率为负(' + sharp.toFixed(2) + ')！收益不如无风险利率，承担风险反而亏钱' });
+      }
+    }
+
+    // === 最大回撤 ===
+    maxScore += 10;
+    if (mdd != null && !isNaN(mdd) && mdd > 0) {
+      if (mdd < 10) {
+        score += 10;
+        points.push({ type: 'good', icon: '✅', text: '最大回撤仅' + mdd.toFixed(1) + '%，风控出色，极端行情下也抗跌' });
+      } else if (mdd < 20) {
+        score += 6;
+        points.push({ type: 'good', icon: '✅', text: '最大回撤' + mdd.toFixed(1) + '%，风控良好，回撤可控' });
+      } else if (mdd < 35) {
+        score += 2;
+        points.push({ type: 'neutral', icon: '➡️', text: '最大回撤' + mdd.toFixed(1) + '%，中等波动，需有一定风险承受能力' });
+      } else if (mdd < 50) {
+        score -= 5;
+        points.push({ type: 'warn', icon: '⚠️', text: '最大回撤' + mdd.toFixed(1) + '%较大，历史上曾深度回调，买入前需做好心理准备' });
+      } else {
+        score -= 10;
+        points.push({ type: 'danger', icon: '🚨', text: '最大回撤' + mdd.toFixed(1) + '%极高！历史最惨时腰斩，只适合能承受大幅亏损的激进投资者' });
+      }
+    }
+
+    // === 业绩表现 ===
+    maxScore += 15;
+    if (ret1y != null && !isNaN(ret1y)) {
+      if (ret1y > 30) {
+        score += 12;
+        points.push({ type: 'good', icon: '📈', text: '近1年收益' + ret1y.toFixed(1) + '%，表现优异' });
+      } else if (ret1y > 15) {
+        score += 8;
+        points.push({ type: 'good', icon: '📈', text: '近1年收益' + ret1y.toFixed(1) + '%，跑赢大盘' });
+      } else if (ret1y > 0) {
+        score += 4;
+        points.push({ type: 'neutral', icon: '➡️', text: '近1年收益' + ret1y.toFixed(1) + '%，正收益但不算突出' });
+      } else if (ret1y > -10) {
+        score -= 3;
+        points.push({ type: 'warn', icon: '📉', text: '近1年亏损' + Math.abs(ret1y).toFixed(1) + '%，短期承压' });
+      } else {
+        score -= 8;
+        points.push({ type: 'danger', icon: '📉', text: '近1年亏损' + Math.abs(ret1y).toFixed(1) + '%，大幅回撤，需评估是否为系统性风险还是基金自身问题' });
+      }
+    }
+    // 3年长期业绩
+    if (ret3y != null && !isNaN(ret3y)) {
+      if (ret3y > 60) {
+        points.push({ type: 'good', icon: '✅', text: '近3年收益' + ret3y.toFixed(0) + '%，长期表现卓越，穿越牛熊' });
+      } else if (ret3y > 20) {
+        points.push({ type: 'good', icon: '✅', text: '近3年收益' + ret3y.toFixed(0) + '%，长期稳健增长' });
+      } else if (ret3y < 0) {
+        points.push({ type: 'warn', icon: '⚠️', text: '近3年亏损' + Math.abs(ret3y).toFixed(0) + '%，长期表现不佳，需质疑基金经理能力' });
+      }
+    }
+
+    // === 费率 ===
+    maxScore += 10;
+    if (fee === 0) {
+      score += 10;
+      points.push({ type: 'good', icon: '✅', text: '零申购费，入手成本为零，适合定投' });
+    } else if (fee > 0 && fee < 0.5) {
+      score += 8;
+      points.push({ type: 'good', icon: '✅', text: '申购费率' + fee + '%，低费率，减少投资成本' });
+    } else if (fee > 1.5) {
+      score -= 5;
+      points.push({ type: 'warn', icon: '⚠️', text: '申购费率' + fee + '%偏高，长期持有成本较大，建议通过折扣渠道申购' });
+    }
+
+    // === 成立年限 ===
+    maxScore += 5;
+    if (years > 5) {
+      score += 5;
+      points.push({ type: 'good', icon: '✅', text: '成立' + Math.floor(years) + '年，历经完整牛熊周期，业绩参考价值高' });
+    } else if (years > 3) {
+      score += 3;
+    } else if (years < 1 && years > 0) {
+      score -= 5;
+      points.push({ type: 'warn', icon: '⚠️', text: '成立不足1年，历史数据有限，业绩可持续性存疑' });
+    }
+
+    // === 持仓集中度（防老鼠仓辅助指标） ===
+    if (holdings && holdings.length > 0) {
+      var top1Pct = holdings[0].pct || 0;
+      var top3Pct = 0;
+      for (var i = 0; i < Math.min(3, holdings.length); i++) {
+        top3Pct += (holdings[i].pct || 0);
+      }
+      if (top1Pct > 15 && !isETF) {
+        points.push({ type: 'warn', icon: '⚠️', text: '第一大重仓股' + holdings[0].name + '占比' + top1Pct.toFixed(1) + '%，集中度偏高，需关注是否为利益输送标的' });
+      }
+      if (top3Pct > 40 && !isETF) {
+        points.push({ type: 'warn', icon: '⚠️', text: '前三大重仓股合计占比' + top3Pct.toFixed(1) + '%，集中度高，波动风险放大' });
+      }
+    }
+
+    // === 经理信息 ===
+    if (p && p.currentManager && p.currentManager.length > 0) {
+      var mgr = p.currentManager[0];
+      var mgrName = mgr.name || b.manager || '';
+      if (mgr.workTime) {
+        var tenureYears = parseFloat(mgr.workTime) || 0;
+        if (tenureYears > 5) {
+          points.push({ type: 'good', icon: '✅', text: '经理' + mgrName + '任职' + tenureYears.toFixed(1) + '年，经验丰富，经历过多种市场环境' });
+        } else if (tenureYears < 1 && tenureYears > 0) {
+          points.push({ type: 'warn', icon: '⚠️', text: '经理' + mgrName + '任职仅' + tenureYears.toFixed(1) + '年，经验尚浅，业绩持续性待验证' });
+        }
+      }
+      if (mgr.power && mgr.power.total > 0) {
+        var powerScore = mgr.power.total;
+        if (powerScore > 80) {
+          points.push({ type: 'good', icon: '✅', text: '经理综合能力评分' + powerScore + '，行业前20%优秀水平' });
+        } else if (powerScore < 50) {
+          points.push({ type: 'warn', icon: '⚠️', text: '经理综合能力评分' + powerScore + '偏低，低于行业平均' });
+        }
+      }
+    }
+
+    // === 综合判定 ===
+    var pct = maxScore > 0 ? score / maxScore : 0;
+    var verdict, verdictClass, verdictIcon, summary;
+
+    if (pct >= 0.7) {
+      verdict = '推荐买入';
+      verdictClass = 'fc-verdict-buy';
+      verdictIcon = '🟢';
+    } else if (pct >= 0.5) {
+      verdict = '可以关注，分批建仓';
+      verdictClass = 'fc-verdict-hold';
+      verdictIcon = '🟡';
+    } else if (pct >= 0.3) {
+      verdict = '谨慎观望';
+      verdictClass = 'fc-verdict-caution';
+      verdictIcon = '🟠';
+    } else {
+      verdict = '不建议买入';
+      verdictClass = 'fc-verdict-avoid';
+      verdictIcon = '🔴';
+    }
+
+    // 生成总结
+    var dangerCount = points.filter(function(p) { return p.type === 'danger'; }).length;
+    var goodCount = points.filter(function(p) { return p.type === 'good'; }).length;
+    if (dangerCount >= 2) {
+      verdict = '强烈回避';
+      verdictClass = 'fc-verdict-avoid';
+      verdictIcon = '🔴';
+      summary = '该基金存在' + dangerCount + '项严重风险，综合评估不建议触碰。张扬认为：宁可错过也不要踩雷，投资首要原则是保住本金。';
+    } else if (dangerCount === 1 && goodCount < 2) {
+      verdict = '不建议买入';
+      verdictClass = 'fc-verdict-avoid';
+      verdictIcon = '🔴';
+      summary = '该基金存在重大风险隐患，且优势不足以对冲。张扬建议：除非你对该基金有深入研究并能接受全部风险，否则远离。';
+    } else if (goodCount >= 4 && dangerCount === 0) {
+      verdict = '强烈推荐';
+      verdictClass = 'fc-verdict-buy';
+      verdictIcon = '🟢';
+      summary = '该基金在规模、评级、收益、风控等多个维度表现优异，无明显风险点。张扬认为：这是值得长期持有的优质标的，适合定投或逢低加仓。';
+    } else if (goodCount >= 3) {
+      summary = '该基金整体质量不错，主要优势在于' + points.filter(function(p) { return p.type === 'good'; }).slice(0, 2).map(function(p) { return p.text.split('，')[0]; }).join('、') + '。张扬建议：可以小仓位试水，待熟悉其波动特征后再加仓。';
+    } else {
+      summary = '该基金表现中规中矩，无明显亮点也无致命缺陷。张扬建议：如果你看好该基金所在赛道，可以作为配置工具，但不要重仓。';
+    }
+
+    return {
+      verdict: verdict,
+      verdictClass: verdictClass,
+      verdictIcon: verdictIcon,
+      points: points,
+      summary: summary
+    };
   }
 
   function riskCard(label, value, hint) {
@@ -1111,7 +1429,7 @@ var FundUI = (function() {
       container.innerHTML = '<div class="fund-industry-loading">正在搜索...</div>';
       return;
     }
-    var html = results.map(function(item) {
+    var html = results.map(function(item, idx) {
       var ind = item.industry;
       var pct = ind.pct10 || 50;
       var valTag = pct < 30
@@ -1119,6 +1437,14 @@ var FundUI = (function() {
         : pct > 70
         ? '<span class="fund-ind-val-tag high">高估 ' + pct + '%分位</span>'
         : '<span class="fund-ind-val-tag mid">中位 ' + pct + '%分位</span>';
+
+      var fundCount = item.funds.length;
+      var avgScore = fundCount > 0
+        ? Math.round(item.funds.reduce(function(s, f) { return s + (f._score || 0); }, 0) / fundCount)
+        : 0;
+      // 检测是否有风险警告
+      var hasWarning = item.funds.some(function(f) { return (f._warnings || []).length > 0; });
+      var warnTag = hasWarning ? '<span class="fund-ind-warn-icon" title="含风险提示">⚠️</span>' : '';
 
       var fundsHtml = item.funds.map(function(r) {
         var isETF = (r.cat === 'zs' || (r.name && r.name.indexOf('ETF') >= 0));
@@ -1131,21 +1457,28 @@ var FundUI = (function() {
         var sharpText = (r.sharp != null && !isNaN(r.sharp)) ? '夏普 ' + r.sharp.toFixed(2) : '夏普 —';
         var fee = parseFloat(r.purchaseFee) || 0;
         var feeText = fee === 0 ? '费率 0%' : '费率 ' + fee + '%';
+        var scoreBadge = '<span class="fund-rec-score">评分 ' + (r._score || 0) + '</span>';
 
         var tagsHtml = '';
         (r._advantages || []).slice(0, 3).forEach(function(a) {
           tagsHtml += '<span class="fund-rec-tag adv">✓ ' + esc(a) + '</span>';
         });
+        (r._warnings || []).slice(3).slice(0, 3).forEach(function(w) {
+          var cls = w.indexOf('⚠️') >= 0 ? 'danger' : 'warn';
+          tagsHtml += '<span class="fund-rec-tag ' + cls + '">' + esc(w) + '</span>';
+        });
+        // Also include the first 3 warnings (was previously limited to 3 total)
         (r._warnings || []).slice(0, 3).forEach(function(w) {
           var cls = w.indexOf('⚠️') >= 0 ? 'danger' : 'warn';
           tagsHtml += '<span class="fund-rec-tag ' + cls + '">' + esc(w) + '</span>';
         });
 
-        return '<div class="fund-rec-card" onclick="FundUI.openFundDetail(\'' + r.code + '\')">' +
+        return '<div class="fund-rec-card" onclick="FundUI.openFundDetail(\'' + r.code + '\',\'' + esc(r.name).replace(/'/g, "\\'") + '\')">' +
           '<div class="fund-rec-top">' +
             '<span class="fund-rec-name">' + esc(r.name) + '</span>' +
             '<span class="fund-rec-code">' + esc(r.code) + '</span>' +
             badge +
+            scoreBadge +
           '</div>' +
           '<div class="fund-rec-metrics">' +
             '<span>规模 <b>' + scaleText + '</b></span>' +
@@ -1157,10 +1490,17 @@ var FundUI = (function() {
         '</div>';
       }).join('');
 
-      return '<div class="fund-industry-card">' +
-        '<div class="fund-ind-card-header">' +
+      // 默认折叠，第一个行业展开
+      var expanded = idx === 0 ? ' expanded' : '';
+      var toggleIcon = idx === 0 ? '▼' : '▶';
+
+      return '<div class="fund-industry-card' + expanded + '" data-industry="' + esc(ind.name) + '">' +
+        '<div class="fund-ind-card-header" onclick="FundUI.toggleIndustryCard(this)">' +
+          '<span class="fund-ind-toggle">' + toggleIcon + '</span>' +
           '<span class="fund-ind-name">' + esc(ind.name) + '</span>' +
           valTag +
+          '<span class="fund-ind-fund-count">' + fundCount + '只</span>' +
+          warnTag +
         '</div>' +
         '<div class="fund-ind-funds">' + fundsHtml + '</div>' +
       '</div>';
@@ -1168,14 +1508,24 @@ var FundUI = (function() {
     container.innerHTML = html;
   }
 
-  function openFundDetail(code) {
-    if (code) openDetail(code);
+  function toggleIndustryCard(headerEl) {
+    var card = headerEl.closest('.fund-industry-card');
+    if (!card) return;
+    var isExpanded = card.classList.contains('expanded');
+    card.classList.toggle('expanded');
+    var toggle = headerEl.querySelector('.fund-ind-toggle');
+    if (toggle) toggle.textContent = isExpanded ? '▶' : '▼';
+  }
+
+  function openFundDetail(code, name) {
+    if (code) openDetail(code, name);
   }
 
   return {
     init: init,
     backToSearch: function() { closeDetail(); },
     openFundDetail: openFundDetail,
+    toggleIndustryCard: toggleIndustryCard,
     renderIndustryFunds: renderIndustryFunds
   };
 })();
