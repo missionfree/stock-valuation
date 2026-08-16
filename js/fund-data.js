@@ -25,14 +25,14 @@ var FundData = (function() {
     }
     // localStorage 备用
     try {
-      var raw = localStorage.getItem('_fund_bi_' + code);
+      var raw = localStorage.getItem('_fund_bi2_' + code);
       if (raw) {
         var obj = JSON.parse(raw);
         if (obj && obj.ts && Date.now() - obj.ts < _CACHE_TTL) {
           _memCache[code] = obj;
           return obj.data;
         }
-        localStorage.removeItem('_fund_bi_' + code);
+        localStorage.removeItem('_fund_bi2_' + code);
       }
     } catch (e) {}
     return null;
@@ -41,7 +41,7 @@ var FundData = (function() {
   function cacheSet(code, data) {
     var obj = { data: data, ts: Date.now() };
     _memCache[code] = obj;
-    try { localStorage.setItem('_fund_bi_' + code, JSON.stringify(obj)); } catch (e) {}
+    try { localStorage.setItem('_fund_bi2_' + code, JSON.stringify(obj)); } catch (e) {}
   }
 
   /* ---------- 通用 script / JSONP 加载器 ---------- */
@@ -146,7 +146,7 @@ var FundData = (function() {
       retAll: num(f[15]),
       estabDate: f[16],
       buyStatus: f[17],
-      scaleYi: num(f[18]),
+      scaleYi: null,  // rankhandler f[18] 非规模数据（实为成立来收益率），规模需通过 basicInfo(ENDNAV) 获取
       purchaseFee: f[19],
       redeemFee: f[20],
       manageFee: f[22],
@@ -255,7 +255,20 @@ var FundData = (function() {
     return jsonp(url, 'callback', 8000).then(function(data) {
       var d = data && data.Datas;
       if (!d) return null;
-      var scale = d.FEGM ? (parseFloat(d.FEGM) / 100000000) : null;
+      // ENDNAV = 期末净资产（元），是真正的资产规模
+      // FEGM = 基金份额（份），仅货币基金 1份≈1元 时才等于资产规模
+      // 优先用 ENDNAV，缺失时用 FEGM×单位净值 估算，最后退回 FEGM
+      var endNav = d.ENDNAV ? parseFloat(d.ENDNAV) : null;
+      var fegm = d.FEGM ? parseFloat(d.FEGM) : null;
+      var dwjz = d.DWJZ ? parseFloat(d.DWJZ) : null;
+      var scale = null;
+      if (endNav != null && !isNaN(endNav) && endNav > 0) {
+        scale = endNav / 100000000;  // 元 → 亿元
+      } else if (fegm != null && !isNaN(fegm) && fegm > 0 && dwjz != null && !isNaN(dwjz) && dwjz > 0) {
+        scale = (fegm * dwjz) / 100000000;  // 份额×净值 → 亿元
+      } else if (fegm != null && !isNaN(fegm) && fegm > 0) {
+        scale = fegm / 100000000;  // 货币基金兜底（1份≈1元）
+      }
       var info = {
         code: d.FCODE,
         name: d.SHORTNAME,
