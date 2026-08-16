@@ -3434,6 +3434,15 @@ function forceRefreshAll() {
   try { localStorage.removeItem('quote_cache_v4'); } catch(e) {}
   try { localStorage.removeItem('sector_flow_cache_v2'); } catch(e) {}
   try { localStorage.removeItem('treasury_10y_cache_v3'); } catch(e) {}
+  // 清除旧版基金基础信息缓存（_fund_bi_ 和 _fund_bi2_），确保规模数据刷新
+  try {
+    var keys = Object.keys(localStorage);
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].indexOf('_fund_bi') === 0) {
+        localStorage.removeItem(keys[i]);
+      }
+    }
+  } catch(e) {}
 
   showToast('🔄 正在重新拉取数据…');
   runAnalysis(true);
