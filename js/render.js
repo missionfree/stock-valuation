@@ -1934,57 +1934,15 @@ function fetchTreasuryYield(forceRefresh) {
  * @param {object|null} realtimeData - 实时行情数据 {code: {price, pe, ...}}
  */
 function renderDashboard(realtimeData) {
-  // === 数据有效性校验 ===
+  // ============================================================
+  // 实时市场仪表盘（高敏感度·分钟级更新）
+  // 替代旧的估值仪表盘（格雷厄姆/PE等月级别变化指标）
+  // 4个卡片：市场温度 / 主力资金 / 涨跌家数 / 日内动量
+  // ============================================================
+
   var hasRealtime = realtimeData && Object.keys(realtimeData).length > 0;
 
-  // === 格雷厄姆指数：用沪深300 PE（大盘股标准参考口径） ===
-  var hs300 = BASE_DATA.indices.filter(function(i) { return i.code === 'sh000300'; })[0];
-  var peHS300 = hs300 ? hs300.pe : 14.3;
-  if (hasRealtime && realtimeData['sh000300']) {
-    var rt300 = realtimeData['sh000300'];
-    if (rt300.pe && rt300.pe > 0 && rt300.pe < 100) peHS300 = rt300.pe;
-  }
-
-  // === 性感指数 & 股债利差：用全市场PE（含全部A股） ===
-  var csiAll = BASE_DATA.indices.filter(function(i) { return i.code === 'sh000985'; })[0];
-  var peAllA = csiAll ? csiAll.pe : 18.5;
-  if (hasRealtime && realtimeData['sh000985']) {
-    var rtAll = realtimeData['sh000985'];
-    if (rtAll.pe && rtAll.pe > 0 && rtAll.pe < 100) peAllA = rtAll.pe;
-  }
-
-  // 国债收益率有效性校验
-  var treasuryDecimal = TREASURY_10Y / 100;
-  if (isNaN(treasuryDecimal) || treasuryDecimal <= 0 || treasuryDecimal >= 0.1) {
-    treasuryDecimal = 0.017169; // 兜底：1.7169%（2026-08-03 datacenter API确认值）
-  }
-
-  // 全市场等权PE估算：基于行业板块PE的简单平均（等权）计算
-  // 优先使用实时行业ETF PE数据，回退到静态基准
-  var sectorPEs = BASE_DATA.sectors.map(function(s) {
-    var rt = realtimeData && realtimeData[s.etfCode];
-    if (rt && rt.pe && rt.pe > 0) return roundPrecise(rt.pe, 2); // 实时PE（高精度）
-    return s.pe; // 静态基准PE
-  }).filter(function(p) { return p > 0; });
-  var equalWeightPE = sectorPEs.length > 0
-    ? sectorPEs.reduce(function(a, b) { return a + b; }, 0) / sectorPEs.length
-    : peAllA * 1.85; // 兜底：行业数据缺失时用1.85倍近似（基于近年A股实际比值）
-  var peAllA_eq = Math.max(20, Math.min(60, equalWeightPE));
-
-  // 核心计算（带NaN/Infinity防护）
-  var earningsYieldHS300 = 1 / Math.max(1, peHS300);         // 沪深300盈利收益率
-  var graham = earningsYieldHS300 / treasuryDecimal;          // 格雷厄姆指数（沪深300口径）
-  if (!isFinite(graham)) graham = 0;
-
-  var earningsYieldAllA_eq = 1 / Math.max(1, peAllA_eq);      // 全市场等权盈利收益率
-  var sexy = earningsYieldAllA_eq / treasuryDecimal - 1;      // 性感指数（等权口径，超额收益率）
-  if (!isFinite(sexy)) sexy = 0;
-  var sexyHS300 = graham - 1;  // 沪深300吸引力（保守口径，与仓位建议一致）
-  var earningsYieldAllA = 1 / Math.max(1, peAllA);            // 市值加权盈利收益率（用于股债利差）
-  var spread = earningsYieldAllA * 100 - TREASURY_10Y;        // 股债利差(百分点，市值加权口径)
-  if (isNaN(spread)) spread = 0;
-
-  // 显示国债收益率（含日期，提升数据透明度）
+  // 显示国债收益率（保留，仍有参考价值）
   var trEl = document.getElementById('dashTreasury');
   if (trEl) {
     var trText = '国债 ' + TREASURY_10Y.toFixed(4) + '%';
@@ -1992,143 +1950,233 @@ function renderDashboard(realtimeData) {
     trEl.textContent = trText;
   }
 
-  // === 格雷厄姆指数 ===
-  // 阈值校准：低利率环境下graham天然偏高（PE14/国债1.7%≈4.2），需提高阈值避免长期"黄金买入区"
-  // 历史分位校准：graham > 4.5 为极端低位（近10年前5%），3.5-4.5 偏低，2.5-3.5 适中，<2.5 偏高
-  var grahamCard = document.getElementById('dashGraham');
-  var grahamVal = grahamCard.querySelector('.d-val');
-  var grahamTag = grahamCard.querySelector('.d-tag');
-  animateOdometer(grahamVal, graham.toFixed(2));
-  if (graham >= 4.5) {
-    grahamVal.className = 'd-val t-red';
-    grahamTag.textContent = '黄金买入区';
-    grahamTag.className = 'd-tag red';
-    grahamCard.className = 'dash-card hl-red';
-  } else if (graham >= 3.5) {
-    grahamVal.className = 'd-val t-red';
-    grahamTag.textContent = '具备投资价值';
-    grahamTag.className = 'd-tag red';
-    grahamCard.className = 'dash-card hl-red';
-  } else if (graham >= 2.5) {
-    grahamVal.className = 'd-val t-yellow';
-    grahamTag.textContent = '适中区间';
-    grahamTag.className = 'd-tag yellow';
-    grahamCard.className = 'dash-card';
-  } else {
-    grahamVal.className = 'd-val t-green';
-    grahamTag.textContent = '风险偏高';
-    grahamTag.className = 'd-tag green';
-    grahamCard.className = 'dash-card';
-  }
+  // ========== 卡片1: 市场温度（恐慌贪婪指数 0-100） ==========
+  var tempCard = document.getElementById('dashTemp');
+  if (tempCard) {
+    var tempVal = tempCard.querySelector('.d-val');
+    var tempTag = tempCard.querySelector('.d-tag');
+    var tempBarFill = tempCard.querySelector('.temp-bar-fill');
+    var sent = (typeof _lastSentimentData !== 'undefined') ? _lastSentimentData : null;
 
-  // === 沪深300吸引力指数（保守口径，与仓位建议同口径） ===
-  var sexyCard = document.getElementById('dashSexy');
-  var sexyVal = sexyCard.querySelector('.d-val');
-  var sexySub = sexyCard.querySelector('.d-sub');
-  animateOdometer(sexyVal, sexyHS300.toFixed(2));
-  // 沪深300吸引力阈值（与第一层核心指标一致）：
-  // >3 绝对低位（红），2~3 熊市低位（红），1~2 适中（黄），0~1 偏高（黄），<0 泡沫（绿）
-  if (sexyHS300 >= 2) {
-    sexyVal.style.color = '#FF0000';
-    sexyVal.style.textShadow = '0 0 8px rgba(255, 0, 0,0.4)';
-    sexyCard.className = 'dash-card hl-red';
-  } else if (sexyHS300 >= 1) {
-    sexyVal.style.color = '#FFD700';
-    sexyVal.style.textShadow = '0 0 8px rgba(255,215,0,0.4)';
-    sexyCard.className = 'dash-card';
-  } else {
-    sexyVal.style.color = '#00AA00';
-    sexyVal.style.textShadow = '0 0 8px rgba(0, 170, 0,0.4)';
-    sexyCard.className = 'dash-card';
-  }
-  sexySub.textContent = (sexyHS300 >= 3 ? '绝对低位' : sexyHS300 >= 2 ? '熊市低位' : sexyHS300 >= 1 ? '适中区间' : sexyHS300 >= 0 ? '偏高区间' : '泡沫预警') + ' · 超额收益率·沪深300保守口径';
+    if (sent && typeof sent.score === 'number') {
+      var score = sent.score;
+      if (typeof animateOdometer === 'function') {
+        animateOdometer(tempVal, String(score));
+      } else {
+        tempVal.textContent = score;
+      }
 
-  // === 仓位建议：吸引力指数映射股票仓位百分比 ===
-  // 改用沪深300保守口径 sexyHS300 = graham - 1（与第一层"沪深300吸引力"一致）
-  // sexyHS300 ≤ 0 → 0%股（全仓债券）
-  // 0 < sexyHS300 < 1.5 → stockPos% = sexyHS300 / 1.5 × 100
-  // 1.5 ≤ sexyHS300 < 2.5 → 100%（满仓股票）
-  // sexyHS300 ≥ 2.5 → 超配
-  var posBar = document.getElementById('dashSexyPos');
-  if (posBar) {
-    var stockPos, posLabel, isOverweight;
-    if (sexyHS300 <= 0) {
-      stockPos = 0; isOverweight = false;
-      posLabel = '仓位建议 0%股 / 100%债';
-    } else if (sexyHS300 < 1) {
-      stockPos = Math.round(sexyHS300 * 30); isOverweight = false;
-      posLabel = '仓位建议 ' + stockPos + '%股 / ' + (100 - stockPos) + '%债';
-    } else if (sexyHS300 < 2) {
-      stockPos = 30 + Math.round((sexyHS300 - 1) * 20); isOverweight = false;
-      posLabel = '仓位建议 ' + stockPos + '%股 / ' + (100 - stockPos) + '%债';
-    } else if (sexyHS300 < 3) {
-      stockPos = 50 + Math.round((sexyHS300 - 2) * 15); isOverweight = false;
-      posLabel = '仓位建议 ' + stockPos + '%股 / ' + (100 - stockPos) + '%债';
+      // 温度等级判定
+      var tempLevel, tempClass;
+      if (score <= 25) { tempLevel = '极度恐慌'; tempClass = 't-red'; tempCard.className = 'dash-card glass-card hl-red'; }
+      else if (score <= 45) { tempLevel = '恐慌'; tempClass = 't-red'; tempCard.className = 'dash-card glass-card hl-red'; }
+      else if (score <= 55) { tempLevel = '中性'; tempClass = 't-yellow'; tempCard.className = 'dash-card glass-card'; }
+      else if (score <= 75) { tempLevel = '贪婪'; tempClass = 't-green'; tempCard.className = 'dash-card glass-card'; }
+      else { tempLevel = '极度贪婪'; tempClass = 't-green'; tempCard.className = 'dash-card glass-card hl-green'; }
+
+      tempVal.className = 'd-val ' + tempClass;
+      tempTag.textContent = tempLevel;
+      tempTag.className = 'd-tag ' + (score <= 45 ? 'red' : score <= 55 ? 'yellow' : 'green');
+
+      // 温度条填充
+      if (tempBarFill) {
+        tempBarFill.style.width = Math.max(2, score) + '%';
+        // 温度条颜色：恐慌=红，中性=黄，贪婪=绿
+        if (score <= 45) {
+          tempBarFill.style.background = 'linear-gradient(90deg, #FF0000, #FF6B6B)';
+        } else if (score <= 55) {
+          tempBarFill.style.background = 'linear-gradient(90deg, #FFAE00, #FFD700)';
+        } else {
+          tempBarFill.style.background = 'linear-gradient(90deg, #00AA00, #00C853)';
+        }
+      }
     } else {
-      stockPos = 80; isOverweight = false;
-      posLabel = '仓位建议 80%股 / 20%债';
-    }
-    var posFill = posBar.querySelector('.pos-bar-fill');
-    var posLabelEl = posBar.querySelector('.pos-bar-label');
-    if (posFill) posFill.style.width = Math.min(stockPos, 100) + '%';
-    if (posLabelEl) {
-      posLabelEl.textContent = posLabel;
-      posLabelEl.className = isOverweight ? 'pos-bar-label overweight' : 'pos-bar-label';
+      tempVal.textContent = '—';
+      tempTag.textContent = '等待数据';
+      tempTag.className = 'd-tag gray';
+      if (tempBarFill) tempBarFill.style.width = '0%';
     }
   }
 
-  // === 股债利差 ===
-  var spreadCard = document.getElementById('dashSpread');
-  var spreadVal = spreadCard.querySelector('.d-val');
-  var spreadTag = spreadCard.querySelector('.d-tag');
-  animateOdometer(spreadVal, spread.toFixed(2) + '%');
-  if (spread >= 4) {
-    spreadVal.className = 'd-val t-red';
-    spreadTag.textContent = '股票性价比高';
-    spreadTag.className = 'd-tag red';
-    spreadCard.className = 'dash-card hl-red';
-  } else if (spread >= 2) {
-    spreadVal.className = 'd-val t-yellow';
-    spreadTag.textContent = '股票略优';
-    spreadTag.className = 'd-tag yellow';
-    spreadCard.className = 'dash-card';
-  } else {
-    spreadVal.className = 'd-val t-green';
-    spreadTag.textContent = '债券更优';
-    spreadTag.className = 'd-tag green';
-    spreadCard.className = 'dash-card';
+  // ========== 卡片2: 主力资金净流入 ==========
+  var flowCard = document.getElementById('dashFlow');
+  if (flowCard) {
+    var flowVal = flowCard.querySelector('.d-val');
+    var flowTag = flowCard.querySelector('.d-tag');
+    var flowSub = document.getElementById('dashFlowSub');
+    var sf = (typeof _lastSectorFlowData !== 'undefined') ? _lastSectorFlowData : null;
+
+    if (sf && typeof sf.totalMain === 'number') {
+      var totalMainYi = sf.totalMain / 10000; // 万元 → 亿元
+      var flowStr = (totalMainYi >= 0 ? '+' : '') + totalMainYi.toFixed(1) + '亿';
+      if (typeof animateOdometer === 'function') {
+        animateOdometer(flowVal, flowStr);
+      } else {
+        flowVal.textContent = flowStr;
+      }
+
+      var inflowCount = sf.inflow ? sf.inflow.length : 0;
+      var outflowCount = sf.outflow ? sf.outflow.length : 0;
+
+      if (totalMainYi > 0) {
+        flowVal.className = 'd-val t-red';
+        flowTag.textContent = '净流入';
+        flowTag.className = 'd-tag red';
+        flowCard.className = 'dash-card glass-card hl-red';
+      } else if (totalMainYi < 0) {
+        flowVal.className = 'd-val t-green';
+        flowTag.textContent = '净流出';
+        flowTag.className = 'd-tag green';
+        flowCard.className = 'dash-card glass-card hl-green';
+      } else {
+        flowVal.className = 'd-val t-yellow';
+        flowTag.textContent = '均衡';
+        flowTag.className = 'd-tag yellow';
+        flowCard.className = 'dash-card glass-card';
+      }
+
+      if (flowSub) {
+        flowSub.textContent = inflowCount + '板块流入 / ' + outflowCount + '板块流出';
+      }
+    } else {
+      flowVal.textContent = '—';
+      flowTag.textContent = '等待数据';
+      flowTag.className = 'd-tag gray';
+      if (flowSub) flowSub.textContent = '板块资金·实时';
+    }
   }
 
-  // === 沪深300 PE ===
-  var peCard = document.getElementById('dashPE');
-  var peVal = peCard.querySelector('.d-val');
-  var peTag = peCard.querySelector('.d-tag');
-  animateOdometer(peVal, peHS300.toFixed(1));
-  // 动态计算PE分位：使用统一的精度工具函数
-  var pct = hs300 ? calcDynamicPct(hs300.pct10, hs300.pe, peHS300, hs300.peMin, hs300.peMax) : 37;
-  var pctRounded = pct;
-  if (pct < 30) {
-    peVal.className = 'd-val t-red';
-    peTag.textContent = '低估区间 · 分位' + pctRounded + '%';
-    peTag.className = 'd-tag red';
-    peCard.className = 'dash-card hl-red';
-  } else if (pct < 70) {
-    peVal.className = 'd-val t-yellow';
-    peTag.textContent = '适中区间 · 分位' + pctRounded + '%';
-    peTag.className = 'd-tag yellow';
-    peCard.className = 'dash-card';
-  } else {
-    peVal.className = 'd-val t-green';
-    peTag.textContent = '偏高区间 · 分位' + pctRounded + '%';
-    peTag.className = 'd-tag green';
-    peCard.className = 'dash-card';
+  // ========== 卡片3: 涨跌家数比 ==========
+  var breadthCard = document.getElementById('dashBreadth');
+  if (breadthCard) {
+    var brVal = breadthCard.querySelector('.d-val');
+    var brTag = breadthCard.querySelector('.d-tag');
+    var brSub = document.getElementById('dashBreadthSub');
+    var sent2 = (typeof _lastSentimentData !== 'undefined') ? _lastSentimentData : null;
+
+    if (sent2 && typeof sent2.up === 'number' && typeof sent2.down === 'number') {
+      var upCount = sent2.up;
+      var downCount = sent2.down;
+      var ratio = downCount > 0 ? (upCount / downCount).toFixed(2) : '∞';
+      var brStr = upCount + ':' + downCount;
+      if (typeof animateOdometer === 'function') {
+        animateOdometer(brVal, brStr);
+      } else {
+        brVal.textContent = brStr;
+      }
+
+      if (upCount > downCount * 1.5) {
+        brVal.className = 'd-val t-red';
+        brTag.textContent = '涨多跌少';
+        brTag.className = 'd-tag red';
+        breadthCard.className = 'dash-card glass-card hl-red';
+      } else if (downCount > upCount * 1.5) {
+        brVal.className = 'd-val t-green';
+        brTag.textContent = '跌多涨少';
+        brTag.className = 'd-tag green';
+        breadthCard.className = 'dash-card glass-card hl-green';
+      } else {
+        brVal.className = 'd-val t-yellow';
+        brTag.textContent = '多空均衡';
+        brTag.className = 'd-tag yellow';
+        breadthCard.className = 'dash-card glass-card';
+      }
+
+      if (brSub) {
+        var lu = sent2.limitUp || 0;
+        var ld = sent2.limitDown || 0;
+        brSub.textContent = '比' + ratio + ' · 涨停' + lu + ' 跌停' + ld;
+      }
+    } else {
+      brVal.textContent = '—';
+      brTag.textContent = '等待数据';
+      brTag.className = 'd-tag gray';
+      if (brSub) brSub.textContent = '全A涨跌·实时';
+    }
   }
 
-  // 同步更新首屏Hero仪表盘
+  // ========== 卡片4: 日内动量（多指数加权涨跌幅） ==========
+  var momCard = document.getElementById('dashMomentum');
+  if (momCard) {
+    var momVal = momCard.querySelector('.d-val');
+    var momTag = momCard.querySelector('.d-tag');
+    var momSub = document.getElementById('dashMomentumSub');
+    var rt = realtimeData || (typeof _lastRealtimeData !== 'undefined' ? _lastRealtimeData : null);
+
+    if (rt) {
+      // 加权动量：沪深300(40%) + 创业板指(30%) + 科创50(30%)
+      var chg300 = rt['sh000300'] ? rt['sh000300'].changePercent : null;
+      var chgCYB = rt['sz399006'] ? rt['sz399006'].changePercent : null;
+      var chgKC = rt['sh000688'] ? rt['sh000688'].changePercent : null;
+
+      // 备选指数
+      if (chg300 === null || chg300 === undefined) {
+        chg300 = rt['sh000001'] ? rt['sh000001'].changePercent : 0;
+      }
+
+      var weights = [];
+      var changes = [];
+      if (chg300 !== null && chg300 !== undefined) { weights.push(0.4); changes.push(chg300); }
+      if (chgCYB !== null && chgCYB !== undefined) { weights.push(0.3); changes.push(chgCYB); }
+      if (chgKC !== null && chgKC !== undefined) { weights.push(0.3); changes.push(chgKC); }
+
+      var totalWeight = weights.reduce(function(a, b) { return a + b; }, 0);
+      var weightedChg = 0;
+      if (totalWeight > 0) {
+        for (var i = 0; i < changes.length; i++) {
+          weightedChg += changes[i] * (weights[i] / totalWeight);
+        }
+      }
+
+      var momStr = (weightedChg >= 0 ? '+' : '') + weightedChg.toFixed(2) + '%';
+      if (typeof animateOdometer === 'function') {
+        animateOdometer(momVal, momStr);
+      } else {
+        momVal.textContent = momStr;
+      }
+
+      if (weightedChg > 0.5) {
+        momVal.className = 'd-val t-red';
+        momTag.textContent = '强势上攻';
+        momTag.className = 'd-tag red';
+        momCard.className = 'dash-card glass-card hl-red';
+      } else if (weightedChg > 0) {
+        momVal.className = 'd-val t-red';
+        momTag.textContent = '小幅上涨';
+        momTag.className = 'd-tag red';
+        momCard.className = 'dash-card glass-card';
+      } else if (weightedChg > -0.5) {
+        momVal.className = 'd-val t-green';
+        momTag.textContent = '小幅下跌';
+        momTag.className = 'd-tag green';
+        momCard.className = 'dash-card glass-card';
+      } else {
+        momVal.className = 'd-val t-green';
+        momTag.textContent = '弱势下行';
+        momTag.className = 'd-tag green';
+        momCard.className = 'dash-card glass-card hl-green';
+      }
+
+      if (momSub) {
+        var parts = [];
+        if (chg300 !== null && chg300 !== undefined) parts.push('沪深300 ' + (chg300 >= 0 ? '+' : '') + chg300.toFixed(2) + '%');
+        if (chgCYB !== null && chgCYB !== undefined) parts.push('创业板 ' + (chgCYB >= 0 ? '+' : '') + chgCYB.toFixed(2) + '%');
+        if (chgKC !== null && chgKC !== undefined) parts.push('科创50 ' + (chgKC >= 0 ? '+' : '') + chgKC.toFixed(2) + '%');
+        momSub.textContent = parts.join(' · ') || '多指数加权';
+      }
+    } else {
+      momVal.textContent = '—';
+      momTag.textContent = '等待数据';
+      momTag.className = 'd-tag gray';
+      if (momSub) momSub.textContent = '沪深300·创业板·科创50';
+    }
+  }
+
+  // ========== 高温预警 ==========
   var sentScore = _lastSentimentData ? _lastSentimentData.score : undefined;
-  updateHeroDashboard(graham, sexy, sentScore);
+  updateHeroDashboard(null, null, sentScore);
 
-  // 更新Hero时间戳（含交易时段智能标注）
+  // ========== 更新时间戳 ==========
   var heroTs = document.getElementById('heroTimestamp');
   if (heroTs) {
     var now = new Date();
@@ -2137,7 +2185,6 @@ function renderDashboard(realtimeData) {
     var tsBase = '更新于 ' + hh + ':' + mm + ' · 数据来源：腾讯+东方财富';
     var tsHint = getTradeStatusHint();
     heroTs.innerHTML = tsBase + tsHint.badge + (tsHint.hint ? '<span class="timestamp-hint">' + tsHint.hint + '</span>' : '');
-    // 非交易时间给body添加标记，使资金流箭头静止
     if (!tsHint.isTrading) {
       document.body.classList.add('market-closed');
     } else {
@@ -2147,21 +2194,10 @@ function renderDashboard(realtimeData) {
 }
 
 /**
- * 更新首屏估值仪表盘（核心决策数据 + 动态权重）
+ * 更新首屏仪表盘动态效果（高温预警等）
  */
 function updateHeroDashboard(graham, sexy, sentimentScore, sentimentLevel) {
-  // 格雷厄姆指数 - 动态权重高亮（首屏估值仪表盘）
-  var hgCard = document.getElementById('dashGraham');
-  if (hgCard) {
-    hgCard.classList.remove('weight-risk', 'weight-buy');
-    if (graham >= 4.5) {
-      hgCard.classList.add('weight-buy');
-    } else if (graham < 2.5) {
-      hgCard.classList.add('weight-risk');
-    }
-  }
-
-  // 市场温度 - 高温预警
+  // 市场温度 - 高温预警（温度>70时显示）
   var htwEl = document.getElementById('highTempWarning');
   if (htwEl && sentimentScore !== undefined) {
     if (sentimentScore > 70) {

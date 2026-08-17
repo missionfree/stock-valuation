@@ -11086,3 +11086,107 @@ body {
   0% { transform: translate(-150%, -50%); }
   100% { transform: translate(50%, -50%); }
 }
+
+/* ============================================================
+   ★★★★★ 新实时市场仪表盘样式 ★★★★★
+   ============================================================ */
+
+/* ---- 温度条（市场温度卡片） ---- */
+.temp-bar {
+  margin-top: 0.3rem;
+}
+.temp-bar-track {
+  height: 5px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.temp-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.4s ease;
+  position: relative;
+}
+.temp-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 8px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 0 3px 3px 0;
+  filter: blur(2px);
+}
+
+/* ---- 仪表盘卡片增强 ---- */
+.dash-grid-hero .dash-card {
+  position: relative;
+  overflow: hidden;
+}
+/* 卡片顶部彩色指示线 */
+.dash-grid-hero .dash-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  opacity: 0.6;
+  transition: background 0.4s ease;
+}
+.dash-grid-hero .dash-card.hl-red::before {
+  background: linear-gradient(90deg, transparent, rgba(255,0,0,0.5), transparent);
+}
+.dash-grid-hero .dash-card.hl-green::before {
+  background: linear-gradient(90deg, transparent, rgba(0,170,0,0.5), transparent);
+}
+
+/* ---- 数值字体增强 ---- */
+.dash-grid-hero .dash-card .d-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* ---- 子文字行 ---- */
+.dash-grid-hero .dash-card .d-sub {
+  font-size: 0.52rem;
+  color: var(--muted, #6B7D99);
+  margin-top: 0.15rem;
+  line-height: 1.3;
+  min-height: 0.7rem;
+}
+
+/* ---- 标签增强 ---- */
+.dash-grid-hero .dash-card .d-tag {
+  margin-top: 0.2rem;
+  display: inline-block;
+}
+
+/* ---- 数值颜色统一（A股标准） ---- */
+.dash-grid-hero .dash-card .d-val.t-red {
+  color: #FF0000;
+  text-shadow: 0 0 12px rgba(255, 0, 0, 0.3);
+}
+.dash-grid-hero .dash-card .d-val.t-green {
+  color: #00AA00;
+  text-shadow: 0 0 12px rgba(0, 170, 0, 0.3);
+}
+.dash-grid-hero .dash-card .d-val.t-yellow {
+  color: #FFAE00;
+  text-shadow: 0 0 12px rgba(255, 174, 0, 0.3);
+}
+
+/* ---- 入场动画 ---- */
+.dash-grid-hero .dash-card:nth-child(1) { animation-delay: 0.05s; }
+.dash-grid-hero .dash-card:nth-child(2) { animation-delay: 0.12s; }
+.dash-grid-hero .dash-card:nth-child(3) { animation-delay: 0.19s; }
+.dash-grid-hero .dash-card:nth-child(4) { animation-delay: 0.26s; }
+
+/* ---- 数据更新脉冲提示 ---- */
+.dash-grid-hero .dash-card.data-updated {
+  animation: dashCardPulse 0.6s ease-out;
+}
+@keyframes dashCardPulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 200, 255, 0.4); }
+  100% { box-shadow: 0 0 0 12px rgba(0, 200, 255, 0); }
+}

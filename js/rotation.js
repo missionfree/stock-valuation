@@ -3353,6 +3353,8 @@ function runAnalysis(forceRefresh) {
       _lastSectorFlowData = data;
       renderMarketFlow(data);
       renderSectorCapitalAnalysis(data);
+      // 资金流向数据就绪后，刷新仪表盘（主力资金卡片）
+      renderDashboard(_lastRealtimeData);
       generateDailyReview(false);
       // 资金流向数据就绪后，刷新消息面分析（纳入实时资金因素）
       renderNewsAnalysis();
@@ -3395,6 +3397,8 @@ function runAnalysis(forceRefresh) {
     }).then(function() {
       // 阶段3.5：刷新消息面分析（纳入情绪数据后更新）
       renderNewsAnalysis();
+      // 情绪数据就绪后，刷新仪表盘（市场温度+涨跌家数卡片）
+      renderDashboard(_lastRealtimeData);
       // 阶段3.6：所有数据就绪后，强制重新推演盘口（覆盖之前的兜底结果）
       Perf.trackedSetTimeout(function() {
         if (typeof runPatternAnalysis === 'function') runPatternAnalysis(true);
@@ -3466,6 +3470,8 @@ function refreshModule(module) {
         _lastSectorFlowData = data;
         renderMarketFlow(data);
         renderSectorCapitalAnalysis(data);
+        // 刷新仪表盘主力资金卡片
+        renderDashboard(_lastRealtimeData);
         renderNewsAnalysis();
         showToast('✅ 资金流向已刷新');
       }).catch(function() {
@@ -3485,8 +3491,13 @@ function refreshModule(module) {
     case 'sentiment':
       if (typeof refreshSentimentManual === 'function') {
         refreshSentimentManual();
+        // 情绪数据刷新后，延迟刷新仪表盘（等待数据写入）
+        Perf.trackedSetTimeout(function() {
+          renderDashboard(_lastRealtimeData);
+        }, 2000);
       } else {
         refreshSentimentData(true).then(function() {
+          renderDashboard(_lastRealtimeData);
           renderNewsAnalysis();
           showToast('✅ 情绪数据已刷新');
         });
