@@ -202,10 +202,12 @@ function searchStock() {
 
     // 判断是否为ETF/指数基金
     var isETF = stock._isETF || (_suggestMeta && _suggestMeta.isETF);
+    var isIndex = stock._isIndex || (_suggestMeta && _suggestMeta.isIndex);
 
     // 1. 先渲染行情数据（快速展示）
     var stockData = extractStockInfo(stock);
     stockData.isETF = isETF; // 标记ETF类型
+    stockData.isIndex = isIndex; // 标记指数类型
     _currentStockData = stockData;
     
     _currentFlowData = null;
@@ -216,17 +218,17 @@ function searchStock() {
     _currentMAData = null;
     _currentKlineData = null;
     renderStockResult(stockData, null, null, true);
-    showToast(isETF ? 'ETF查询成功，加载资金和K线数据...' : '查询成功，正在加载财务和资金数据...');
+    showToast(isETF ? 'ETF查询成功，加载资金和K线数据...' : isIndex ? '指数查询成功，加载资金和K线数据...' : '查询成功，正在加载财务和资金数据...');
     _suggestMeta = null;
 
     // 2. 并行加载财务数据 + 主力资金数据 + 公司概况
     var secCode = stock._secCode || stockData.code;
     var _asyncPromises = [];
 
-    if (isETF) {
-      // ETF基金：跳过财务报表/龙虎榜/公司概况/国家队（这些API不适用ETF）
+    if (isETF || isIndex) {
+      // ETF/指数：跳过财务报表/龙虎榜/公司概况/国家队（这些API不适用）
       // 仅加载主力资金流向、大盘共振、MA均线分析
-      showToast('ETF基金：加载资金流向和K线分析...');
+      showToast(isETF ? 'ETF基金：加载资金流向和K线分析...' : '指数：加载资金流向和K线分析...');
 
       // ETF评分系统：并行获取基金详情+净值+K线，计算多维度评分
       var pureEtfCode = secCode.replace(/^(sh|sz|hk)/i, '');
@@ -5723,7 +5725,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
   var d = stockData;
   if (title) {
     title.style.display = 'block';
-    title.textContent = d.isETF ? 'ETF基金详情分析' : '个股详情分析';
+    title.textContent = d.isETF ? 'ETF基金详情分析' : d.isIndex ? '指数详情分析' : '个股详情分析';
   }
 
   var changeColor = getChangeColor(d.changePct);
@@ -5800,7 +5802,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
     '</div>' +
   '</div>';
 
-  // 3. 估值指标区块（ETF显示ETF专属信息）
+  // 3. 估值指标区块（ETF/指数显示专属信息）
   if (d.isETF) {
     html += '<div class="sd-section">' +
       '<div class="sd-section-title">基金信息</div>' +
@@ -5816,6 +5818,21 @@ function renderStockResult(stockData, finData, flowData, loading) {
         '<span class="sd-tag ' + (d.changePct >= 0 ? 'red' : 'green') + '">' + (d.changePct >= 0 ? '上涨' : '下跌') + '</span>' +
       '</div>' +
       '<div class="sd-flow-note">※ ETF基金不适用PE/PB估值指标，请参考跟踪指数估值、折溢价率、规模和流动性</div>' +
+    '</div>';
+  } else if (d.isIndex) {
+    html += '<div class="sd-section">' +
+      '<div class="sd-section-title">指数信息</div>' +
+      '<div class="sd-grid">' +
+        '<div class="sd-item"><span class="sd-item-val" style="color:var(--neon-cyan)">指数</span><span class="sd-item-lbl">类型</span></div>' +
+        '<div class="sd-item"><span class="sd-item-val">' + marketCapStr + '</span><span class="sd-item-lbl">总市值</span></div>' +
+        '<div class="sd-item"><span class="sd-item-val">' + (d.turnoverRate > 0 ? d.turnoverRate.toFixed(2) + '%' : '—') + '</span><span class="sd-item-lbl">换手率</span></div>' +
+        '<div class="sd-item"><span class="sd-item-val">' + (d.amplitude > 0 ? d.amplitude.toFixed(2) + '%' : '—') + '</span><span class="sd-item-lbl">振幅</span></div>' +
+      '</div>' +
+      '<div class="sd-tag-row">' +
+        '<span class="sd-tag cyan">市场指数</span>' +
+        '<span class="sd-tag ' + (d.changePct >= 0 ? 'red' : 'green') + '">' + (d.changePct >= 0 ? '上涨' : '下跌') + '</span>' +
+      '</div>' +
+      '<div class="sd-flow-note">※ 指数不适用个股PE/PB估值和财务报表，请参考成份股整体估值、涨跌家数和资金流向</div>' +
     '</div>';
   } else {
     html += '<div class="sd-section">' +
@@ -5836,9 +5853,9 @@ function renderStockResult(stockData, finData, flowData, loading) {
     '</div>';
   }
 
-  // 4. 财务基本面区块（ETF不适用，跳过）
-  if (d.isETF) {
-    // ETF没有财务报表，不显示此区块
+  // 4. 财务基本面区块（ETF/指数不适用，跳过）
+  if (d.isETF || d.isIndex) {
+    // ETF/指数没有财务报表，不显示此区块
   } else if (loading) {
     html += '<div class="sd-section">' +
       '<div class="sd-section-title">财务基本面</div>' +
@@ -5888,7 +5905,10 @@ function renderStockResult(stockData, finData, flowData, loading) {
     '</div>';
   }
 
-  // 5. 综合投资评估区块
+  // 5. 综合投资评估区块（ETF/指数跳过，ETF有专属评分，指数不适用个股评估）
+  if (d.isETF || d.isIndex) {
+    // ETF已有renderETFScore专属评分；指数不适用个股估值/基本面/成长性评估
+  } else {
   // 评估条
   var valScore = 0, fundScore = 0, growthScore = 0;
   if (d.pe > 0 && d.pe < 15) valScore = 85;
@@ -5963,6 +5983,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
   html += formatZhangYangQuote(zyStockQuote);
 
   html += '</div>'; // .sd-assess
+  } // end of if (!d.isETF && !d.isIndex)
 
   // 6. 主力资金分析区块
   if (loading && !flowData) {
@@ -6179,8 +6200,8 @@ function renderStockResult(stockData, finData, flowData, loading) {
     }
   }
 
-  // 7. 业绩报告区块（仅A股非ETF个股，排除ST/*ST）
-  if (!d.isETF && typeof isAShareQualified === 'function' && isAShareQualified(d) && typeof renderEarningsReport === 'function') {
+  // 7. 业绩报告区块（仅A股非ETF/指数个股，排除ST/*ST）
+  if (!d.isETF && !d.isIndex && typeof isAShareQualified === 'function' && isAShareQualified(d) && typeof renderEarningsReport === 'function') {
     // 初步渲染（不含异步数据），后续异步加载机构持股+R007
     html += renderEarningsReport(d, finData, flowData, null);
   }
@@ -6229,7 +6250,7 @@ function renderStockResult(stockData, finData, flowData, loading) {
   }
 
   // 异步加载业绩报告附加数据（机构持股+R007利率）
-  if (!d.isETF && isAShareQualified(d)) {
+  if (!d.isETF && !d.isIndex && typeof isAShareQualified === 'function' && isAShareQualified(d)) {
     loadEarningsReportExtras(d, finData, flowData);
   }
 

@@ -632,25 +632,41 @@ var FundUI = (function() {
     var chgCls = chg > 0 ? 'up' : (chg < 0 ? 'down' : 'flat');
     var chgStr = (chg != null && !isNaN(chg)) ? (chg > 0 ? '+' : '') + chg.toFixed(2) + '%' : '--';
 
-    var riskStr = r.riskLevel ? 'R' + r.riskLevel : '--';
-    var ratingStr = r.rating ? Array(parseInt(r.rating, 10) || 0).join('★') : '--';
-    var scaleStr = (r.scaleYi != null && !isNaN(r.scaleYi)) ? r.scaleYi.toFixed(2) + '亿' : '--';
+    var riskStr = r.riskLevel ? 'R' + r.riskLevel : '';
+    var ratingStr = r.rating ? '★'.repeat(Math.min(parseInt(r.rating, 10) || 0, 5)) : '';
+    // 规模格式化：>100亿省略小数，10-100亿1位小数，<10亿2位小数
+    var scaleStr = '--';
+    if (r.scaleYi != null && !isNaN(r.scaleYi)) {
+      var sy = r.scaleYi;
+      if (sy >= 100) scaleStr = sy.toFixed(0) + '亿';
+      else if (sy >= 10) scaleStr = sy.toFixed(1) + '亿';
+      else scaleStr = sy.toFixed(2) + '亿';
+    }
+    // 成立日期格式化（仅显示年份）
+    var estabYear = '';
+    if (r.estabDate) {
+      var dStr = String(r.estabDate).replace(/-/g, '');
+      if (dStr.length >= 4) estabYear = dStr.substring(0, 4) + '年';
+    }
     var ret = function(v) {
       if (v == null || isNaN(v)) return '<span class="fund-cell-muted">--</span>';
       var cls = v > 0 ? 'up' : (v < 0 ? 'down' : 'flat');
       return '<span class="' + cls + '">' + (v > 0 ? '+' : '') + v.toFixed(2) + '%</span>';
     };
 
+    // 标签精简：类型+风险+评级+成立年份（公司/经理太长时省略）
+    var tags = '<span class="fund-tag">' + esc(r.type || (TYPE_MAP[r.fundType] || '基金')) + '</span>';
+    if (riskStr) tags += '<span class="fund-tag fund-tag-risk">' + riskStr + '</span>';
+    if (ratingStr) tags += '<span class="fund-tag fund-tag-rating">' + ratingStr + '</span>';
+    if (estabYear) tags += '<span class="fund-tag fund-tag-date">' + estabYear + '</span>';
+    // 公司和经理在窄屏隐藏
+    if (r.company) tags += '<span class="fund-tag fund-tag-company fund-tag-optional">' + esc(r.company) + '</span>';
+    if (r.manager) tags += '<span class="fund-tag fund-tag-mgr fund-tag-optional">' + esc(r.manager) + '</span>';
+
     tr.innerHTML =
       '<div class="fund-row-main">' +
         '<div class="fund-name">' + esc(r.name) + '<span class="fund-code">' + esc(r.code) + '</span></div>' +
-        '<div class="fund-tags">' +
-          '<span class="fund-tag">' + esc(r.type || (TYPE_MAP[r.fundType] || '基金')) + '</span>' +
-          (r.company ? '<span class="fund-tag fund-tag-company">' + esc(r.company) + '</span>' : '') +
-          (r.manager ? '<span class="fund-tag fund-tag-mgr">' + esc(r.manager) + '</span>' : '') +
-          '<span class="fund-tag">风险' + riskStr + '</span>' +
-          '<span class="fund-tag fund-tag-rating">' + ratingStr + '</span>' +
-        '</div>' +
+        '<div class="fund-tags">' + tags + '</div>' +
       '</div>' +
       '<div class="fund-row-quote">' +
         '<div class="fund-nav">' + (r.unitNav != null ? r.unitNav.toFixed(4) : '--') +
@@ -763,6 +779,21 @@ var FundUI = (function() {
     var chgCls = chg > 0 ? 'up' : (chg < 0 ? 'down' : 'flat');
     var chgStr = (chg != null && !isNaN(chg)) ? (chg > 0 ? '+' : '') + chg.toFixed(2) + '%' : '--';
 
+    // 日期格式化
+    var fmtDate = function(d) {
+      if (!d) return '--';
+      var s = String(d).replace(/-/g, '');
+      if (s.length === 8) return s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
+      return String(d);
+    };
+    // 规模格式化
+    var fmtScale = function(sy) {
+      if (sy == null || isNaN(sy)) return '--';
+      if (sy >= 100) return sy.toFixed(0) + '亿';
+      if (sy >= 10) return sy.toFixed(1) + '亿';
+      return sy.toFixed(2) + '亿';
+    };
+
     var html = '';
     html += '<div class="fund-detail-header">';
     html += '<div class="fund-detail-title">' + esc(name) + '<span class="fund-code-lg">' + esc(code) + '</span></div>';
@@ -770,13 +801,13 @@ var FundUI = (function() {
     html += '<div class="fund-detail-quote">';
     html += '<span class="fund-detail-nav">' + (b.unitNav != null ? b.unitNav.toFixed(4) : '--') + '</span>';
     html += '<span class="fund-detail-chg ' + chgCls + '">' + chgStr + '</span>';
-    html += '<span class="fund-detail-date">' + (b.date || '') + '</span>';
+    html += '<span class="fund-detail-date">' + fmtDate(b.date) + '</span>';
     html += '</div>';
     html += '<div class="fund-detail-badges">';
-    html += '<span class="fdb fdb-risk">风险等级 R' + (b.riskLevel || '-') + '</span>';
-    html += '<span class="fdb fdb-rating">晨星 ' + (b.rating ? Array(parseInt(b.rating, 10) || 0).join('★') : '--') + '</span>';
-    html += '<span class="fdb">规模 ' + (b.scaleYi != null ? b.scaleYi.toFixed(2) + '亿' : '--') + '</span>';
-    html += '<span class="fdb">成立 ' + (b.estabDate || '--') + '</span>';
+    html += '<span class="fdb fdb-risk">风险等级 ' + (b.riskLevel ? 'R' + b.riskLevel : '--') + '</span>';
+    html += '<span class="fdb fdb-rating">晨星 ' + (b.rating ? '★'.repeat(Math.min(parseInt(b.rating, 10) || 0, 5)) : '--') + '</span>';
+    html += '<span class="fdb">规模 ' + fmtScale(b.scaleYi) + '</span>';
+    html += '<span class="fdb">成立 ' + fmtDate(b.estabDate) + '</span>';
     html += '</div>';
     html += '<div class="fund-detail-rets">';
     ['ret1w', 'ret1m', 'ret3m', 'ret6m', 'ret1y', 'ret3y', 'retYear', 'retAll'].forEach(function(k) {
@@ -823,10 +854,13 @@ var FundUI = (function() {
       var lastPct = p.rateInSimilarPersent[p.rateInSimilarPersent.length - 1];
       var pctVal = Array.isArray(lastPct) ? lastPct[1] : null;
       if (pctVal != null) {
+        var rankLevel = pctVal <= 25 ? '优秀' : pctVal <= 50 ? '良好' : pctVal <= 75 ? '一般' : '偏弱';
+        var rankColor = pctVal <= 25 ? '#00c853' : pctVal <= 50 ? '#ffd700' : pctVal <= 75 ? '#ff9800' : '#ff4d4f';
         html += '<div class="fund-detail-section"><div class="fund-sec-title">🏆 同类排名</div>';
         html += '<div class="fund-rank-wrap">';
-        html += '<div class="fund-rank-gauge"><div class="fund-rank-gauge-inner" style="width:' + Math.min(100, pctVal) + '%"></div></div>';
-        html += '<div class="fund-rank-text">同类排名百分位 <b>' + pctVal.toFixed(2) + '%</b>（越小越优）</div>';
+        html += '<div class="fund-rank-badge" style="border-color:' + rankColor + ';color:' + rankColor + '">' + rankLevel + '</div>';
+        html += '<div class="fund-rank-gauge"><div class="fund-rank-gauge-inner" style="width:' + Math.min(100, pctVal) + '%;background:linear-gradient(90deg,' + rankColor + 'aa,' + rankColor + ')"></div></div>';
+        html += '<div class="fund-rank-text">同类排名百分位 <b style="color:' + rankColor + '">' + pctVal.toFixed(1) + '%</b>（越小越优）</div>';
         html += '</div></div>';
       }
     }
@@ -1329,7 +1363,7 @@ var FundUI = (function() {
     html += '<div class="fund-mgr-head">';
     html += '<div class="fund-mgr-avatar">' + esc((mgr.name || '?').charAt(0)) + '</div>';
     html += '<div class="fund-mgr-info">';
-    html += '<div class="fund-mgr-name">' + esc(mgr.name || '--') + (mgr.star ? '<span class="fund-mgr-star">' + Array(parseInt(mgr.star, 10) || 0).join('★') + '</span>' : '') + '</div>';
+    html += '<div class="fund-mgr-name">' + esc(mgr.name || '--') + (mgr.star ? '<span class="fund-mgr-star">' + '★'.repeat(Math.min(parseInt(mgr.star, 10) || 0, 5)) + '</span>' : '') + '</div>';
     html += '<div class="fund-mgr-meta">任职 ' + esc(mgr.workTime || '--') + ' · 管理规模 ' + esc(mgr.fundSize || '--') + '</div>';
     html += '</div></div>';
     // 经理能力评分

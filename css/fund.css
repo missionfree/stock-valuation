@@ -305,6 +305,10 @@
 .fund-tag-company { color: #ffae00; background: rgba(255,174,0,0.08); border-color: rgba(255,174,0,0.15); }
 .fund-tag-mgr { color: #a78bfa; background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.15); }
 .fund-tag-rating { color: #ffd700; background: rgba(255,215,0,0.08); border-color: rgba(255,215,0,0.15); }
+.fund-tag-risk { color: #ff9800; background: rgba(255,152,0,0.08); border-color: rgba(255,152,0,0.15); font-weight: 600; }
+.fund-tag-date { color: #80cbc4; background: rgba(128,203,196,0.08); border-color: rgba(128,203,196,0.15); }
+.fund-tag-optional { transition: opacity 0.2s; }
+@media (max-width: 860px) { .fund-tag-optional { display: none !important; } }
 
 .fund-row-quote { text-align: right; }
 .fund-nav { font-size: 0.85rem; font-weight: 700; color: var(--ink, #E0E8F5); font-family: 'JetBrains Mono', monospace; }
@@ -405,16 +409,20 @@
 .frc-hint { font-size: 0.55rem; color: var(--muted, #6B7D99); margin-top: 0.2rem; line-height: 1.4; }
 
 .fund-rank-wrap { }
+.fund-rank-badge {
+  display: inline-block; padding: 0.2rem 0.7rem; border-radius: 4px;
+  font-size: 0.7rem; font-weight: 700; border: 1px solid;
+  margin-bottom: 0.5rem;
+}
 .fund-rank-gauge {
   height: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; overflow: hidden;
   border: 1px solid rgba(0,200,255,0.15);
 }
 .fund-rank-gauge-inner {
-  height: 100%; background: linear-gradient(90deg, #00c853, #ffd700, #ff4d4f);
-  border-radius: 6px; transition: width .6s;
+  height: 100%; border-radius: 6px; transition: width .6s;
 }
 .fund-rank-text { font-size: 0.68rem; color: var(--muted, #8aa0bb); margin-top: 0.4rem; }
-.fund-rank-text b { color: var(--accent, #00C8FF); }
+.fund-rank-text b { font-size: 0.75rem; }
 
 .fund-range-tabs { display: flex; gap: 0.3rem; margin-bottom: 0.5rem; }
 .fund-range-tab {
