@@ -10654,3 +10654,435 @@ html {
   line-height: 1.5; margin-top: 0.2rem;
   padding-top: 0.2rem; border-top: 1px solid rgba(128,128,128,0.08);
 }
+
+/* ============================================================
+   ★★★★★ UI 设计系统统一层 ★★★★★
+   统一间距/字体/过渡/颜色/圆角/无障碍
+   ============================================================ */
+
+/* ---- 1. 设计 Token 扩展 ---- */
+:root {
+  /* 间距体系（4px基准） */
+  --space-xs: 0.25rem;   /* 4px */
+  --space-sm: 0.5rem;    /* 8px */
+  --space-md: 0.75rem;   /* 12px */
+  --space-lg: 1rem;      /* 16px */
+  --space-xl: 1.5rem;    /* 24px */
+  --space-2xl: 2rem;     /* 32px */
+
+  /* 字体阶梯（1.125比率） */
+  --fs-2xs: 0.5rem;
+  --fs-xs: 0.56rem;
+  --fs-sm: 0.625rem;
+  --fs-base: 0.72rem;
+  --fs-md: 0.8rem;
+  --fs-lg: 0.9rem;
+  --fs-xl: 1rem;
+  --fs-2xl: 1.25rem;
+  --fs-3xl: 1.5rem;
+
+  /* 过渡体系 */
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --dur-fast: 0.15s;
+  --dur-base: 0.25s;
+  --dur-slow: 0.4s;
+
+  /* 圆角统一 */
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+
+  /* A股涨跌色统一（单一来源） */
+  --stock-up: #FF0000;
+  --stock-up-bg: rgba(255, 0, 0, 0.12);
+  --stock-up-glow: 0 0 8px rgba(255, 0, 0, 0.3);
+  --stock-down: #00AA00;
+  --stock-down-bg: rgba(0, 170, 0, 0.12);
+  --stock-down-glow: 0 0 8px rgba(0, 170, 0, 0.3);
+  --stock-flat: #9E9E9E;
+  --stock-flat-bg: rgba(158, 158, 158, 0.12);
+
+  /* 语义色统一 */
+  --color-success: #00AA00;
+  --color-success-bg: rgba(0, 170, 0, 0.1);
+  --color-warning: #FFAE00;
+  --color-warning-bg: rgba(255, 174, 0, 0.1);
+  --color-danger: #FF0000;
+  --color-danger-bg: rgba(255, 0, 0, 0.1);
+  --color-info: #00C8FF;
+  --color-info-bg: rgba(0, 200, 255, 0.1);
+}
+
+/* ---- 2. A股涨跌色全局统一 ---- */
+/* 基金模块 .up/.down/.flat 对齐 A股标准色 */
+.up { color: var(--stock-up) !important; }
+.down { color: var(--stock-down) !important; }
+.flat { color: var(--stock-flat) !important; }
+
+/* 基金点评色统一 */
+.fc-verdict-buy { background: var(--color-success-bg); color: var(--color-success); border-color: rgba(0,170,0,0.25); }
+.fc-verdict-hold { background: rgba(255,174,0,0.1); color: var(--color-warning); border-color: rgba(255,174,0,0.2); }
+.fc-verdict-caution { background: rgba(255,174,0,0.12); color: var(--color-warning); border-color: rgba(255,174,0,0.25); }
+.fc-verdict-avoid { background: var(--color-danger-bg); color: var(--color-danger); border-color: rgba(255,0,0,0.25); }
+.fc-point-good .fc-point-text { color: var(--color-success); }
+.fc-point-warn .fc-point-text { color: var(--color-warning); }
+.fc-point-danger .fc-point-text { color: var(--color-danger); }
+
+/* 基金推荐标签统一 */
+.fund-rec-tag.adv { background: var(--color-success-bg); color: var(--color-success); }
+.fund-rec-tag.warn { background: var(--color-warning-bg); color: var(--color-warning); }
+.fund-rec-tag.danger { background: var(--color-danger-bg); color: var(--color-danger); }
+.fund-rec-metrics .up { color: var(--stock-up) !important; }
+.fund-rec-metrics .down { color: var(--stock-down) !important; }
+.fund-ind-val-tag.low { background: var(--stock-up-bg); color: var(--stock-up); }
+.fund-ind-val-tag.high { background: var(--color-success-bg); color: var(--color-success); }
+.fund-rank-gauge-inner { background: linear-gradient(90deg, var(--stock-down), var(--color-warning), var(--stock-up)); }
+
+/* ---- 3. 过渡动画统一 ---- */
+/* 所有交互元素统一使用标准缓动 */
+.tab-nav-btn,
+.val-card, .stat-card, .dash-card, .tier1-big,
+.fund-row, .fund-rec-card, .fund-page-btn,
+.fund-select, .fund-order-btn, .fund-reset-btn,
+.fund-risk-group button, .fund-rating-group button,
+.fund-range-tab, .fund-detail-back,
+.fund-industry-refresh-btn, .fund-ind-card-header {
+  transition: all var(--dur-base) var(--ease-out) !important;
+}
+
+/* 主题切换平滑过渡 */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0s;
+}
+body, .app-header, .glass-card, .dash-card, .val-card, .stat-card,
+.tab-nav, .fund-search-bar, .fund-filter-bar, .fund-industry-recommend,
+.fund-detail-header, .fund-detail-section, .fund-industry-card {
+  transition: background-color var(--dur-slow) var(--ease-smooth),
+              border-color var(--dur-slow) var(--ease-smooth),
+              color var(--dur-slow) var(--ease-smooth);
+}
+
+/* ---- 4. 卡片视觉层次优化 ---- */
+/* 主卡片：更强的深度感和内发光 */
+.glass-card, .dash-card, .val-card, .stat-card,
+.insight, .spotlight-card, .rot-block, .market-flow {
+  box-shadow:
+    0 4px 20px rgba(0,0,0,0.35),
+    0 0 0 1px rgba(0,200,255,0.04),
+    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+
+/* hover 增强：轻微上浮 + 光晕扩散 */
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover,
+  .dash-card:hover,
+  .val-card:hover,
+  .stat-card:hover,
+  .spotlight-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 8px 28px rgba(0,0,0,0.4),
+      0 0 0 1px rgba(0,200,255,0.12),
+      0 0 24px rgba(0,200,255,0.08),
+      inset 0 1px 0 rgba(255,255,255,0.08) !important;
+  }
+}
+
+/* 触摸设备：点击反馈 */
+@media (hover: none) and (pointer: coarse) {
+  .val-card:active, .stat-card:active,
+  .dash-card:active, .glass-card:active {
+    transform: scale(0.97);
+    transition: transform 0.08s var(--ease-out);
+  }
+  .fund-row:active, .fund-rec-card:active {
+    background: rgba(0,200,255,0.1);
+  }
+}
+
+/* ---- 5. 基金模块视觉统一 ---- */
+/* 基金搜索栏/筛选栏圆角和阴影对齐主卡片 */
+.fund-search-bar,
+.fund-industry-recommend {
+  border-radius: var(--radius) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,200,255,0.04);
+}
+
+.fund-filter-bar {
+  border-radius: var(--radius) !important;
+}
+
+/* 基金详情区圆角统一 */
+.fund-detail-header,
+.fund-detail-section {
+  border-radius: var(--radius) !important;
+}
+
+/* 基金按钮统一样式 */
+.fund-search-bar button,
+.fund-order-btn,
+.fund-industry-refresh-btn,
+.fund-detail-back,
+.fund-range-tab,
+.fund-page-btn {
+  border-radius: var(--radius-sm) !important;
+  font-weight: 600;
+}
+
+/* 基金搜索按钮渐变增强 */
+.fund-search-bar button {
+  background: linear-gradient(135deg, var(--accent), #0090c8);
+  color: #04121f;
+  box-shadow: 0 2px 8px rgba(0,200,255,0.2);
+}
+.fund-search-bar button:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 4px 16px rgba(0,200,255,0.3);
+}
+.fund-search-bar button:active {
+  transform: scale(0.96);
+}
+
+/* 基金输入框 focus 统一 */
+.fund-search-bar input:focus,
+.fund-select:focus,
+.fund-num-input:focus,
+.fund-date-input:focus,
+.fund-manager-input:focus,
+.fund-page-jump:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(0,200,255,0.15);
+  outline: none;
+}
+
+/* ---- 6. 分页器视觉优化 ---- */
+.fund-page-btn {
+  border-radius: var(--radius-sm) !important;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fund-page-btn.active {
+  background: linear-gradient(135deg, rgba(0,200,255,0.2), rgba(0,200,255,0.1));
+  box-shadow: 0 0 8px rgba(0,200,255,0.2);
+}
+
+/* ---- 7. 基金详情头部增强 ---- */
+.fund-detail-header {
+  position: relative;
+  overflow: hidden;
+}
+.fund-detail-header::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,200,255,0.4), rgba(255,174,0,0.3), transparent);
+}
+
+/* ---- 8. 行业推荐卡片折叠动画 ---- */
+.fund-ind-funds {
+  overflow: hidden;
+  transition: max-height var(--dur-slow) var(--ease-out), opacity var(--dur-base) var(--ease-out);
+}
+.fund-industry-card:not(.expanded) .fund-ind-funds {
+  max-height: 0;
+  opacity: 0;
+}
+.fund-industry-card.expanded .fund-ind-funds {
+  max-height: 2000px;
+  opacity: 1;
+}
+.fund-ind-toggle {
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+.fund-industry-card.expanded .fund-ind-toggle {
+  transform: rotate(90deg);
+}
+
+/* ---- 9. 列表行 hover 微交互 ---- */
+.fund-row {
+  position: relative;
+}
+.fund-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+.fund-row:hover::before,
+.fund-row:active::before {
+  opacity: 0.6;
+}
+
+/* ---- 10. Spinner 优化 ---- */
+.fdl-spinner {
+  border-width: 2px;
+  animation: fdl-rot 0.6s linear infinite;
+}
+
+/* ---- 11. 无障碍：增强可见性 ---- */
+/* 焦点环统一 */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* ---- 12. 增强无障碍：动效降级 ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .glass-card:hover, .val-card:hover, .stat-card:hover,
+  .dash-card:hover, .spotlight-card:hover {
+    transform: none !important;
+  }
+  .fund-ind-funds {
+    transition: none !important;
+  }
+  #particleCanvas, #coinRainCanvas, #dataStreamWall, #scanLineOverlay {
+    display: none !important;
+  }
+}
+
+/* ---- 13. 滚动条美化 ---- */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0,200,255,0.15);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,200,255,0.3);
+}
+
+/* ---- 14. 文字可读性增强 ---- */
+/* 小字体最低可读尺寸保障 */
+.fund-ret-label,
+.fund-rec-tag,
+.fund-tag,
+.fund-ind-fund-count,
+.fund-rec-score,
+.fund-rec-badge,
+.fund-ind-val-tag,
+.fund-page-info,
+.fund-sort-info,
+.fund-detail-date,
+.fund-detail-sub,
+.fdr-label,
+.frc-label,
+.frc-hint,
+.fund-mgr-meta,
+.fmp-label,
+.ff-label,
+.fund-empty-mini,
+.fund-list-meta {
+  line-height: 1.4;
+}
+
+/* ---- 15. 组合模块圆角统一 ---- */
+.portfolio-section {
+  border-radius: var(--radius) !important;
+}
+
+/* ---- 16. 主题切换过渡防闪烁 ---- */
+body {
+  transition: background-color var(--dur-slow) var(--ease-smooth),
+              color var(--dur-slow) var(--ease-smooth);
+}
+
+/* ---- 17. 移动端触控优化 ---- */
+@media (hover: none) and (pointer: coarse) {
+  .tab-nav-btn,
+  .fund-search-bar button,
+  .fund-order-btn,
+  .fund-reset-btn,
+  .fund-page-btn,
+  .fund-range-tab,
+  .fund-detail-back,
+  .fund-industry-refresh-btn {
+    min-height: 40px;
+  }
+  .fund-select,
+  .fund-num-input,
+  .fund-date-input,
+  .fund-manager-input {
+    min-height: 36px;
+  }
+}
+
+/* ---- 18. 桌面端 hover 增强细节 ---- */
+@media (hover: hover) and (pointer: fine) {
+  .fund-rec-card:hover {
+    border-color: rgba(0,200,255,0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,200,255,0.08);
+  }
+  .fund-page-btn:hover:not(.active):not(:disabled) {
+    background: rgba(0,200,255,0.1);
+    border-color: rgba(0,200,255,0.25);
+  }
+  .fund-order-btn:hover {
+    background: rgba(0,200,255,0.15);
+    transform: translateY(-1px);
+  }
+  .fund-detail-back:hover {
+    background: rgba(0,200,255,0.15);
+    transform: translateX(-2px);
+  }
+  .fund-range-tab:hover:not(.active) {
+    background: rgba(0,200,255,0.1);
+    border-color: rgba(0,200,255,0.2);
+  }
+}
+
+/* ---- 19. 中大屏布局优化 ---- */
+@media (min-width: 768px) {
+  .fund-detail-rets {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .fund-risk-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ---- 20. 加载态骨架屏效果 ---- */
+.fund-list-loading {
+  position: relative;
+}
+.fund-list-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,200,255,0.04), transparent);
+  transform: translate(-50%, -50%);
+  animation: shimmer 1.5s infinite;
+  pointer-events: none;
+}
+@keyframes shimmer {
+  0% { transform: translate(-150%, -50%); }
+  100% { transform: translate(50%, -50%); }
+}
