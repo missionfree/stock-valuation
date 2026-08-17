@@ -11231,3 +11231,205 @@ body {
   0% { box-shadow: 0 0 0 0 rgba(0, 200, 255, 0.4); }
   100% { box-shadow: 0 0 0 12px rgba(0, 200, 255, 0); }
 }
+
+/* ============================================================
+   政策主线·7大受益方向 卡片区
+   ============================================================ */
+.policy-themes {
+  margin: 0.6rem 0;
+}
+.pt-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+.pt-section-sub {
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: var(--muted);
+  opacity: 0.8;
+}
+.pt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 0.5rem;
+}
+.pt-card {
+  position: relative;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border, rgba(255,255,255,0.08));
+  border-left: 3px solid var(--pt-color, var(--accent));
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.7rem;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  cursor: default;
+  animation: ptCardIn 0.4s ease-out backwards;
+}
+.pt-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  border-color: var(--pt-color, var(--accent));
+}
+.pt-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--pt-color, var(--accent)), transparent);
+  opacity: 0.6;
+}
+@keyframes ptCardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pt-card:nth-child(1) { animation-delay: 0.05s; }
+.pt-card:nth-child(2) { animation-delay: 0.10s; }
+.pt-card:nth-child(3) { animation-delay: 0.15s; }
+.pt-card:nth-child(4) { animation-delay: 0.20s; }
+.pt-card:nth-child(5) { animation-delay: 0.25s; }
+.pt-card:nth-child(6) { animation-delay: 0.30s; }
+.pt-card:nth-child(7) { animation-delay: 0.35s; }
+
+.pt-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+.pt-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 4px var(--pt-color, transparent));
+}
+.pt-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.pt-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.pt-policy {
+  font-size: 0.6rem;
+  color: var(--muted);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pt-pct {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  background: rgba(128,128,128,0.1);
+  min-width: 3rem;
+  text-align: center;
+}
+.pt-pct.pt-up {
+  color: #FF0000;
+  background: rgba(255,0,0,0.08);
+}
+.pt-pct.pt-down {
+  color: #00AA00;
+  background: rgba(0,170,0,0.08);
+}
+.pt-direction {
+  font-size: 0.62rem;
+  color: var(--text);
+  opacity: 0.75;
+  margin-bottom: 0.4rem;
+  line-height: 1.35;
+  padding-left: 0.1rem;
+  border-left: 2px solid var(--pt-color);
+  padding-left: 0.35rem;
+}
+.pt-etf {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.4rem;
+  background: rgba(var(--pt-color-rgb, 79,140,255), 0.08);
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 0.3rem;
+}
+.pt-etf:hover {
+  background: rgba(var(--pt-color-rgb, 79,140,255), 0.15);
+}
+.pt-etf-badge {
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--pt-color, var(--accent));
+  padding: 0.05rem 0.25rem;
+  border-radius: 0.2rem;
+  flex-shrink: 0;
+}
+.pt-etf-name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pt-etf-code {
+  font-size: 0.6rem;
+  color: var(--muted);
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+.pt-etf-price {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.pt-desc {
+  font-size: 0.58rem;
+  color: var(--muted);
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
+/* 响应式：小屏幕2列 */
+@media (max-width: 640px) {
+  .pt-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+  }
+  .pt-card {
+    padding: 0.5rem;
+  }
+  .pt-icon { font-size: 1.1rem; }
+  .pt-name { font-size: 0.75rem; }
+  .pt-policy { font-size: 0.55rem; }
+  .pt-direction { font-size: 0.55rem; }
+  .pt-desc { font-size: 0.52rem; }
+  .pt-etf-name { font-size: 0.62rem; }
+  .pt-etf-price { font-size: 0.62rem; }
+}
+@media (max-width: 380px) {
+  .pt-grid {
+    grid-template-columns: 1fr;
+  }
+}

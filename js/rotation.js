@@ -3586,6 +3586,14 @@ var ETF_RECOMMEND_DB = {
     { name: '新能源ETF', code: 'sh516160', keywords: ['新能源', '光伏', '储能'], reason: '能源转型长期主线' },
     { name: '芯片ETF', code: 'sh512760', keywords: ['芯片', '半导体设备', '国产替代'], reason: '半导体设备国产替代加速' },
     { name: '黄金ETF', code: 'sh518880', keywords: ['黄金', '贵金属', '避险'], reason: '避险资产，对冲风险' },
+    // 政策主线7大主题ETF
+    { name: '数字经济ETF', code: 'sz159658', keywords: ['数字经济', '数据要素', '数字中国', '东数西算', '数据资产'], reason: '数字中国建设规划落地，数据要素市场化加速' },
+    { name: '先进制造ETF', code: 'sh516050', keywords: ['先进制造', '智能制造', '高端制造', '工业母机', '专精特新'], reason: '新型工业化推进，制造强国战略核心' },
+    { name: '创新药ETF', code: 'sz159992', keywords: ['创新药', '生物医药', 'CXO', '医疗器械'], reason: '创新药出海加速，审评审批提速' },
+    { name: '碳中和ETF', code: 'sh159885', keywords: ['碳中和', '碳达峰', '绿色低碳', '绿电', '碳交易'], reason: '双碳目标长期主线，碳排放交易扩容' },
+    { name: '养老产业ETF', code: 'sh516970', keywords: ['银发经济', '养老', '康养', '适老化'], reason: '老龄化加速，银发经济万亿市场' },
+    { name: '农业ETF', code: 'sz159825', keywords: ['现代农业', '乡村振兴', '种业', '转基因', '粮食安全'], reason: '种业振兴行动，转基因商业化' },
+    { name: '低空经济ETF', code: 'sh159507', keywords: ['低空经济', 'eVTOL', '无人机', '飞行汽车', '通用航空'], reason: '低空经济纳入战略性新兴产业，万亿新赛道' },
   ],
   broad: [
     { name: '沪深300ETF', code: 'sh510300', keywords: ['大盘', '蓝筹', '核心资产'], reason: 'A股核心资产，估值低位' },

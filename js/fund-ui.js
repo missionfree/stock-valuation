@@ -1455,7 +1455,15 @@ var FundUI = (function() {
     { name: '通信', keywords: ['通信', '5G'], etfCode: '515880', pct10: 85 },
     { name: '人工智能', keywords: ['人工智能', 'AI'], etfCode: '515980', pct10: 75 },
     { name: '机器人', keywords: ['机器人'], etfCode: '562500', pct10: 60 },
-    { name: '黄金', keywords: ['黄金'], etfCode: '518880', pct10: 90 }
+    { name: '黄金', keywords: ['黄金'], etfCode: '518880', pct10: 90 },
+    // 政策主线7大主题
+    { name: '数字经济', keywords: ['数字经济', '数据要素', '数据资产', '数字中国', '东数西算'], etfCode: '159658', pct10: 65 },
+    { name: '先进制造', keywords: ['先进制造', '智能制造', '高端制造', '工业母机', '专精特新', '新型工业化'], etfCode: '516050', pct10: 45 },
+    { name: '生物医药', keywords: ['生物医药', '创新药', '医疗器械', 'CXO', '基因治疗'], etfCode: '159992', pct10: 30 },
+    { name: '绿色低碳', keywords: ['绿色低碳', '碳中和', '碳达峰', '绿电', '碳排放', '碳交易'], etfCode: '159885', pct10: 40 },
+    { name: '银发经济', keywords: ['银发经济', '养老', '适老化', '康养', '智慧养老'], etfCode: '516970', pct10: 15 },
+    { name: '现代农业', keywords: ['现代农业', '乡村振兴', '种业', '转基因', '智慧农业'], etfCode: '159825', pct10: 25 },
+    { name: '低空经济', keywords: ['低空经济', 'eVTOL', '无人机', '飞行汽车', '通用航空'], etfCode: '159507', pct10: 70 }
   ];
   var _industryFundCache = null;
   var _industryFundLoading = false;

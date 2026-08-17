@@ -324,6 +324,66 @@ var POLICY_CACHE_KEY = 'policy_news_cache_v1';
 var POLICY_CACHE_TTL = 30 * 60 * 1000; // 30分钟
 
 // 政策关键词匹配规则
+/* ===== 政策主线数据模型：7大政策受益主题 ===== */
+var POLICY_THEMES = [
+  {
+    name: '数字经济', icon: '💿', color: '#4f8cff',
+    keywords: ['数字经济','数字化转型','数据要素','数据资产','数字中国','东数西算','数据局','数据二十条','数字基础设施'],
+    etfCode: 'sz159658', etfName: '数字经济ETF',
+    policy: '《数字中国建设整体布局规划》全面落地',
+    direction: '数据要素市场化配置·算力基础设施加速',
+    desc: '数据资产入表推进，数据要素×行动计划实施'
+  },
+  {
+    name: '先进制造', icon: '🏭', color: '#e8722c',
+    keywords: ['先进制造','智能制造','高端制造','制造强国','工业母机','数控机床','专精特新','新型工业化','产业升级','工业互联网'],
+    etfCode: 'sh516050', etfName: '先进制造ETF',
+    policy: '新型工业化·制造强国战略',
+    direction: '工业母机国产替代+专精特新培育',
+    desc: '高端装备自主可控，制造业转型升级加速'
+  },
+  {
+    name: '生物医药', icon: '🧬', color: '#2db37c',
+    keywords: ['生物医药','创新药','医疗器械','CXO','药品审评','一致性评价','医保谈判','药械集采','基因治疗','ADC'],
+    etfCode: 'sz159992', etfName: '创新药ETF',
+    policy: '创新药械审评审批加速·医保支持',
+    direction: '创新药出海+药械审评提速',
+    desc: '人口老龄化刚需，创新药估值修复'
+  },
+  {
+    name: '绿色低碳', icon: '🌱', color: '#36b37e',
+    keywords: ['绿色低碳','碳中和','碳达峰','ESG','绿电','碳排放','碳交易','节能环保','绿色金融','碳足迹'],
+    etfCode: 'sh159885', etfName: '碳中和ETF',
+    policy: '双碳目标·碳达峰碳中和路线图',
+    direction: '碳排放交易市场扩容·绿电交易',
+    desc: '双碳战略长期主线，绿色转型加速'
+  },
+  {
+    name: '银发经济', icon: '👴', color: '#8b6ed6',
+    keywords: ['银发经济','养老','适老化','康养','老年消费','养老服务','养老金融','长期护理','智慧养老','老年健康'],
+    etfCode: 'sh516970', etfName: '养老产业ETF',
+    policy: '银发经济顶层设计·养老服务体系完善',
+    direction: '适老化改造+康养服务产业链',
+    desc: '老龄化加速，银发经济万亿市场'
+  },
+  {
+    name: '现代农业', icon: '🌾', color: '#c4a747',
+    keywords: ['现代农业','乡村振兴','种业','转基因','智慧农业','农业科技','粮食安全','高标准农田','农垦','农产品加工'],
+    etfCode: 'sz159825', etfName: '农业ETF',
+    policy: '乡村振兴·种业振兴行动',
+    direction: '转基因商业化+智慧农业推广',
+    desc: '粮食安全战略，种业翻身仗'
+  },
+  {
+    name: '低空经济', icon: '🚁', color: '#5b8def',
+    keywords: ['低空经济','eVTOL','无人机','飞行汽车','低空空域','通用航空','空中交通','低空飞行','空中游览','城市空运'],
+    etfCode: 'sh159507', etfName: '低空经济ETF',
+    policy: '低空经济纳入战略性新兴产业',
+    direction: 'eVTOL适航审定+低空空域开放',
+    desc: '万亿级新赛道，低空基础设施加速'
+  }
+];
+
 var POLICY_KEYWORDS = [
   '央行', '证监会', '银保监', '国务院', '财政部', '发改委', '工信部',
   '降息', '降准', 'LPR', 'MLF', '逆回购', '再贷款',
@@ -333,7 +393,15 @@ var POLICY_KEYWORDS = [
   '房地产', '楼市', '住房', '保障房',
   '注册制', '并购', '重组', '减持', '分红',
   '碳达峰', '碳中和', '绿色', '环保',
-  '消费', '内需', '新基建', '数字经济'
+  '消费', '内需', '新基建',
+  // 政策主线7大主题关键词
+  '数字经济','数字化转型','数据要素','数据资产','数字中国','东数西算','数据局',
+  '先进制造','智能制造','高端制造','制造强国','工业母机','专精特新','新型工业化',
+  '生物医药','创新药','医疗器械','CXO','药品审评','医保谈判','基因治疗',
+  '绿色低碳','碳达峰','碳中和','ESG','绿电','碳排放','碳交易',
+  '银发经济','养老','适老化','康养','长期护理','智慧养老',
+  '现代农业','乡村振兴','种业','转基因','智慧农业','粮食安全','高标准农田',
+  '低空经济','eVTOL','无人机','飞行汽车','低空空域','通用航空'
 ];
 
 // 利空关键词
@@ -395,7 +463,15 @@ function extractSectors(title, desc) {
     '机器人': ['机器人', '自动化'],
     '通信': ['通信', '5G', '6G', '光模块', 'CPO'],
     '煤炭': ['煤炭', '能源'],
-    '有色': ['有色', '金属', '铜', '铝', '锂']
+    '有色': ['有色', '金属', '铜', '铝', '锂'],
+    // 政策主线7大主题
+    '数字经济': ['数字经济', '数据要素', '数据资产', '数字中国', '东数西算', '数据局', '数字化转型'],
+    '先进制造': ['先进制造', '智能制造', '高端制造', '制造强国', '工业母机', '专精特新', '新型工业化', '产业升级'],
+    '生物医药': ['生物医药', '创新药', '医疗器械', 'CXO', '药品审评', '医保谈判', '基因治疗', 'ADC'],
+    '绿色低碳': ['绿色低碳', '碳中和', '碳达峰', 'ESG', '绿电', '碳排放', '碳交易', '碳足迹'],
+    '银发经济': ['银发经济', '养老', '适老化', '康养', '老年消费', '长期护理', '智慧养老'],
+    '现代农业': ['现代农业', '乡村振兴', '种业', '转基因', '智慧农业', '粮食安全', '高标准农田'],
+    '低空经济': ['低空经济', 'eVTOL', '无人机', '飞行汽车', '低空空域', '通用航空', '空中交通']
   };
 
   Object.keys(sectorMap).forEach(function(sector) {
@@ -406,6 +482,67 @@ function extractSectors(title, desc) {
   });
 
   return sectors;
+}
+
+/**
+ * 渲染政策主线主题卡片（7大政策受益方向）
+ */
+function renderPolicyThemes() {
+  var container = document.getElementById('policyThemesGrid');
+  if (!container) return;
+
+  container.innerHTML = POLICY_THEMES.map(function(theme, idx) {
+    return '<div class="pt-card" data-theme-idx="' + idx + '" style="--pt-color:' + theme.color + '">' +
+      '<div class="pt-card-top">' +
+        '<span class="pt-icon">' + theme.icon + '</span>' +
+        '<div class="pt-card-info">' +
+          '<span class="pt-name">' + theme.name + '</span>' +
+          '<span class="pt-policy">' + theme.policy + '</span>' +
+        '</div>' +
+        '<span class="pt-pct" id="ptPct_' + idx + '">—</span>' +
+      '</div>' +
+      '<div class="pt-direction">' + theme.direction + '</div>' +
+      '<div class="pt-etf" onclick="searchStockByCode(\'' + theme.etfCode + '\')">' +
+        '<span class="pt-etf-badge">ETF</span>' +
+        '<span class="pt-etf-name">' + theme.etfName + '</span>' +
+        '<span class="pt-etf-code">' + theme.etfCode + '</span>' +
+        '<span class="pt-etf-price" id="ptPrice_' + idx + '">—</span>' +
+      '</div>' +
+      '<div class="pt-desc">' + theme.desc + '</div>' +
+    '</div>';
+  }).join('');
+
+  // 异步获取每个主题ETF的实时行情
+  POLICY_THEMES.forEach(function(theme, idx) {
+    _fetchPolicyThemeQuote(theme, idx);
+  });
+}
+
+/**
+ * 获取政策主题ETF实时行情（东方财富push2）
+ */
+function _fetchPolicyThemeQuote(theme, idx) {
+  var prefix = theme.etfCode.substring(0, 2);
+  var code = theme.etfCode.substring(2);
+  var secid = (prefix === 'sh' ? '1.' : '0.') + code;
+  var url = 'https://push2.eastmoney.com/api/qt/stock/get?ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&fields=f43,f57,f58,f170&secid=' + secid;
+
+  emJsonp(url, 6000).then(function(resp) {
+    if (!resp || !resp.data) return;
+    var d = resp.data;
+    var price = d.f43;
+    var pct = d.f170;
+    if (typeof price !== 'number' || price === 0) return;
+
+    var priceEl = document.getElementById('ptPrice_' + idx);
+    var pctEl = document.getElementById('ptPct_' + idx);
+
+    if (priceEl) priceEl.textContent = price.toFixed(3);
+    if (pctEl) {
+      pctEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+      pctEl.className = 'pt-pct ' + (pct >= 0 ? 'pt-up' : 'pt-down');
+    }
+  }).catch(function() {});
 }
 
 /**
@@ -1069,6 +1206,8 @@ function initPage() {
 
   // 渲染政策风标（先渲染静态数据，再异步获取最新政策）
   renderPolicyVane();
+  // 渲染政策主线主题卡片（7大政策受益方向）
+  renderPolicyThemes();
   // 异步获取最新政策新闻，与静态数据合并
   fetchLatestPolicyNews();
 
