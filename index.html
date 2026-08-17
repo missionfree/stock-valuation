@@ -48,8 +48,8 @@
 <link rel="preconnect" href="https://push2delay.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2his.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://datacenter-web.eastmoney.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=20260817b">
-<link rel="stylesheet" href="css/fund.css?v=20260817a">
+<link rel="stylesheet" href="css/styles.css?v=20260817c">
+<link rel="stylesheet" href="css/fund.css?v=20260817b">
 
 </head>
 <body>
@@ -182,37 +182,7 @@
     <span class="htw-icon">⚠️</span>高温预警：当前信号失效概率+35%（近3年回测数据）
   </div>
 
-  <!-- ==================== 第一层：核心指标总览 ==================== -->
-  <div class="tier1-overview">
-    <button class="card-refresh-btn tier1-refresh" onclick="refreshModule('quote')" title="刷新核心指标" aria-label="刷新核心指标" style="position:absolute;top:0.3rem;left:0.3rem;z-index:5">⟳</button>
-    <div class="tier1-grid">
-      <div class="tier1-big">
-        <div class="tb-label" title="沪深300盈利收益率 + 国债收益率，与吸引力指数同口径，>8%投资划算">综合回报率</div>
-        <div class="tb-val" id="tier1PriceStrength">—</div>
-        <div class="tb-sub" id="tier1PriceStrengthTag">计算中</div>
-      </div>
-      <div class="tier1-big">
-        <div class="tb-label" title="沪深300盈利收益率 ÷ 十年期国债收益率 − 1">沪深300吸引力</div>
-        <div class="tb-val" id="tier1AttractIdx">—</div>
-        <div class="tb-sub" id="tier1AttractSub">超额收益率·股票比债券多赚比例 · 保守口径</div>
-      </div>
-      <div class="tier1-big">
-        <div class="tb-label" title="股票盈利收益率 ÷ 国债收益率，星越多说明股票越便宜">估值星级</div>
-        <div class="tb-val val-stars" id="tier1Stars">★★★★★</div>
-        <div class="tb-sub" id="tier1StarsSub">股票收益是债券的几倍 · 星多=便宜</div>
-      </div>
-      <div class="tier1-big">
-        <div class="tb-label">全市场PE / 股息率</div>
-        <div class="tb-val" id="tier1PE">—</div>
-        <div class="tb-sub" id="tier1DivYield">股息率 —</div>
-      </div>
-    </div>
-    <div class="tier1-conclusion" id="tier1Conclusion">
-      <b>市场总览：</b>数据自动获取中，请稍候⋯
-      <span class="data-driven-label">数据驱动展示（非预测）</span>
-    </div>
-    <div class="data-source-tag" id="tier1DataSource">数据来源：腾讯财经 + 东方财富 · 更新于：—</div>
-  </div>
+  <!-- 旧的核心指标总览（估值仪表盘）已移除，由上方高敏感度实时仪表盘替代 -->
 
   <!-- ==================== 主力资金流向方向 ==================== -->
   <div class="market-flow" id="marketFlow">
@@ -1143,15 +1113,15 @@
 <script defer src="js/performance.js?v=20260810k"></script>
 <script defer src="js/config.js?v=20260810k"></script>
 <script defer src="js/utils.js?v=20260810k"></script>
-<script defer src="js/render.js?v=20260817a"></script>
-<script defer src="js/stock-analysis.js?v=20260810k"></script>
+<script defer src="js/render.js?v=20260817b"></script>
+<script defer src="js/stock-analysis.js?v=20260817a"></script>
 <script defer src="js/earnings-report.js?v=20260810k"></script>
-<script defer src="js/rotation.js?v=20260817a"></script>
+<script defer src="js/rotation.js?v=20260817b"></script>
 <script defer src="js/pattern-analysis.js?v=20260814h"></script>
 <script defer src="js/ftf-engine.js?v=20260814a"></script>
-<script defer src="js/fund-data.js?v=20260816b"></script>
-<script defer src="js/fund-ui.js?v=20260816a"></script>
-<script defer src="js/ui.js?v=20260814b"></script>
+<script defer src="js/fund-data.js?v=20260816c"></script>
+<script defer src="js/fund-ui.js?v=20260817a"></script>
+<script defer src="js/ui.js?v=20260817a"></script>
 <script defer src="js/app.js?v=20260814b"></script>
 </body>
 </html>
