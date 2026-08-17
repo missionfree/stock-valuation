@@ -320,8 +320,8 @@
 .fund-ret-label { font-size: 0.55rem; color: var(--muted, #6B7D99); }
 .fund-ret-col span:last-child { font-size: 0.66rem; font-family: 'JetBrains Mono', monospace; }
 
-.up { color: #ff4d4f; }
-.down { color: #00c853; }
+.up { color: var(--neon-red, #FF0000); }
+.down { color: var(--neon-green, #00AA00); }
 .flat { color: #9e9e9e; }
 .fund-cell-muted { color: var(--muted, #6B7D99); }
 
@@ -470,7 +470,7 @@
 .fund-mgr-prow { display: grid; grid-template-columns: 50px 1fr 40px; align-items: center; gap: 0.4rem; }
 .fmp-label { font-size: 0.62rem; color: var(--muted, #8aa0bb); }
 .fmp-bar { height: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden; }
-.fmp-bar-inner { height: 100%; background: linear-gradient(90deg, #00c853, var(--accent, #00C8FF)); border-radius: 4px; }
+.fmp-bar-inner { height: 100%; background: linear-gradient(90deg, var(--neon-green, #00AA00), var(--accent, #00C8FF)); border-radius: 4px; }
 .fmp-val { font-size: 0.62rem; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--ink, #E0E8F5); }
 .fund-mgr-tenure { font-size: 0.68rem; color: var(--muted, #8aa0bb); margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid rgba(0,200,255,0.08); }
 
