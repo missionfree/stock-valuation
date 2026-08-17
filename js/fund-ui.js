@@ -77,12 +77,151 @@ var FundUI = (function() {
     });
   }
 
+  /* ---- 基金搜索联想 ---- */
+  var _fundSuggestTimer = null;
+  var _fundSuggestSeq = 0;
+  var LS_FUND_HISTORY = 'fund_search_history_v2';
+  var MAX_FUND_HISTORY = 8;
+  var FUND_CAT_LABELS = {
+    gp: '股票型', hh: '混合型', zq: '债券型', zs: '指数型',
+    qdii: 'QDII', fof: 'FOF', hb: '货币型', lof: 'LOF', closed: '封闭式', other: '其他'
+  };
+
+  function saveFundHistory(code, name, cat) {
+    try {
+      var h = JSON.parse(localStorage.getItem(LS_FUND_HISTORY) || '[]');
+      h = h.filter(function(x) { return x.code !== code; });
+      h.unshift({ code: code, name: name, cat: cat || 'other', ts: Date.now() });
+      h = h.slice(0, MAX_FUND_HISTORY);
+      localStorage.setItem(LS_FUND_HISTORY, JSON.stringify(h));
+    } catch (e) {}
+  }
+
+  function loadFundHistory() {
+    try { return JSON.parse(localStorage.getItem(LS_FUND_HISTORY) || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function renderFundHistory() {
+    var box = document.getElementById('fundSuggest');
+    if (!box) return;
+    var h = loadFundHistory();
+    if (h.length === 0) { box.classList.remove('show'); return; }
+    var html = '<div class="suggest-history-header"><span>搜索历史</span>' +
+      '<span class="suggest-history-clear" id="clearFundHistory">清空</span></div>';
+    html += h.map(function(item) {
+      var tl = FUND_CAT_LABELS[item.cat] || '基金';
+      return '<div class="fund-suggest-item" data-fs-code="' + escHTML(item.code) + '" data-fs-name="' + escHTML(item.name||'') + '">' +
+        '<span class="suggest-type fund">' + tl + '</span>' +
+        '<span class="s-name">' + escHTML(item.name || item.code) + '</span>' +
+        '<span class="s-code">' + item.code + '</span>' +
+      '</div>';
+    }).join('');
+    box.innerHTML = html;
+    bindFundSuggestClicks(box);
+    var clr = document.getElementById('clearFundHistory');
+    if (clr) clr.addEventListener('click', function(e) {
+      e.stopPropagation();
+      localStorage.removeItem(LS_FUND_HISTORY);
+      box.classList.remove('show');
+    });
+    box.classList.add('show');
+  }
+
+  function bindFundSuggestClicks(box) {
+    box.querySelectorAll('[data-fs-code]').forEach(function(el) {
+      el.addEventListener('click', function() {
+        var code = el.getAttribute('data-fs-code');
+        var name = el.getAttribute('data-fs-name');
+        var input = document.getElementById('fundSearchInput');
+        if (input) input.value = code;
+        saveFundHistory(code, name, '');
+        box.classList.remove('show');
+        state.keyword = code;
+        doSearch();
+      });
+    });
+  }
+
+  function handleFundSearchInput(value) {
+    var box = document.getElementById('fundSuggest');
+    if (!box) return;
+    if (!value || value.trim().length === 0) {
+      renderFundHistory();
+      return;
+    }
+    if (_fundSuggestTimer) clearTimeout(_fundSuggestTimer);
+    _fundSuggestTimer = setTimeout(function() {
+      var kw = value.trim().toLowerCase();
+      var mySeq = ++_fundSuggestSeq;
+      FundData.loadUniverse().then(function(u) {
+        if (mySeq !== _fundSuggestSeq) return;
+        var isNumeric = /^\d+$/.test(kw);
+        var scored = [];
+        u.forEach(function(x) {
+          var score = -1;
+          var code = (x.code || '').toLowerCase();
+          var name = (x.name || '').toLowerCase();
+          var pinyin = (x.pinyin || '').toLowerCase();
+          var fullname = (x.fullname || '').toLowerCase();
+          if (isNumeric) {
+            if (code === kw) score = 100;
+            else if (code.indexOf(kw) === 0) score = 80;
+            else if (code.indexOf(kw) > 0) score = 60;
+          } else {
+            if (name === kw) score = 100;
+            else if (name.indexOf(kw) === 0) score = 90;
+            else if (name.indexOf(kw) > 0) score = 70;
+            else if (fullname.indexOf(kw) >= 0) score = 65;
+            else if (pinyin === kw) score = 55;
+            else if (pinyin.indexOf(kw) === 0) score = 50;
+            else if (pinyin.indexOf(kw) > 0) score = 40;
+          }
+          if (score >= 0) scored.push({ code: x.code, name: x.name, cat: x.cat, style: x.style, score: score });
+        });
+        scored.sort(function(a, b) { return b.score - a.score; });
+        var top = scored.slice(0, 10);
+        if (top.length === 0) { box.classList.remove('show'); return; }
+        var html = top.map(function(f) {
+          var tl = FUND_CAT_LABELS[f.cat] || '基金';
+          var hlName = highlightKeyword(f.name || '', value.trim());
+          var hlCode = highlightKeyword(f.code || '', value.trim());
+          var styleHint = f.style ? '<span class="fs-style">' + escHTML(f.style) + '</span>' : '';
+          return '<div class="fund-suggest-item" data-fs-code="' + escHTML(f.code) + '" data-fs-name="' + escHTML(f.name||'') + '" data-fs-cat="' + escHTML(f.cat||'') + '">' +
+            '<span class="suggest-type fund">' + tl + '</span>' +
+            '<span class="s-name">' + hlName + '</span>' +
+            styleHint +
+            '<span class="s-code">' + hlCode + '</span>' +
+          '</div>';
+        }).join('');
+        box.innerHTML = html;
+        bindFundSuggestClicks(box);
+        box.classList.add('show');
+      }).catch(function() { box.classList.remove('show'); });
+    }, 250);
+  }
+
   function bindEvents() {
     var get = function(id) { return document.getElementById(id); };
     var kw = get('fundSearchInput');
     var btn = get('fundSearchBtn');
-    if (kw) kw.addEventListener('keydown', function(e) { if (e.key === 'Enter') { state.keyword = kw.value.trim(); doSearch(); } });
-    if (btn) btn.addEventListener('click', function() { state.keyword = kw.value.trim(); doSearch(); });
+    if (kw) {
+      kw.addEventListener('keydown', function(e) { if (e.key === 'Enter') {
+        if (_fundSuggestTimer) { clearTimeout(_fundSuggestTimer); _fundSuggestTimer = null; }
+        var box = get('fundSuggest');
+        if (box) box.classList.remove('show');
+        state.keyword = kw.value.trim(); doSearch();
+      } });
+      kw.addEventListener('input', function() { handleFundSearchInput(this.value); });
+      kw.addEventListener('focus', function() {
+        if (!this.value || this.value.trim().length === 0) renderFundHistory();
+      });
+    }
+    if (btn) btn.addEventListener('click', function() {
+      var box = get('fundSuggest');
+      if (box) box.classList.remove('show');
+      state.keyword = kw.value.trim(); doSearch();
+    });
 
     var typeSel = get('fundFilterType');
     if (typeSel) typeSel.addEventListener('change', function() { state.type = typeSel.value; state.page = 1; doSearch(); });
@@ -150,6 +289,14 @@ var FundUI = (function() {
 
     var resetBtn = get('fundFilterReset');
     if (resetBtn) resetBtn.addEventListener('click', function() { resetFilters(); });
+
+    // 点击外部关闭基金搜索联想
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.fund-search-bar')) {
+        var box = get('fundSuggest');
+        if (box) box.classList.remove('show');
+      }
+    });
 
     if (kw) kw.value = '';
   }

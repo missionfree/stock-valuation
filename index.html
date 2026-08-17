@@ -1001,10 +1001,12 @@
       </div>
 
       <!-- 基金搜索 -->
-      <div class="fund-search-bar">
+      <div class="fund-search-bar" style="position:relative">
         <span class="fund-search-icon">🔍</span>
-        <input type="text" id="fundSearchInput" placeholder="输入基金代码/名称/基金经理/基金公司（如 002910 / 易方达 / 张坤）" aria-label="搜索基金">
+        <input type="text" id="fundSearchInput" placeholder="输入基金代码/名称/基金经理/基金公司（如 002910 / 易方达 / 张坤）" aria-label="搜索基金"
+               autocomplete="off">
         <button id="fundSearchBtn">搜索</button>
+        <div class="fund-suggest" id="fundSuggest" role="listbox"></div>
       </div>
 
       <!-- 筛选栏 -->

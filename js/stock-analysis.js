@@ -154,6 +154,17 @@ function searchStock() {
     var isETF = (suggest && suggest._isETF) || (_suggestMeta && _suggestMeta.isETF);
     var isIndex = (suggest && suggest._isIndex) || (_suggestMeta && _suggestMeta.isIndex);
 
+    // 保存到搜索历史（Enter直接搜索时）
+    if (suggest && suggest.Code) {
+      var _histType = 'stk';
+      if (suggest.Classify === 'Fund' || suggest.SecurityType === '8') _histType = 'etf';
+      else if (suggest.Classify === 'Index' || suggest.SecurityType === '5') _histType = 'idx';
+      else if (suggest.MktNum === '116') _histType = 'hk';
+      if (typeof saveSearchHistory === 'function') {
+        saveSearchHistory(suggest.Code, suggest.Name || _pureCode, _histType);
+      }
+    }
+
     if (!suggest) {
       // 自动检测ETF/指数类型（emSuggest未返回结果时，根据代码格式判断）
       if (!isETF && /^5\d{5}$/.test(_pureCode)) isETF = true;        // 沪市ETF: 5开头

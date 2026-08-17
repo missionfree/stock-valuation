@@ -151,6 +151,63 @@
 }
 .fund-search-bar button:hover { filter: brightness(1.1); }
 
+/* ---- 基金搜索联想 ---- */
+.fund-suggest {
+  position: absolute; bottom: calc(100% + 4px); left: 0; right: 0;
+  background: var(--bg3, #1C2330); border: 1px solid rgba(0,200,255,0.2);
+  border-radius: 8px; max-height: 360px; overflow-y: auto;
+  z-index: 100; display: none;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,200,255,0.08);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  animation: fundSuggestFadeIn 0.15s ease-out;
+}
+@keyframes fundSuggestFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fund-suggest.show { display: block; }
+.fund-suggest-item {
+  padding: 0.4rem 0.7rem; font-size: 0.72rem; cursor: pointer;
+  border-bottom: 0.5px solid rgba(0,200,255,0.05);
+  display: flex; align-items: center; gap: 0.3rem;
+  transition: background 0.12s;
+}
+.fund-suggest-item:hover { background: rgba(0,200,255,0.08); }
+.fund-suggest-item:last-child { border-bottom: none; }
+.fund-suggest-item .s-name {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--ink, #E0E8F5);
+}
+.fund-suggest-item .s-code {
+  color: var(--muted, #8B949E); font-size: 0.6rem; font-family: var(--font-mono, monospace); flex-shrink: 0;
+}
+.fund-suggest-item .fs-style {
+  font-size: 0.55rem; color: var(--muted, #8B949E);
+  background: rgba(0,200,255,0.06); padding: 0.1rem 0.3rem; border-radius: 3px;
+  flex-shrink: 0; max-width: 5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fund-suggest .suggest-type.fund {
+  background: rgba(0,200,100,0.18); color: #00c864;
+  border: 0.5px solid rgba(0,200,100,0.4);
+}
+.fund-suggest .suggest-hl {
+  color: var(--accent, #00C8FF); font-weight: 700;
+  background: rgba(0,200,255,0.12); border-radius: 2px; padding: 0 1px;
+}
+.fund-suggest .suggest-history-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.3rem 0.7rem; font-size: 0.6rem; color: var(--muted, #8B949E);
+  border-bottom: 0.5px solid rgba(0,200,255,0.1);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.fund-suggest .suggest-history-clear {
+  cursor: pointer; color: #ff5050; opacity: 0.7; transition: opacity 0.2s;
+}
+.fund-suggest .suggest-history-clear:hover { opacity: 1; }
+.fund-suggest-item.history-item { opacity: 0.85; }
+.fund-suggest-item.history-item .s-name::before { content: '🕐 '; font-size: 0.6rem; opacity: 0.6; }
+
 /* ---- 筛选栏 ---- */
 .fund-filter-bar {
   background: rgba(15,22,35,0.7); border: 1px solid rgba(0,200,255,0.1);

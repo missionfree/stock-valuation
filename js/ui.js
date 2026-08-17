@@ -317,11 +317,94 @@ function setTheme(theme) {
 })();
 
 /**
- * 搜索联想输入处理（防抖）
+ * 搜索联想输入处理（防抖 200ms + 实时价格 + 关键词高亮 + 搜索历史）
  */
 var _suggestTimer = null;
 var _searchInProgress = false; // 搜索进行中标志，防止联想回调干扰
 var _suggestMeta = null; // 搜索联想元信息 {isETF, isIndex, ...}
+var _suggestPriceSeq = 0; // 价格请求序列号，防止旧请求覆盖新结果
+var LS_SEARCH_HISTORY = 'search_history_v2';
+var MAX_HISTORY = 8;
+
+/* 关键词高亮：在文本中匹配关键词并包裹高亮span */
+function highlightKeyword(text, keyword) {
+  if (!text || !keyword) return escHTML(text || '');
+  var escText = escHTML(text);
+  var escKw = escHTML(keyword);
+  var lowerText = escText.toLowerCase();
+  var lowerKw = escKw.toLowerCase();
+  var idx = lowerText.indexOf(lowerKw);
+  if (idx < 0) return escText;
+  return escText.substring(0, idx) +
+    '<span class="suggest-hl">' + escText.substring(idx, idx + escKw.length) + '</span>' +
+    escText.substring(idx + escKw.length);
+}
+
+/* 搜索历史：保存 */
+function saveSearchHistory(code, name, type) {
+  try {
+    var history = JSON.parse(localStorage.getItem(LS_SEARCH_HISTORY) || '[]');
+    // 去重
+    history = history.filter(function(h) { return h.code !== code; });
+    history.unshift({ code: code, name: name, type: type || 'stk', ts: Date.now() });
+    history = history.slice(0, MAX_HISTORY);
+    localStorage.setItem(LS_SEARCH_HISTORY, JSON.stringify(history));
+  } catch (e) {}
+}
+
+/* 搜索历史：读取 */
+function loadSearchHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(LS_SEARCH_HISTORY) || '[]');
+  } catch (e) { return []; }
+}
+
+/* 搜索历史：渲染 */
+function renderSearchHistory() {
+  var suggest = document.getElementById('searchSuggest');
+  if (!suggest) return;
+  var history = loadSearchHistory();
+  if (history.length === 0) {
+    suggest.classList.remove('show');
+    return;
+  }
+  var typeMap = { stk: '股票', etf: 'ETF', idx: '指数', hk: '港股' };
+  var typeClassMap = { stk: 'stk', etf: 'etf', idx: 'idx', hk: 'hk' };
+  var html = '<div class="suggest-history-header">' +
+    '<span>搜索历史</span>' +
+    '<span class="suggest-history-clear" id="clearSearchHistory">清空</span>' +
+  '</div>';
+  html += history.map(function(h) {
+    var tl = typeMap[h.type] || '股票';
+    var tc = typeClassMap[h.type] || 'stk';
+    return '<div class="suggest-item history-item" role="option" data-sg-code="' + escHTML(h.code) + '" data-sg-name="' + escHTML(h.name||'') + '" data-sg-type="" data-sg-class="">' +
+      '<span class="suggest-type ' + tc + '">' + tl + '</span>' +
+      '<span>' + escHTML(h.name || h.code) + '</span>' +
+      '<span class="s-code">' + h.code + '</span>' +
+    '</div>';
+  }).join('');
+  suggest.innerHTML = html;
+  suggest.querySelectorAll('[data-sg-code]').forEach(function(item) {
+    item.addEventListener('click', function() {
+      selectSuggestion(
+        item.getAttribute('data-sg-code'),
+        item.getAttribute('data-sg-name'),
+        '',
+        '',
+        ''
+      );
+    });
+  });
+  var clearBtn = document.getElementById('clearSearchHistory');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      localStorage.removeItem(LS_SEARCH_HISTORY);
+      suggest.classList.remove('show');
+    });
+  }
+  suggest.classList.add('show');
+}
 
 function clearSearchInput() {
   var input = document.getElementById('searchInput');
@@ -349,6 +432,32 @@ function updateSearchClearBtn() {
   }
 }
 
+/* 批量获取联想项实时行情 */
+function fetchSuggestQuotes(list, keyword) {
+  var mySeq = ++_suggestPriceSeq;
+  var tencentCodes = list.map(function(s) {
+    return emToTencentCode(s.MktNum, s.Code);
+  });
+  if (tencentCodes.length === 0) return;
+  fetchEastmoneyBatch(tencentCodes).then(function(quoteMap) {
+    if (mySeq !== _suggestPriceSeq) return; // 旧请求忽略
+    var suggest = document.getElementById('searchSuggest');
+    if (!suggest || !suggest.classList.contains('show')) return;
+    list.forEach(function(s) {
+      var tc = emToTencentCode(s.MktNum, s.Code);
+      var q = quoteMap[tc];
+      if (!q) return;
+      var priceEl = suggest.querySelector('[data-sg-code="' + s.Code + '"] .suggest-price');
+      if (!priceEl) return;
+      var changeRate = q.changeRate || 0;
+      var cls = changeRate > 0 ? 'up' : (changeRate < 0 ? 'down' : 'flat');
+      var sign = changeRate > 0 ? '+' : '';
+      priceEl.innerHTML = '<span class="sp-price">' + (q.price || '--').toFixed(2) + '</span>' +
+        '<span class="sp-change ' + cls + '">' + sign + changeRate.toFixed(2) + '%</span>';
+    });
+  }).catch(function() {});
+}
+
 function handleSearchInput(value) {
   var suggest = document.getElementById('searchSuggest');
   if (!suggest) return;
@@ -356,9 +465,9 @@ function handleSearchInput(value) {
   // 更新清空按钮状态
   updateSearchClearBtn();
   
-  // 输入框为空时隐藏联想
+  // 输入框为空时显示搜索历史
   if (!value || value.trim().length === 0) {
-    suggest.classList.remove('show');
+    renderSearchHistory();
     return;
   }
   
@@ -368,21 +477,23 @@ function handleSearchInput(value) {
   if (_suggestTimer) Perf.clearTimeout(_suggestTimer);
   
   _suggestTimer = Perf.trackedSetTimeout(function() {
+    var kw = value.trim();
  // 双重检查：定时器触发时搜索可能已开始
  if (_searchInProgress) return;
- emSuggest(value.trim()).then(function(data) {
+ emSuggest(kw).then(function(data) {
       // 异步回调返回时再次检查搜索状态
       if (_searchInProgress) return;
       if (!data || !data.QuotationCodeTable || !data.QuotationCodeTable.Data) {
-        suggest.classList.remove('show');
+        // API无数据时尝试从搜索历史中匹配
+        renderHistoryMatch(kw);
         return;
       }
       var list = data.QuotationCodeTable.Data.filter(function(s) {
         return s.MktNum === '1' || s.MktNum === '0' || s.MktNum === '116';
-      }).slice(0, 8);
+      }).slice(0, 12);
       
       if (list.length === 0) {
-        suggest.classList.remove('show');
+        renderHistoryMatch(kw);
         return;
       }
       
@@ -403,10 +514,13 @@ function handleSearchInput(value) {
           typeLabel = '股票';
           typeClass = 'stk';
         }
+        var hlName = highlightKeyword(s.Name || '', kw);
+        var hlCode = highlightKeyword(s.Code || '', kw);
         return '<div class="suggest-item" role="option" data-sg-code="' + escHTML(s.Code) + '" data-sg-name="' + escHTML(s.Name||'') + '" data-sg-mkt="' + escHTML(s.MktNum) + '" data-sg-type="' + escHTML(s.SecurityType||'') + '" data-sg-class="' + escHTML(s.Classify||'') + '">' +
           '<span class="suggest-type ' + typeClass + '">' + typeLabel + '</span>' +
-          '<span>' + escHTML(s.Name || '') + '</span>' +
-          '<span class="s-code">' + s.Code + '</span>' +
+          '<span class="s-name">' + hlName + '</span>' +
+          '<span class="s-code">' + hlCode + '</span>' +
+          '<span class="suggest-price"><span class="sp-loading">·</span></span>' +
         '</div>';
       }).join('');
       suggest.innerHTML = html;
@@ -423,21 +537,71 @@ function handleSearchInput(value) {
         });
       });
       suggest.classList.add('show');
+      // 异步获取实时行情
+      fetchSuggestQuotes(list, kw);
     }).catch(function() {
-      suggest.classList.remove('show');
+      renderHistoryMatch(kw);
     });
-  }, 300);
+  }, 200);
+}
+
+/* 从搜索历史中匹配关键词 */
+function renderHistoryMatch(keyword) {
+  var suggest = document.getElementById('searchSuggest');
+  if (!suggest) return;
+  var history = loadSearchHistory();
+  var kw = keyword.toLowerCase();
+  var matched = history.filter(function(h) {
+    return (h.code || '').toLowerCase().indexOf(kw) >= 0 ||
+           (h.name || '').toLowerCase().indexOf(kw) >= 0;
+  });
+  if (matched.length === 0) {
+    suggest.classList.remove('show');
+    return;
+  }
+  var typeMap = { stk: '股票', etf: 'ETF', idx: '指数', hk: '港股' };
+  var typeClassMap = { stk: 'stk', etf: 'etf', idx: 'idx', hk: 'hk' };
+  var html = '<div class="suggest-history-header"><span>历史匹配</span></div>';
+  html += matched.map(function(h) {
+    var tl = typeMap[h.type] || '股票';
+    var tc = typeClassMap[h.type] || 'stk';
+    return '<div class="suggest-item history-item" role="option" data-sg-code="' + escHTML(h.code) + '" data-sg-name="' + escHTML(h.name||'') + '" data-sg-type="" data-sg-class="">' +
+      '<span class="suggest-type ' + tc + '">' + tl + '</span>' +
+      '<span class="s-name">' + highlightKeyword(h.name || h.code, keyword) + '</span>' +
+      '<span class="s-code">' + highlightKeyword(h.code, keyword) + '</span>' +
+    '</div>';
+  }).join('');
+  suggest.innerHTML = html;
+  suggest.querySelectorAll('[data-sg-code]').forEach(function(item) {
+    item.addEventListener('click', function() {
+      selectSuggestion(
+        item.getAttribute('data-sg-code'),
+        item.getAttribute('data-sg-name'),
+        '',
+        '',
+        ''
+      );
+    });
+  });
+  suggest.classList.add('show');
 }
 
 function selectSuggestion(code, name, mktNum, secType, classify) {
   // 清除防抖定时器，防止选中后联想下拉框再次弹出
   if (_suggestTimer) { Perf.clearTimeout(_suggestTimer); _suggestTimer = null; }
+  _suggestPriceSeq++; // 使进行中的价格请求失效
   var input = document.getElementById('searchInput');
   if (!input) return;
   input.value = code;
   var suggestEl = document.getElementById('searchSuggest');
   if (suggestEl) suggestEl.classList.remove('show');
   updateSearchClearBtn();
+  // 保存到搜索历史
+  var histType = 'stk';
+  if (classify === 'Fund' || secType === '8') histType = 'etf';
+  else if (classify === 'Index' || secType === '5') histType = 'idx';
+  else if (mktNum === '116') histType = 'hk';
+  saveSearchHistory(code, name, histType);
   // 传递类型信息给searchStock
   _suggestMeta = {
     mktNum: mktNum || '',
@@ -448,6 +612,15 @@ function selectSuggestion(code, name, mktNum, secType, classify) {
   };
   searchStock();
 }
+
+// 输入框获焦时显示搜索历史
+document.addEventListener('focusin', function(e) {
+  if (e.target && e.target.id === 'searchInput') {
+    if (!e.target.value || e.target.value.trim().length === 0) {
+      renderSearchHistory();
+    }
+  }
+});
 
 // 点击外部关闭搜索联想
 document.addEventListener('click', function(e) {
