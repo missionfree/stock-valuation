@@ -85,6 +85,7 @@ function calculateFTF(klines, window) {
     var rawFTF = 0.4 * momentum + 0.35 * capitalFlow + 0.25 * breakthrough;
     rawFTFs.push({
       date: data[i].date,
+      close: data[i].close,
       rawFTF: rawFTF,
       momentum: momentum,
       capitalFlow: capitalFlow,
@@ -124,7 +125,172 @@ function calculateFTF(klines, window) {
     }
   }
 
+  // 峰谷波段信号检测
+  var waveInfo = detectFTFWaveSignals(rawFTFs);
+  rawFTFs.waveInfo = waveInfo;
+
+  // 波段历史胜率统计
+  rawFTFs.waveStats = calcFTFWaveStats(rawFTFs);
+
   return rawFTFs;
+}
+
+/* ============================================================
+   峰谷波段信号检测引擎
+   核心理念：FTF曲线自身的峰顶/谷底拐点 = 波段买卖点
+   位置(超买/超卖区) × 方向(拐头) 双确认
+   ============================================================ */
+var FTF_WAVE = {
+  PEAK_ZONE: 70,      // 峰顶区域阈值（FTF≥70进入超买区）
+  VALLEY_ZONE: 30,    // 谷底区域阈值（FTF≤30进入超卖区）
+  CONFIRM_DAYS: 3,    // 历史信号确认天数
+  MIN_SWING: 5,       // 历史信号最小回落/反弹幅度（分）
+  EARLY_SWING: 4,     // 最新拐头预警最小幅度（分）
+  LOOKBACK: 10        // 最新预警回看天数
+};
+
+/**
+ * 检测FTF序列的峰顶和谷底
+ * @param {Array} ftfResults - calculateFTF的结果数组（会就地标记signal字段）
+ * @returns {object} waveInfo - 最新拐头预警信息
+ */
+function detectFTFWaveSignals(ftfResults) {
+  var n = ftfResults.length;
+  var i, j;
+  var W = FTF_WAVE;
+
+  // 初始化信号标记
+  for (i = 0; i < n; i++) {
+    ftfResults[i].signal = null;  // 'peak' | 'valley'
+  }
+
+  // === 历史峰顶检测（有未来数据确认，用于图表标记） ===
+  for (i = W.CONFIRM_DAYS; i < n - W.CONFIRM_DAYS; i++) {
+    var v = ftfResults[i].ftf;
+    if (v < W.PEAK_ZONE) continue;
+
+    var isPeak = true;
+    for (j = i - W.CONFIRM_DAYS; j < i; j++) {
+      if (ftfResults[j].ftf > v) { isPeak = false; break; }
+    }
+    if (!isPeak) continue;
+    for (j = i + 1; j <= i + W.CONFIRM_DAYS; j++) {
+      if (ftfResults[j].ftf >= v) { isPeak = false; break; }
+    }
+    if (!isPeak) continue;
+
+    // 确认后续回落幅度达到波段标准
+    var afterMin = v;
+    for (j = i + 1; j <= i + W.CONFIRM_DAYS; j++) {
+      if (ftfResults[j].ftf < afterMin) afterMin = ftfResults[j].ftf;
+    }
+    if (v - afterMin >= W.MIN_SWING) {
+      ftfResults[i].signal = 'peak';
+    }
+  }
+
+  // === 历史谷底检测 ===
+  for (i = W.CONFIRM_DAYS; i < n - W.CONFIRM_DAYS; i++) {
+    var v = ftfResults[i].ftf;
+    if (v > W.VALLEY_ZONE) continue;
+
+    var isValley = true;
+    for (j = i - W.CONFIRM_DAYS; j < i; j++) {
+      if (ftfResults[j].ftf < v) { isValley = false; break; }
+    }
+    if (!isValley) continue;
+    for (j = i + 1; j <= i + W.CONFIRM_DAYS; j++) {
+      if (ftfResults[j].ftf <= v) { isValley = false; break; }
+    }
+    if (!isValley) continue;
+
+    // 确认后续反弹幅度达到波段标准
+    var afterMax = v;
+    for (j = i + 1; j <= i + W.CONFIRM_DAYS; j++) {
+      if (ftfResults[j].ftf > afterMax) afterMax = ftfResults[j].ftf;
+    }
+    if (afterMax - v >= W.MIN_SWING) {
+      ftfResults[i].signal = 'valley';
+    }
+  }
+
+  // === 最新拐头预警（无需未来数据，用于当前操作建议） ===
+  var lookback = Math.min(W.LOOKBACK, n);
+  var recentMax = -Infinity, recentMaxIdx = -1;
+  var recentMin = Infinity, recentMinIdx = -1;
+  for (i = n - lookback; i < n; i++) {
+    if (ftfResults[i].ftf > recentMax) { recentMax = ftfResults[i].ftf; recentMaxIdx = i; }
+    if (ftfResults[i].ftf < recentMin) { recentMin = ftfResults[i].ftf; recentMinIdx = i; }
+  }
+
+  var lastIdx = n - 1;
+  var lastVal = ftfResults[lastIdx].ftf;
+  var daysSinceMax = lastIdx - recentMaxIdx;
+  var daysSinceMin = lastIdx - recentMinIdx;
+
+  var peakEarlyDrop = (recentMax >= W.PEAK_ZONE - 5 && daysSinceMax >= 2) ? (recentMax - lastVal) : 0;
+  var valleyEarlyRise = (recentMin <= W.VALLEY_ZONE + 5 && daysSinceMin >= 2) ? (lastVal - recentMin) : 0;
+
+  var latestSignal = null;
+  if (peakEarlyDrop >= W.EARLY_SWING && peakEarlyDrop >= valleyEarlyRise) {
+    latestSignal = 'peak-early';
+    if (!ftfResults[recentMaxIdx].signal) ftfResults[recentMaxIdx].signal = 'peak';
+  } else if (valleyEarlyRise >= W.EARLY_SWING) {
+    latestSignal = 'valley-early';
+    if (!ftfResults[recentMinIdx].signal) ftfResults[recentMinIdx].signal = 'valley';
+  }
+
+  return {
+    latestSignal: latestSignal,
+    recentMax: recentMax, recentMaxIdx: recentMaxIdx, daysSinceMax: daysSinceMax, peakEarlyDrop: peakEarlyDrop,
+    recentMin: recentMin, recentMinIdx: recentMinIdx, daysSinceMin: daysSinceMin, valleyEarlyRise: valleyEarlyRise
+  };
+}
+
+/**
+ * 波段历史胜率统计
+ * 统计历史谷底信号后N日涨幅、峰顶信号后N日跌幅
+ * @param {Array} ftfResults - 已标记signal的FTF结果
+ * @returns {object} {valleyCount, peakCount, valleyWinRate, valleyAvgGain, peakWinRate, peakAvgAvoid}
+ */
+function calcFTFWaveStats(ftfResults) {
+  var n = ftfResults.length;
+  var HORIZON = 10; // 信号后10日观察期
+  var stats = { valleyCount: 0, peakCount: 0, valleyWin: 0, valleyGainSum: 0, peakWin: 0, peakAvoidSum: 0 };
+  var i;
+
+  for (i = 0; i < n; i++) {
+    var sig = ftfResults[i].signal;
+    if (!sig || !ftfResults[i].close) continue;
+    var futureIdx = i + HORIZON;
+    if (futureIdx >= n) futureIdx = n - 1;
+    if (futureIdx <= i) continue;
+
+    var basePrice = ftfResults[i].close;
+    var futurePrice = ftfResults[futureIdx].close;
+    if (basePrice <= 0) continue;
+    var pct = (futurePrice - basePrice) / basePrice * 100;
+
+    if (sig === 'valley') {
+      stats.valleyCount++;
+      stats.valleyGainSum += pct;
+      if (pct > 0) stats.valleyWin++;
+    } else if (sig === 'peak') {
+      stats.peakCount++;
+      stats.peakAvoidSum += pct; // 峰顶后下跌则卖出正确
+      if (pct < 0) stats.peakWin++;
+    }
+  }
+
+  var waveStats = {
+    valleyCount: stats.valleyCount,
+    peakCount: stats.peakCount,
+    valleyWinRate: stats.valleyCount > 0 ? stats.valleyWin / stats.valleyCount * 100 : 0,
+    valleyAvgGain: stats.valleyCount > 0 ? stats.valleyGainSum / stats.valleyCount : 0,
+    peakWinRate: stats.peakCount > 0 ? stats.peakWin / stats.peakCount * 100 : 0,
+    peakAvgAvoid: stats.peakCount > 0 ? -stats.peakAvoidSum / stats.peakCount : 0 // 正值=避损幅度
+  };
+  return waveStats;
 }
 
 /**
@@ -411,41 +577,76 @@ function renderFTFChart(ftfResults, klineInfo) {
   var lastFTF = ftfResults[ftfResults.length - 1];
   var lastScore = lastFTF.ftf;
 
-  // === 双维度评级：操作信号 + 风险提示（分开显示，不冲突） ===
-  var actionText, actionCls, actionEmoji;    // 操作信号：买/不买/观望
-  var riskText, riskCls, riskEmoji;          // 风险提示：有无风险
-  var trendText;                             // 趋势描述
+  // === 波段评级：位置 × 方向 双维度 ===
+  // 位置：超卖区(谷)/中性区/超买区(峰)
+  // 方向：3日SMA斜率 + 拐头预警
+  var W = FTF_WAVE;
+  var waveInfo = ftfResults.waveInfo || {};
+  var prevFTF = ftfResults[ftfResults.length - 2] || lastFTF;
+  var smaSlope = lastFTF.ftfSMA3 - prevFTF.ftfSMA3;
 
-  if (lastScore >= 80) {
-    // 趋势很强但过热
-    actionText = '持有为主，不宜追高';  actionCls = 'ftf-act-hold';  actionEmoji = '✋';
-    riskText = '短期过热，回调风险大';  riskCls = 'ftf-risk-high';  riskEmoji = '⚠️';
-    trendText = '趋势强势但已超买';
-  } else if (lastScore >= 65) {
-    // 趋势强且健康
-    actionText = '适合买入或加仓';      actionCls = 'ftf-act-buy';   actionEmoji = '👍';
-    riskText = '趋势健康，风险较低';    riskCls = 'ftf-risk-low';   riskEmoji = '✅';
-    trendText = '趋势强势，向上动能充足';
-  } else if (lastScore >= 50) {
-    // 中性偏多
-    actionText = '观望为主，小仓试探';  actionCls = 'ftf-act-watch'; actionEmoji = '👀';
-    riskText = '方向未明，注意震荡';    riskCls = 'ftf-risk-med';   riskEmoji = '🔄';
-    trendText = '趋势偏多但不够强';
-  } else if (lastScore >= 35) {
-    // 中性偏空
-    actionText = '不建议买入';          actionCls = 'ftf-act-wait';  actionEmoji = '🛑';
-    riskText = '趋势偏弱，可能继续下探'; riskCls = 'ftf-risk-med';   riskEmoji = '📉';
-    trendText = '趋势偏空，向下压力存在';
-  } else if (lastScore >= 20) {
-    // 弱势
-    actionText = '不买，等待企稳信号';  actionCls = 'ftf-act-avoid'; actionEmoji = '🚫';
-    riskText = '下跌趋势中，抄底风险大'; riskCls = 'ftf-risk-high'; riskEmoji = '⚠️';
-    trendText = '趋势弱势，持续走低';
+  var zone, zoneText;
+  if (lastScore >= W.PEAK_ZONE) { zone = 'overbought'; zoneText = '超买区(峰顶区)'; }
+  else if (lastScore <= W.VALLEY_ZONE) { zone = 'oversold'; zoneText = '超卖区(谷底区)'; }
+  else { zone = 'neutral'; zoneText = '中性区'; }
+
+  var actionText, actionCls, actionEmoji;    // 操作信号
+  var riskText, riskCls, riskEmoji;          // 风险提示
+  var trendText;                             // 趋势描述
+  var waveBadge = '';                        // 波段信号徽标
+
+  if (zone === 'oversold' && (waveInfo.latestSignal === 'valley-early' || smaSlope > 1)) {
+    // 谷底拐头向上 = 最佳买点
+    actionText = '谷底信号确认，分批买入低吸'; actionCls = 'ftf-act-buy';   actionEmoji = '🔺';
+    riskText = '超卖区拐头向上，反弹启动概率大'; riskCls = 'ftf-risk-low';  riskEmoji = '✅';
+    trendText = '谷底反弹启动·波段买点';
+    waveBadge = '<span class="ftf-wave-badge ftf-wave-buy">谷底买入</span>';
+  } else if (zone === 'oversold') {
+    // 低位仍在探底 = 临近谷底，准备买入（不是"不买"！）
+    actionText = '临近谷底，准备资金等拐头';   actionCls = 'ftf-act-prepare'; actionEmoji = '⏳';
+    riskText = '超卖区探底中，反弹渐近但未确认'; riskCls = 'ftf-risk-med'; riskEmoji = '🔍';
+    trendText = '谷底区探底·等待拐头确认';
+    waveBadge = '<span class="ftf-wave-badge ftf-wave-prepare">临近谷底</span>';
+  } else if (zone === 'overbought' && (waveInfo.latestSignal === 'peak-early' || smaSlope < -1)) {
+    // 峰顶拐头向下 = 卖点
+    actionText = '峰顶信号确认，减仓卖出锁利'; actionCls = 'ftf-act-sell';  actionEmoji = '🔻';
+    riskText = '超买区拐头向下，回调即将展开'; riskCls = 'ftf-risk-high'; riskEmoji = '⚠️';
+    trendText = '峰顶回落启动·波段卖点';
+    waveBadge = '<span class="ftf-wave-badge ftf-wave-sell">峰顶卖出</span>';
+  } else if (zone === 'overbought') {
+    // 高位仍在冲顶 = 临近峰顶，持有设止盈
+    actionText = '临近峰顶，持有并设好止盈位'; actionCls = 'ftf-act-hold';  actionEmoji = '⚠️';
+    riskText = '超买区冲顶中，随时可能见顶回落'; riskCls = 'ftf-risk-high'; riskEmoji = '⚠️';
+    trendText = '峰顶区冲顶·警惕拐头';
+    waveBadge = '<span class="ftf-wave-badge ftf-wave-peakhold">临近峰顶</span>';
+  } else if (smaSlope > 1) {
+    // 中性区上升 = 趋势上行，持有为主
+    actionText = '波段上行中，持有为主可顺势加'; actionCls = 'ftf-act-hold'; actionEmoji = '📈';
+    riskText = '趋势向上但未到超买，可继续持有'; riskCls = 'ftf-risk-low'; riskEmoji = '✅';
+    trendText = '中性区上行·持有';
+  } else if (smaSlope < -1) {
+    // 中性区下降 = 回落中，等跌到谷底区再买
+    actionText = '波段回落中，等跌到谷底区再买'; actionCls = 'ftf-act-watch'; actionEmoji = '📉';
+    riskText = '趋势回落，耐心等待FTF≤30的谷底'; riskCls = 'ftf-risk-med'; riskEmoji = '⏱️';
+    trendText = '中性区回落·等谷底信号';
   } else {
-    // 超卖
-    actionText = '关注反弹，但不急于抄底'; actionCls = 'ftf-act-watch'; actionEmoji = '🔍';
-    riskText = '极度超卖，反弹随时出现但需确认'; riskCls = 'ftf-risk-high'; riskEmoji = '⚠️';
-    trendText = '趋势极度弱势但可能触底';
+    // 中性震荡
+    actionText = '方向不明，小仓试探或观望';   actionCls = 'ftf-act-watch'; actionEmoji = '👀';
+    riskText = '中性震荡，等待方向选择';       riskCls = 'ftf-risk-med';  riskEmoji = '🔄';
+    trendText = '中性震荡·方向待选';
+  }
+
+  // 波段统计信息条
+  var waveStats = ftfResults.waveStats || {};
+  var waveStatsHTML = '';
+  if (waveStats.valleyCount + waveStats.peakCount > 0) {
+    waveStatsHTML = '<div class="ftf-wave-stats">' +
+      '<span class="ftf-ws-item">📉 本窗口谷底信号 <b>' + waveStats.valleyCount + '</b> 次</span>' +
+      '<span class="ftf-ws-item">📈 谷底买入10日胜率 <b class="ftf-ws-pos">' + waveStats.valleyWinRate.toFixed(0) + '%</b></span>' +
+      (waveStats.valleyCount > 0 ? '<span class="ftf-ws-item">💰 平均收益 <b class="ftf-ws-pos">+' + waveStats.valleyAvgGain.toFixed(1) + '%</b></span>' : '') +
+      '<span class="ftf-ws-item">📉 峰顶信号 <b>' + waveStats.peakCount + '</b> 次</span>' +
+      (waveStats.peakCount > 0 ? '<span class="ftf-ws-item">🛡️ 峰顶卖出避损 <b class="ftf-ws-neg">' + waveStats.peakAvgAvoid.toFixed(1) + '%</b></span>' : '') +
+    '</div>';
   }
 
   // 兼容旧变量名（背景色用actionCls映射）
@@ -469,68 +670,72 @@ function renderFTFChart(ftfResults, klineInfo) {
       '<div class="ftf-score-display">' +
         '<div class="ftf-score-num ' + ratingCls + '">' + lastScore + '</div>' +
         '<div class="ftf-score-meta">' +
-          '<div class="ftf-score-label">当前FTF得分 / 100 · ' + trendText + '</div>' +
+          '<div class="ftf-score-label">当前FTF得分 / 100 · ' + zoneText + ' · ' + trendText + ' ' + waveBadge + '</div>' +
           '<div class="ftf-action-line ' + actionCls + '">' + actionEmoji + ' <b>操作建议：</b>' + actionText + '</div>' +
           '<div class="ftf-risk-line ' + riskCls + '">' + riskEmoji + ' <b>风险提示：</b>' + riskText + '</div>' +
         '</div>' +
       '</div>' +
     '</div>' +
 
+    // === 波段历史统计条 ===
+    waveStatsHTML +
+
     // === 得分详解面板 ===
     breakdownHTML +
 
     // === 小白说明面板 ===
     '<div class="ftf-guide-panel">' +
-      '<div class="ftf-guide-title">📌 一分钟看懂FTF</div>' +
+      '<div class="ftf-guide-title">📌 一分钟看懂FTF波段操作</div>' +
       '<div class="ftf-guide-text">' +
-        'FTF是一个<b>0-100分的趋势评分</b>，分数越高代表趋势越强。' +
-        '<b>操作建议</b>告诉你买不买，<b>风险提示</b>告诉你要注意什么，两者分开看：' +
+        'FTF是一个<b>0-100分的波段位置评分</b>：<b>30以下=谷底区</b>（便宜，找买点），<b>70以上=峰顶区</b>（贵了，找卖点）。' +
+        '光看位置还不够，还要等<b>拐头确认</b>——谷底拐头向上才买，峰顶拐头向下才卖。' +
       '</div>' +
       '<div class="ftf-action-table">' +
         '<div class="ftf-at-header">' +
-          '<span class="ftf-at-col-score">分数</span>' +
-          '<span class="ftf-at-col-action">操作建议</span>' +
-          '<span class="ftf-at-col-risk">风险提示</span>' +
+          '<span class="ftf-at-col-score">位置+方向</span>' +
+          '<span class="ftf-at-col-action">波段操作</span>' +
+          '<span class="ftf-at-col-risk">说明</span>' +
         '</div>' +
         '<div class="ftf-at-row">' +
-          '<span class="ftf-at-col-score ftf-act-buy">65-80</span>' +
-          '<span class="ftf-at-col-action">👍 适合买入/加仓</span>' +
+          '<span class="ftf-at-col-score ftf-act-buy">谷底区(≤30)+拐头↑</span>' +
+          '<span class="ftf-at-col-action">🔺 谷底买入·分批低吸</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-low">✅ 反弹启动概率大</span>' +
+        '</div>' +
+        '<div class="ftf-at-row">' +
+          '<span class="ftf-at-col-score ftf-act-prepare">谷底区(≤30)+仍探底</span>' +
+          '<span class="ftf-at-col-action">⏳ 临近谷底·准备资金</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-med">🔍 等拐头确认再动手</span>' +
+        '</div>' +
+        '<div class="ftf-at-row">' +
+          '<span class="ftf-at-col-score ftf-act-hold">中性区(30-70)+上行</span>' +
+          '<span class="ftf-at-col-action">📈 持有为主·可顺势加</span>' +
           '<span class="ftf-at-col-risk ftf-risk-low">✅ 趋势健康</span>' +
         '</div>' +
         '<div class="ftf-at-row">' +
-          '<span class="ftf-at-col-score ftf-act-hold">80-100</span>' +
-          '<span class="ftf-at-col-action">✋ 持有，不追高</span>' +
-          '<span class="ftf-at-col-risk ftf-risk-high">⚠️ 过热防回调</span>' +
+          '<span class="ftf-at-col-score ftf-act-watch">中性区(30-70)+回落</span>' +
+          '<span class="ftf-at-col-action">📉 等跌到谷底区再买</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-med">⏱️ 耐心等FTF≤30</span>' +
         '</div>' +
         '<div class="ftf-at-row">' +
-          '<span class="ftf-at-col-score ftf-act-watch">50-65</span>' +
-          '<span class="ftf-at-col-action">👀 观望，小仓试探</span>' +
-          '<span class="ftf-at-col-risk ftf-risk-med">🔄 方向未明</span>' +
+          '<span class="ftf-at-col-score ftf-act-sell">峰顶区(≥70)+拐头↓</span>' +
+          '<span class="ftf-at-col-action">🔻 峰顶卖出·减仓锁利</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-high">⚠️ 回调即将展开</span>' +
         '</div>' +
         '<div class="ftf-at-row">' +
-          '<span class="ftf-at-col-score ftf-act-wait">35-50</span>' +
-          '<span class="ftf-at-col-action">🛑 不建议买入</span>' +
-          '<span class="ftf-at-col-risk ftf-risk-med">📉 可能继续下探</span>' +
-        '</div>' +
-        '<div class="ftf-at-row">' +
-          '<span class="ftf-at-col-score ftf-act-avoid">20-35</span>' +
-          '<span class="ftf-at-col-action">🚫 不买，等企稳</span>' +
-          '<span class="ftf-at-col-risk ftf-risk-high">⚠️ 抄底风险大</span>' +
-        '</div>' +
-        '<div class="ftf-at-row">' +
-          '<span class="ftf-at-col-score ftf-act-watch">0-20</span>' +
-          '<span class="ftf-at-col-action">🔍 关注反弹信号</span>' +
-          '<span class="ftf-at-col-risk ftf-risk-high">⚠️ 需确认反转</span>' +
+          '<span class="ftf-at-col-score ftf-act-hold">峰顶区(≥70)+仍冲顶</span>' +
+          '<span class="ftf-at-col-action">⚠️ 临近峰顶·设好止盈</span>' +
+          '<span class="ftf-at-col-risk ftf-risk-high">⚠️ 随时见顶回落</span>' +
         '</div>' +
       '</div>' +
       '<div class="ftf-reading-tips">' +
         '<div class="ftf-tip-row"><b>📖 怎么看图：</b></div>' +
-        '<div class="ftf-tip-row">• <b>上方色带</b>：每天FTF分数的颜色，绿色=看跌、黄色=中性、红色=看好</div>' +
+        '<div class="ftf-tip-row">• <b>绿色▲三角</b>：历史谷底买点，红色▽三角是历史峰顶卖点</div>' +
+        '<div class="ftf-tip-row">• <b>上方色带</b>：每天FTF分数的颜色，绿色=谷底区、黄色=中性、红色=峰顶区</div>' +
         '<div class="ftf-tip-row">• <b>下方折线</b>：FTF分数随时间的变化，蓝线是3日平滑线</div>' +
-        '<div class="ftf-tip-row">• <b>红色虚线(80)</b>：超买警戒线，到这条线以上要小心回调</div>' +
-        '<div class="ftf-tip-row">• <b>绿色虚线(20)</b>：超卖关注线，到这条线以下可能要反弹</div>' +
-        '<div class="ftf-tip-row">• <b>鼠标悬停</b>：可查看每天的三因子贡献占比</div>' +
-        '<div class="ftf-tip-row" style="margin-top:0.2rem;padding-top:0.2rem;border-top:1px solid rgba(0,200,255,0.08)"><b>💡 核心理念：</b>FTF衡量的是<b>当前趋势强度</b>，不是预测底部。分数高=趋势强=值得买，但超过80说明涨太多了要防短期回调。低位不等于会涨，趋势反转才加分。</div>' +
+        '<div class="ftf-tip-row">• <b>绿色虚线(30)</b>：谷底区分界线，跌破后开始找买点</div>' +
+        '<div class="ftf-tip-row">• <b>红色虚线(70)</b>：峰顶区分界线，升破后开始找卖点</div>' +
+        '<div class="ftf-tip-row">• <b>鼠标悬停</b>：可查看每天的三因子贡献和波段信号</div>' +
+        '<div class="ftf-tip-row" style="margin-top:0.2rem;padding-top:0.2rem;border-top:1px solid rgba(0,200,255,0.08)"><b>💡 核心理念：</b><b>低买高卖赚波段</b>。FTF降到谷底区(≤30)说明股价便宜了，拐头向上就是买点；升到峰顶区(≥70)说明涨多了，拐头向下就是卖点。买在谷底、卖在峰顶，一个完整波段就完成了。</div>' +
       '</div>' +
       '<div class="ftf-disclaimer">⚠️ FTF基于历史量价数据计算，仅供参考，不构成投资建议。过去表现不代表未来收益。</div>' +
     '</div>' +
@@ -676,31 +881,49 @@ function drawFTFChart(ftfResults) {
     ctx.fillText(String(val), padL + plotW + 2, gy + 3);
   }
 
-  // 超买线(80) - 红色虚线
-  var y80 = chartTop + chartPlotH * (1 - 80 / 100);
+  // === 波段区间背景：峰顶区(70-100)淡红 / 谷底区(0-30)淡绿 ===
+  var y70 = chartTop + chartPlotH * (1 - 70 / 100);
+  var y30 = chartTop + chartPlotH * (1 - 30 / 100);
+
+  // 峰顶区背景（顶部到70线）
+  ctx.fillStyle = 'rgba(255,0,0,0.07)';
+  ctx.fillRect(padL, chartTop, plotW, y70 - chartTop);
+
+  // 谷底区背景（30线到底部）
+  ctx.fillStyle = 'rgba(0,170,0,0.07)';
+  ctx.fillRect(padL, y30, plotW, chartBot - y30);
+
+  // 峰顶分界线(70) - 红色虚线
   ctx.strokeStyle = '#D62828';
   ctx.lineWidth = 0.8;
   ctx.setLineDash([3, 2]);
   ctx.beginPath();
-  ctx.moveTo(padL, y80);
-  ctx.lineTo(padL + plotW, y80);
+  ctx.moveTo(padL, y70);
+  ctx.lineTo(padL + plotW, y70);
   ctx.stroke();
-  ctx.fillStyle = 'rgba(214,40,40,0.6)';
+  ctx.fillStyle = 'rgba(214,40,40,0.7)';
   ctx.font = '7px Monaco, monospace';
-  ctx.fillText('80', padL + plotW + 2, y80 - 2);
+  ctx.fillText('70', padL + plotW + 2, y70 - 2);
 
-  // 超卖线(20) - 绿色虚线
-  var y20 = chartTop + chartPlotH * (1 - 20 / 100);
+  // 谷底分界线(30) - 绿色虚线
   ctx.strokeStyle = '#2E8B57';
   ctx.lineWidth = 0.8;
   ctx.setLineDash([3, 2]);
   ctx.beginPath();
-  ctx.moveTo(padL, y20);
-  ctx.lineTo(padL + plotW, y20);
+  ctx.moveTo(padL, y30);
+  ctx.lineTo(padL + plotW, y30);
   ctx.stroke();
-  ctx.fillStyle = 'rgba(46,139,87,0.6)';
-  ctx.fillText('20', padL + plotW + 2, y20 - 2);
+  ctx.fillStyle = 'rgba(46,139,87,0.7)';
+  ctx.fillText('30', padL + plotW + 2, y30 - 2);
   ctx.setLineDash([]);
+
+  // 区间文字标注
+  ctx.fillStyle = 'rgba(255,70,70,0.5)';
+  ctx.font = '8px Monaco, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('峰顶区·找卖点', padL + 4, chartTop + 9);
+  ctx.fillStyle = 'rgba(46,180,90,0.55)';
+  ctx.fillText('谷底区·找买点', padL + 4, chartBot - 3);
 
   // FTF时序线 (1px, 深灰)
   ctx.strokeStyle = '#333333';
@@ -725,6 +948,58 @@ function drawFTFChart(ftfResults) {
     else ctx.lineTo(x, y);
   }
   ctx.stroke();
+
+  // === 峰谷信号三角标记 ===
+  // 峰顶=红色倒三角(卖点) 谷底=绿色正三角(买点)
+  for (var i = 0; i < n; i++) {
+    var sig = ftfResults[i].signal;
+    if (!sig) continue;
+    var mx = padL + barGap * i + barGap / 2;
+    var my = chartTop + chartPlotH * (1 - ftfResults[i].ftf / 100);
+    var isLast = (i === n - 1);
+
+    if (sig === 'peak') {
+      // 峰顶：倒三角在线上方
+      var sz = isLast ? 6 : 4.5;
+      var gy = my - sz - 3;
+      if (isLast) {
+        ctx.shadowColor = '#FF2222';
+        ctx.shadowBlur = 8;
+      }
+      ctx.fillStyle = '#FF2222';
+      ctx.beginPath();
+      ctx.moveTo(mx, gy + sz);
+      ctx.lineTo(mx - sz, gy - sz);
+      ctx.lineTo(mx + sz, gy - sz);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (sig === 'valley') {
+      // 谷底：正三角在线下方
+      var sz = isLast ? 6 : 4.5;
+      var gy = my + sz + 3;
+      if (isLast) {
+        ctx.shadowColor = '#00CC44';
+        ctx.shadowBlur = 8;
+      }
+      ctx.fillStyle = '#00CC44';
+      ctx.beginPath();
+      ctx.moveTo(mx, gy - sz);
+      ctx.lineTo(mx - sz, gy + sz);
+      ctx.lineTo(mx + sz, gy + sz);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // 图例
+  ctx.font = '8px Monaco, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#FF5555';
+  ctx.fillText('▽峰顶卖点', padL + 4, chartTop + chartPlotH * 0.5 - 8);
+  ctx.fillStyle = '#00CC55';
+  ctx.fillText('△谷底买点', padL + 4, chartTop + chartPlotH * 0.5 + 4);
 
   // 日期标签
   ctx.fillStyle = 'rgba(128,128,128,0.6)';
@@ -817,9 +1092,18 @@ function bindFTFHover(ftfResults) {
     // 5日变化速率
     var changeRate = r.ftfChangeRate || 0;
 
+    // 波段信号
+    var sigText = '';
+    if (r.signal === 'peak') {
+      sigText = '<div class="ftf-tip-signal ftf-tip-peak">🔻 峰顶卖出信号</div>';
+    } else if (r.signal === 'valley') {
+      sigText = '<div class="ftf-tip-signal ftf-tip-valley">🔺 谷底买入信号</div>';
+    }
+
     tooltip.innerHTML =
       '<div class="ftf-tip-date">' + r.date + '</div>' +
       '<div class="ftf-tip-score">FTF: <strong>' + r.ftf + '</strong></div>' +
+      sigText +
       '<div class="ftf-tip-factors">' +
         '<div><span class="ftf-dot" style="background:#1F77B4"></span>动量持续性 ' + momPct.toFixed(1) + '%</div>' +
         '<div><span class="ftf-dot" style="background:#FF4D4D"></span>资金流向 ' + capPct.toFixed(1) + '%</div>' +
@@ -927,43 +1211,62 @@ function generateFTFBreakdown(lastFTF, ftfResults) {
   else if (brkPct >= 10) { brkDesc = '运行在布林带中下轨，偏弱'; brkColor = '#88AA00'; }
   else { brkDesc = '跌破布林下轨，超跌可能反弹'; brkColor = '#00AA00'; }
 
-  // 分数解读：分开解释"为什么是这个分数"和"操作建议"
+  // 分数解读：波段逻辑（位置+方向）
+  var prevItem = ftfResults[ftfResults.length - 2] || lastFTF;
+  var slopeNow = lastFTF.ftfSMA3 - prevItem.ftfSMA3;
+  var waveInfoX = ftfResults.waveInfo || {};
   var whyNote = '';
-  if (ftf >= 80) {
-    whyNote = '<div class="ftf-breakdown-note ftf-note-overbought">' +
-      '💡 <b>为什么分数高？</b> 三个信号全面走强' +
-      (momPct >= 55 ? '：<b>动量</b>持续向上' : '') +
-      (capPct >= 55 ? '、<b>资金</b>大幅流入' : '') +
-      (brkPct >= 45 ? '、<b>形态</b>突破阻力' : '') +
-      '。趋势确实很强，所以分数高是对的。<b>但为什么建议持有而不追高？</b> 因为分数超过80说明短期涨幅已大，获利盘多，随时可能回调洗盘。<b>已经持仓的可以持有享受趋势，但新买入的话性价比较低——追在高位的风险大于收益。</b>' +
-    '</div>';
-  } else if (ftf >= 65) {
+  if (ftf >= 70) {
+    // 峰顶区
+    if (slopeNow < -1 || waveInfoX.latestSignal === 'peak-early') {
+      whyNote = '<div class="ftf-breakdown-note ftf-note-overbought">' +
+        '🔻 <b>峰顶卖点确认！</b> FTF已进入峰顶区(≥70)且开始拐头向下' +
+        (waveInfoX.peakEarlyDrop > 0 ? '，从近期高点回落了<b>' + waveInfoX.peakEarlyDrop.toFixed(0) + '分</b>' : '') +
+        '。这是波段的<b>卖出区域</b>：涨幅已大、获利盘涌出，继续持有的风险大于收益。<b>操作：分批减仓或清仓锁定利润，等下一轮谷底再接回来。</b>' +
+      '</div>';
+    } else {
+      whyNote = '<div class="ftf-breakdown-note ftf-note-overbought">' +
+        '⚠️ <b>临近峰顶，准备止盈。</b> FTF已进入峰顶区(≥70)' +
+        (momPct >= 55 ? '：<b>动量</b>仍在冲高' : '') +
+        (capPct >= 55 ? '、<b>资金</b>还在流入' : '') +
+        '。股价已涨至波段高位，随时可能见顶回落。<b>已持仓的设好止盈位持有，未持仓的不要在这里追买——追在峰顶是波段操作的大忌。</b>' +
+      '</div>';
+    }
+  } else if (ftf <= 30) {
+    // 谷底区
+    if (slopeNow > 1 || waveInfoX.latestSignal === 'valley-early') {
+      whyNote = '<div class="ftf-breakdown-note ftf-note-oversold">' +
+        '🔺 <b>谷底买点确认！</b> FTF已在谷底区(≤30)且开始拐头向上' +
+        (waveInfoX.valleyEarlyRise > 0 ? '，从近期低点反弹了<b>' + waveInfoX.valleyEarlyRise.toFixed(0) + '分</b>' : '') +
+        '。这是波段的<b>买入区域</b>：股价便宜、超卖充分，反弹随时展开。<b>操作：分批低吸建仓，买在别人恐惧时。这是波段收益的主要来源。</b>' +
+      '</div>';
+    } else {
+      whyNote = '<div class="ftf-breakdown-note ftf-note-oversold">' +
+        '⏳ <b>临近谷底，准备买入。</b> FTF已进入谷底区(≤30)' +
+        (momPct < 45 ? '：<b>动量</b>显示股价还在最后一跌' : '') +
+        (capPct < 45 ? '、<b>资金</b>仍在流出' : '') +
+        '。股价已跌至波段低位、足够便宜，<b>但拐头信号还没出现——现在做的是准备资金、分批挂单，等FTF拐头向上即可动手。注意：谷底区买入的正确姿势是分批低吸，不是一把梭。</b>' +
+      '</div>';
+    }
+  } else if (slopeNow > 1) {
+    // 中性区上行
     whyNote = '<div class="ftf-breakdown-note ftf-note-buy">' +
-      '💡 <b>为什么适合买入？</b> 趋势强且未过热，三个信号配合良好' +
+      '📈 <b>波段上行中，持有为主。</b> FTF处于中性区(30-70)且向上' +
       (momPct >= 55 ? '：<b>动量</b>向上' : '') +
       (capPct >= 55 ? '、<b>资金</b>流入' : '') +
-      (brkPct >= 45 ? '、<b>形态</b>走强' : '') +
-      '。这是FTF最理想的买入区间——趋势已确认但还没涨太多，上涨空间大于下跌风险。' +
+      '。趋势健康但未到峰顶，可继续持有或顺势小加。<b>下一步：盯住FTF升到70以上后的拐头信号，那就是止盈点。</b>' +
     '</div>';
-  } else if (ftf >= 50) {
-    whyNote = '<div class="ftf-breakdown-note ftf-note-neutral">' +
-      '💡 <b>为什么观望？</b> 趋势偏多但信号不够强，方向还不明确。此时买入像赌方向，不如等FTF升到65以上趋势确认了再动手，或者用极小仓位试探。' +
-    '</div>';
-  } else if (ftf >= 35) {
+  } else if (slopeNow < -1) {
+    // 中性区下行
     whyNote = '<div class="ftf-breakdown-note ftf-note-weak">' +
-      '💡 <b>为什么不建议买入？</b> 趋势偏空' +
+      '📉 <b>波段回落中，耐心等谷底。</b> FTF处于中性区(30-70)且向下' +
       (momPct < 45 ? '：<b>动量</b>向下' : '') +
       (capPct < 45 ? '、<b>资金</b>流出' : '') +
-      (brkPct < 25 ? '、<b>形态</b>偏弱' : '') +
-      '。此时买入是逆势操作，胜率低。等FTF回升到50以上再考虑。' +
+      '。现在买入属于半山接刀。<b>最佳策略：等FTF跌到30以下的谷底区并出现拐头，那时才是低吸机会。</b>' +
     '</div>';
   } else {
-    whyNote = '<div class="ftf-breakdown-note ftf-note-oversold">' +
-      '💡 <b>为什么分数低？</b> 三个信号整体偏弱' +
-      (momPct < 45 ? '：<b>动量</b>显示股价还在下跌' : '') +
-      (capPct < 45 ? '、<b>资金</b>在流出' : '') +
-      (brkPct < 25 ? '、<b>形态</b>未突破' : '') +
-      '。即使股价已经在低位，<b>低位≠会涨</b>。FTF衡量的是趋势强度而非预测底部——下跌趋势中的低位可能还会更低。只有等到资金回流+动量企稳+形态突破同时出现，FTF才会回升，那才是真正的反转信号。<b>关注反弹信号，但不急于抄底。</b>' +
+    whyNote = '<div class="ftf-breakdown-note ftf-note-neutral">' +
+      '🔄 <b>中性震荡，方向待选。</b> FTF处于中性区且方向不明，多空拉锯中。小仓试探或观望均可，<b>等FTF进入谷底区(≤30)或峰顶区(≥70)出现明确信号再重仓决策。</b>' +
     '</div>';
   }
 
@@ -974,7 +1277,8 @@ function generateFTFBreakdown(lastFTF, ftfResults) {
     '<div class="ftf-formula">' +
       '<div class="ftf-formula-label">计算公式：</div>' +
       '<div class="ftf-formula-eq">' +
-        'FTF = 动量×40% + 资金×35% + 突破×25% → Z标准化 → 0-100分' +
+        'FTF = 动量×40% + 资金×35% + 突破×25% → 0-100分<br>' +
+        '波段分区：≤30 谷底区(找买点) · 30-70 中性区 · ≥70 峰顶区(找卖点)' +
       '</div>' +
     '</div>' +
 
@@ -1081,8 +1385,8 @@ function renderFTFEmpty(reason) {
     '<div class="ftf-guide-panel" style="margin-top:0.3rem">' +
       '<div class="ftf-guide-title">📌 什么是FTF？</div>' +
       '<div class="ftf-guide-text">' +
-        'FTF（Future Trend Factor）是一个<b>0-100分的趋势评分</b>，综合分析股价的动量持续性、资金流向和形态突破，' +
-        '帮助判断未来趋势方向。分数越高代表上涨概率越大。' +
+        'FTF（Future Trend Factor）是一个<b>0-100分的波段位置评分</b>，综合分析股价的动量持续性、资金流向和形态突破。' +
+        '<b>30以下=谷底区找买点，70以上=峰顶区找卖点</b>，配合拐头确认形成完整波段操作。' +
       '</div>' +
       '<div class="ftf-disclaimer" style="border-top:none;padding-top:0;margin-top:0.2rem">⚠️ 当前暂无法计算：' + reason + '</div>' +
     '</div>' +
