@@ -58,6 +58,8 @@ function switchTab(tabName, direction) {
     window._fundInited = true;
     Perf.trackedSetTimeout(function() { FundUI.init(); }, 100);
   }
+  // 快捷导航FAB：组合Tab隐藏，其他Tab显示（阅读个股时随时返回组合）
+  if (typeof qnOnTabSwitch === 'function') qnOnTabSwitch(tabName);
   // 不再使用 scrollIntoView 滚动页面，改由穿透式特效完成视觉切换
 }
 
@@ -652,6 +654,8 @@ function savePortfolios() {
     localStorage.setItem(LS_PORTFOLIO_KEY, JSON.stringify(_portfolios));
   } catch(e) {}
   updatePortfolioSavedTag();
+  // 同步刷新个股详情底部的组合快捷栏
+  if (typeof qnRefreshIfVisible === 'function') qnRefreshIfVisible();
 }
 
 /**

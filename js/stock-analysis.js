@@ -6269,6 +6269,11 @@ function renderStockResult(stockData, finData, flowData, loading) {
  }, 350);
   }
 
+  // 渲染底部组合快捷导航（读完分析，底部直接切下一只组合个股）
+  if (typeof renderQuickNav === 'function') {
+    renderQuickNav(_currentStockData && _currentStockData.code ? _currentStockData.code : (d.code || ''));
+  }
+
   // === 自动收藏：评分≥75且财务数据已加载时，自动添加到「自动关注」组合 ===
   if (!loading && finData && assessment && assessment.score >= 75) {
     autoFavoriteStock(d, assessment.score);

@@ -11868,3 +11868,179 @@ body {
   .stf-ind-grid { grid-template-columns: repeat(2, 1fr); }
   .stf-score { font-size: 1.6rem; }
 }
+
+/* ============================================================
+   QuickNav 快捷导航系统
+   1. 个股详情底部：组合个股chips + 上一只/下一只
+   2. 最近查询快捷chips
+   3. 右下角FAB：随时返回组合
+   4. 深度阅读时顶部悬浮返回条
+   ============================================================ */
+.qn-wrap {
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed var(--rule, rgba(0, 200, 255, 0.15));
+}
+.qn-section { margin-bottom: 0.75rem; }
+.qn-section:last-child { margin-bottom: 0.35rem; }
+.qn-title {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.72rem; font-weight: 700; color: var(--ink);
+  margin-bottom: 0.45rem; letter-spacing: 0.02em;
+}
+.qn-count {
+  font-size: 0.58rem; color: var(--muted); font-weight: 400;
+  margin-left: 0.3rem; background: rgba(0, 200, 255, 0.08);
+  padding: 0.05rem 0.35rem; border-radius: 999px;
+}
+.qn-back-btn {
+  font-size: 0.62rem; color: var(--accent); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+  opacity: 0.85; transition: opacity 0.2s;
+}
+.qn-back-btn:hover { opacity: 1; }
+
+/* ---- 上一只/下一只 顺序导航 ---- */
+.qn-seq-nav { display: flex; align-items: stretch; gap: 0.45rem; margin-bottom: 0.5rem; }
+.qn-seq-btn {
+  flex: 1; min-width: 0; padding: 0.4rem 0.45rem;
+  background: var(--bg3, #16202E); color: var(--ink);
+  border: 1px solid var(--rule, rgba(0, 200, 255, 0.15));
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.62rem; font-weight: 600; text-align: center;
+  cursor: pointer; transition: all 0.2s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qn-seq-btn:hover {
+  background: rgba(0, 200, 255, 0.1); border-color: rgba(0, 200, 255, 0.4);
+  transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+.qn-seq-pos { font-size: 0.6rem; color: var(--muted); min-width: 3.2rem; display: flex; align-items: center; justify-content: center; }
+.qn-seq-empty { flex: 1; font-size: 0.58rem; color: var(--muted); opacity: 0.6; display: flex; align-items: center; justify-content: center; }
+
+/* ---- 个股chips ---- */
+.qn-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.qn-chip {
+  display: flex; align-items: center; gap: 0.3rem;
+  padding: 0.32rem 0.45rem;
+  background: var(--bg3, #16202E);
+  border: 1px solid var(--rule, rgba(0, 200, 255, 0.12));
+  border-radius: 0.4rem; cursor: pointer;
+  transition: all 0.2s; max-width: 100%;
+}
+.qn-chip:hover {
+  transform: translateY(-2px);
+  background: rgba(0, 200, 255, 0.08);
+  border-color: rgba(0, 200, 255, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.qn-chip-current {
+  background: linear-gradient(135deg, rgba(0, 200, 255, 0.14), rgba(0, 120, 255, 0.05));
+  border-color: rgba(0, 200, 255, 0.35);
+  cursor: default;
+}
+.qn-chip-current:hover { transform: none; box-shadow: none; }
+.qn-chip-tag {
+  font-size: 0.5rem; padding: 0.05rem 0.28rem;
+  background: rgba(0, 200, 255, 0.2); color: var(--accent);
+  border-radius: 4px; font-weight: 700; flex-shrink: 0;
+}
+.qn-chip-name { font-weight: 600; color: var(--ink); font-size: 0.64rem; }
+.qn-chip-code { font-family: var(--font-mono); font-size: 0.55rem; color: var(--muted); }
+.qn-chip-price { font-family: var(--font-mono); font-size: 0.55rem; white-space: nowrap; }
+.qn-chip-price.up { color: var(--neon-red, #FF0000); }
+.qn-chip-price.down { color: var(--neon-green, #00AA00); }
+.qn-chip-sm { padding: 0.26rem 0.4rem; }
+.qn-chip-type {
+  font-size: 0.48rem; padding: 0.02rem 0.22rem;
+  background: rgba(128, 128, 128, 0.18); color: var(--muted);
+  border-radius: 3px; flex-shrink: 0;
+}
+
+/* ---- 无组合引导 ---- */
+.qn-empty-guide {
+  padding: 0.7rem 0.75rem;
+  background: rgba(255, 200, 40, 0.04);
+  border: 1px dashed rgba(255, 200, 40, 0.35);
+  border-radius: 0.5rem;
+}
+.qn-guide-text { font-size: 0.62rem; color: var(--ink); opacity: 0.85; line-height: 1.65; margin-bottom: 0.45rem; }
+.qn-guide-btn {
+  padding: 0.35rem 0.7rem;
+  background: linear-gradient(135deg, #FFD93D, #FF9E2C);
+  color: #3a2a00; border: none; border-radius: var(--radius-sm, 6px);
+  font-size: 0.62rem; font-weight: 700; cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.qn-guide-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255, 158, 44, 0.35); }
+
+/* ---- 右下角FAB：随时返回组合 ---- */
+.qn-fab {
+  position: fixed; bottom: 3rem; right: 0.9rem;
+  width: 2.6rem; height: 2.6rem; border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B35, #FF3333);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: 1.05rem; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.45);
+  opacity: 0; transform: translateY(12px) scale(0.9);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 900; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.qn-fab.show { opacity: 1; transform: translateY(0) scale(1); }
+.qn-fab.show:active { transform: scale(0.92); }
+.qn-fab-label {
+  position: absolute; right: calc(100% + 0.45rem); top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.75); color: #fff;
+  padding: 0.18rem 0.45rem; border-radius: 4px;
+  font-size: 0.55rem; white-space: nowrap;
+  opacity: 0; transition: opacity 0.2s; pointer-events: none;
+}
+.qn-fab:hover .qn-fab-label { opacity: 1; }
+
+/* ---- 深度阅读顶部悬浮返回条 ---- */
+.qn-topbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  background: rgba(10, 15, 23, 0.92);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(0, 200, 255, 0.18);
+  z-index: 950;
+  transform: translateY(-100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.qn-topbar.show { transform: translateY(0); }
+.qn-topbar-name {
+  flex: 1; min-width: 0; font-size: 0.66rem; font-weight: 700; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qn-topbar-name small { font-weight: 400; color: var(--muted); font-size: 0.56rem; margin-left: 0.3rem; }
+.qn-topbar-btn {
+  padding: 0.3rem 0.6rem; border-radius: 999px;
+  font-size: 0.6rem; font-weight: 700; cursor: pointer;
+  border: none; white-space: nowrap; flex-shrink: 0;
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.qn-topbar-btn:active { transform: scale(0.94); }
+.qn-topbar-back {
+  background: linear-gradient(135deg, #FF6B35, #FF3333); color: #fff;
+  box-shadow: 0 2px 10px rgba(255, 107, 53, 0.4);
+}
+.qn-topbar-nav {
+  background: rgba(0, 200, 255, 0.12); color: var(--accent);
+  border: 1px solid rgba(0, 200, 255, 0.3);
+  max-width: 6.5em; overflow: hidden; text-overflow: ellipsis;
+}
+.qn-topbar-nav:disabled { opacity: 0.35; cursor: default; }
+
+@media (max-width: 560px) {
+  .qn-seq-nav { flex-wrap: wrap; }
+  .qn-seq-btn { flex-basis: calc(50% - 0.25rem); }
+  .qn-topbar { padding: 0.4rem 0.55rem; gap: 0.35rem; }
+  .qn-topbar-btn { padding: 0.28rem 0.5rem; font-size: 0.56rem; }
+  .qn-fab { bottom: 3.4rem; right: 0.6rem; width: 2.4rem; height: 2.4rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qn-fab, .qn-topbar, .qn-chip, .qn-chip:hover { transition: none; transform: none; }
+}
