@@ -11716,3 +11716,155 @@ body {
   .cy-clock-grid { grid-template-columns: 1fr; }
   .cy-vs-table, .cy-trig-table, .cy-alloc-table { font-size: 0.54rem; }
 }
+
+/* ============================================================
+   STF 短线爆发因子面板
+   ============================================================ */
+.sd-stf-section { border-left: 3px solid #FF6B35; }
+.stf-sub { font-size: 0.58rem; color: var(--muted); font-weight: 400; margin-left: 0.3rem; }
+
+/* ---- 顶部得分卡 ---- */
+.stf-hero {
+  display: flex; align-items: center; gap: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.55rem;
+  margin-bottom: 0.5rem;
+}
+.stf-hero-left { display: flex; flex-direction: column; align-items: center; min-width: 110px; }
+.stf-score { font-size: 1.9rem; font-weight: 800; font-family: Monaco, monospace; line-height: 1; }
+.stf-score-unit { font-size: 0.65rem; color: var(--muted); font-weight: 400; }
+.stf-stars { font-size: 0.85rem; margin-top: 0.2rem; letter-spacing: 2px; }
+.stf-stars-dim { color: rgba(128,128,128,0.35); }
+.stf-hero-right { flex: 1; }
+.stf-rating-name { font-size: 1rem; font-weight: 800; }
+.stf-rating-desc { font-size: 0.64rem; color: var(--text); opacity: 0.8; margin-top: 0.15rem; line-height: 1.5; }
+
+.stf-r5 { background: linear-gradient(135deg, rgba(255,51,51,0.16), rgba(200,20,20,0.05)); border: 1px solid rgba(255,51,51,0.4); }
+.stf-r5 .stf-score, .stf-r5 .stf-stars, .stf-r5 .stf-rating-name { color: #FF3333; }
+.stf-r4 { background: linear-gradient(135deg, rgba(255,139,53,0.14), rgba(220,100,20,0.04)); border: 1px solid rgba(255,139,53,0.35); }
+.stf-r4 .stf-score, .stf-r4 .stf-stars, .stf-r4 .stf-rating-name { color: #FF8B35; }
+.stf-r3 { background: linear-gradient(135deg, rgba(255,184,0,0.12), rgba(200,140,0,0.04)); border: 1px solid rgba(255,184,0,0.3); }
+.stf-r3 .stf-score, .stf-r3 .stf-stars, .stf-r3 .stf-rating-name { color: #FFB800; }
+.stf-r2 { background: linear-gradient(135deg, rgba(136,153,170,0.12), rgba(100,115,130,0.04)); border: 1px solid rgba(136,153,170,0.3); }
+.stf-r2 .stf-score, .stf-r2 .stf-stars, .stf-r2 .stf-rating-name { color: #8899AA; }
+.stf-r1 { background: linear-gradient(135deg, rgba(0,170,102,0.12), rgba(0,130,80,0.04)); border: 1px solid rgba(0,170,102,0.3); }
+.stf-r1 .stf-score, .stf-r1 .stf-stars, .stf-r1 .stf-rating-name { color: #00AA66; }
+
+/* ---- FTF×STF联合决策 ---- */
+.stf-joint {
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.45rem;
+  margin-bottom: 0.5rem;
+  border: 1px dashed;
+}
+.stf-joint-head { display: flex; align-items: center; gap: 0.5rem; font-size: 0.68rem; }
+.stf-joint-head b { color: var(--text); }
+.stf-joint-zone { margin-left: auto; font-weight: 700; font-size: 0.72rem; }
+.stf-joint-desc { font-size: 0.6rem; color: var(--text); opacity: 0.82; margin: 0.2rem 0; line-height: 1.5; }
+.stf-joint-action { font-size: 0.62rem; font-weight: 600; }
+.stf-zone-golden { background: rgba(255,45,85,0.07); border-color: rgba(255,45,85,0.45); }
+.stf-zone-golden .stf-joint-zone, .stf-zone-golden .stf-joint-action { color: #FF2D55; }
+.stf-zone-hold { background: rgba(255,139,53,0.07); border-color: rgba(255,139,53,0.4); }
+.stf-zone-hold .stf-joint-zone, .stf-zone-hold .stf-joint-action { color: #FF8B35; }
+.stf-zone-wait { background: rgba(255,184,0,0.06); border-color: rgba(255,184,0,0.35); }
+.stf-zone-wait .stf-joint-zone, .stf-zone-wait .stf-joint-action { color: #D6A000; }
+.stf-zone-risk { background: rgba(0,170,102,0.08); border-color: rgba(0,170,102,0.4); }
+.stf-zone-risk .stf-joint-zone, .stf-zone-risk .stf-joint-action { color: #00AA66; }
+
+/* ---- 五维因子 ---- */
+.stf-dims { padding: 0.6rem 0.7rem; background: var(--card-bg); border: 1px solid var(--card-border, rgba(255,255,255,0.08)); border-radius: 0.5rem; margin-bottom: 0.5rem; }
+.stf-dim-row { display: flex; gap: 0.5rem; align-items: flex-start; margin-bottom: 0.5rem; }
+.stf-dim-row:last-child { margin-bottom: 0; }
+.stf-dim-icon { font-size: 1rem; line-height: 1.3; }
+.stf-dim-body { flex: 1; min-width: 0; }
+.stf-dim-head { display: flex; align-items: center; gap: 0.4rem; font-size: 0.66rem; }
+.stf-dim-head b { color: var(--text); }
+.stf-dim-desc { flex: 1; font-size: 0.56rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stf-dim-val { font-weight: 700; font-family: Monaco, monospace; font-size: 0.72rem; }
+.stf-dim-bar { height: 4px; background: rgba(128,128,128,0.12); border-radius: 2px; margin-top: 0.2rem; overflow: hidden; }
+.stf-dim-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
+.stf-dim-hot { color: #FF3333; }
+.stf-dim-fill.stf-dim-hot { background: linear-gradient(90deg, #FF6B35, #FF2222); }
+.stf-dim-warm { color: #FFB800; }
+.stf-dim-fill.stf-dim-warm { background: linear-gradient(90deg, #FFD93D, #FFA500); }
+.stf-dim-cool { color: #00AA66; }
+.stf-dim-fill.stf-dim-cool { background: linear-gradient(90deg, #00CC88, #008855); }
+
+/* ---- 战法卡片 ---- */
+.stf-strategies { margin-bottom: 0.5rem; }
+.stf-block-title { font-size: 0.7rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem; padding-left: 0.45rem; border-left: 3px solid #FF6B35; }
+.stf-strategy-card {
+  padding: 0.5rem 0.6rem;
+  background: var(--card-bg);
+  border: 1px solid rgba(255,107,53,0.22);
+  border-radius: 0.45rem;
+  margin-bottom: 0.4rem;
+}
+.stf-strategy-head { display: flex; align-items: center; gap: 0.4rem; }
+.stf-strategy-icon { font-size: 0.9rem; }
+.stf-strategy-name { font-size: 0.7rem; color: var(--text); }
+.stf-strategy-match { margin-left: auto; font-size: 0.56rem; color: #FF8B35; font-weight: 700; white-space: nowrap; }
+.stf-strategy-match-bar { width: 50px; height: 3px; background: rgba(128,128,128,0.15); border-radius: 2px; overflow: hidden; }
+.stf-strategy-match-bar div { height: 100%; background: linear-gradient(90deg, #FFD93D, #FF6B35); border-radius: 2px; }
+.stf-strategy-desc { font-size: 0.6rem; color: var(--text); opacity: 0.82; margin: 0.25rem 0; line-height: 1.55; }
+.stf-strategy-action { font-size: 0.58rem; color: var(--text); line-height: 1.5; padding: 0.2rem 0.35rem; background: rgba(0,170,0,0.05); border-radius: 0.25rem; margin-bottom: 0.2rem; }
+.stf-strategy-risk { font-size: 0.58rem; color: var(--text); line-height: 1.5; padding: 0.2rem 0.35rem; background: rgba(255,60,40,0.05); border-radius: 0.25rem; }
+.stf-none { font-size: 0.6rem; color: var(--muted); padding: 0.5rem; text-align: center; }
+
+/* ---- K线形态 ---- */
+.stf-patterns { margin-bottom: 0.5rem; }
+.stf-pattern-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.4rem; }
+.stf-pattern-item {
+  padding: 0.4rem 0.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border, rgba(255,255,255,0.08));
+  border-radius: 0.4rem;
+}
+.stf-pt-badge { font-size: 0.5rem; font-weight: 700; padding: 1px 5px; border-radius: 6px; margin-right: 0.3rem; }
+.stf-pt-bull { background: rgba(255,40,40,0.12); color: #FF3333; }
+.stf-pt-bear { background: rgba(0,170,0,0.12); color: #00AA66; }
+.stf-pt-neutral { background: rgba(255,184,0,0.12); color: #D6A000; }
+.stf-pt-name { font-size: 0.66rem; font-weight: 700; color: var(--text); }
+.stf-pt-when { font-size: 0.54rem; color: var(--muted); margin-left: 0.3rem; }
+.stf-pt-desc { font-size: 0.56rem; color: var(--muted); margin-top: 0.2rem; line-height: 1.45; }
+
+/* ---- 技术指标 ---- */
+.stf-indicators { margin-bottom: 0.5rem; }
+.stf-ind-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.35rem; }
+.stf-ind-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.35rem 0.5rem;
+  background: rgba(128,128,128,0.05);
+  border-radius: 0.3rem;
+  font-size: 0.6rem;
+}
+.stf-ind-item span { color: var(--muted); }
+.stf-ind-item b { font-weight: 700; }
+.stf-ind-bull { color: #FF3333; }
+.stf-ind-bear { color: #00AA66; }
+
+/* ---- 作战计划 ---- */
+.stf-plan { margin-bottom: 0.5rem; }
+.stf-plan-grid { display: grid; grid-template-columns: 1fr; gap: 0.3rem; }
+.stf-plan-item {
+  display: flex; gap: 0.5rem; align-items: baseline;
+  padding: 0.35rem 0.5rem;
+  background: rgba(0,200,255,0.04);
+  border: 1px solid rgba(0,200,255,0.12);
+  border-radius: 0.3rem;
+  font-size: 0.6rem;
+}
+.stf-plan-label { min-width: 3.5em; font-weight: 700; color: var(--accent); }
+
+/* ---- 说明 ---- */
+.stf-guide { padding: 0.55rem 0.65rem; background: rgba(255,107,53,0.04); border: 1px solid rgba(255,107,53,0.15); border-radius: 0.45rem; }
+.stf-guide-title { font-size: 0.66rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; }
+.stf-guide-text { font-size: 0.58rem; color: var(--text); opacity: 0.82; line-height: 1.65; }
+.stf-disclaimer { font-size: 0.53rem; color: var(--muted); margin-top: 0.3rem; line-height: 1.55; }
+
+@media (max-width: 560px) {
+  .stf-hero { flex-direction: column; text-align: center; gap: 0.4rem; }
+  .stf-pattern-list { grid-template-columns: 1fr; }
+  .stf-ind-grid { grid-template-columns: repeat(2, 1fr); }
+  .stf-score { font-size: 1.6rem; }
+}

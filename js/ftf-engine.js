@@ -548,6 +548,7 @@ function calculateBreakthrough(data, bollinger, atr, idx) {
 
 var _ftfData = null;      // 缓存当前FTF数据
 var _ftfWindow = 120;     // 当前窗口大小
+var _ftfLastScore = null; // 最新FTF得分（供STF联合决策使用）
 var _ftfCanvas = null;    // FTF画布引用
 var _ftfHoverIdx = -1;    // 当前悬停索引
 
@@ -576,6 +577,9 @@ function renderFTFChart(ftfResults, klineInfo) {
   // 获取最新FTF值用于显示当前评级
   var lastFTF = ftfResults[ftfResults.length - 1];
   var lastScore = lastFTF.ftf;
+
+  // 存储最新FTF得分供STF联合决策使用
+  _ftfLastScore = lastScore;
 
   // === 波段评级：位置 × 方向 双维度 ===
   // 位置：超卖区(谷)/中性区/超买区(峰)
