@@ -11505,3 +11505,214 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   经济周期判断面板
+   ============================================================ */
+.cycle-panel-wrap {
+  margin: 0.6rem 0;
+}
+.cp-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+.cp-section-sub {
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: var(--muted);
+  opacity: 0.8;
+}
+#cyclePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ---- 主卡：周期定位 ---- */
+.cy-hero {
+  display: flex;
+  gap: 0.8rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--card-border, rgba(255,255,255,0.08));
+  background: var(--card-bg);
+}
+.cy-early { background: linear-gradient(135deg, rgba(0,200,120,0.12), rgba(0,130,80,0.03)); border-color: rgba(0,200,120,0.3); }
+.cy-expand { background: linear-gradient(135deg, rgba(60,200,255,0.12), rgba(30,120,180,0.03)); border-color: rgba(60,200,255,0.3); }
+.cy-late { background: linear-gradient(135deg, rgba(255,200,40,0.12), rgba(200,150,20,0.03)); border-color: rgba(255,200,40,0.3); }
+.cy-overheat { background: linear-gradient(135deg, rgba(255,140,40,0.14), rgba(220,90,20,0.04)); border-color: rgba(255,140,40,0.35); }
+.cy-stag { background: linear-gradient(135deg, rgba(255,80,60,0.14), rgba(200,40,30,0.04)); border-color: rgba(255,80,60,0.35); }
+.cy-recess { background: linear-gradient(135deg, rgba(180,60,255,0.14), rgba(120,30,180,0.04)); border-color: rgba(180,60,255,0.35); }
+
+.cy-hero-left { flex: 1.4; min-width: 0; }
+.cy-stage-label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.cy-stage-name { font-size: 1.35rem; font-weight: 800; color: var(--text); margin: 0.15rem 0; }
+.cy-stage-desc { font-size: 0.68rem; color: var(--text); opacity: 0.8; margin-bottom: 0.35rem; }
+.cy-clock-pos { font-size: 0.66rem; color: var(--muted); line-height: 1.5; }
+.cy-clock-pos b { color: #FF9E2C; }
+
+.cy-hero-right { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 150px; }
+.cy-avg-score { font-size: 2rem; font-weight: 800; color: #FF9E2C; font-family: Monaco, monospace; line-height: 1; }
+.cy-avg-unit { font-size: 0.7rem; color: var(--muted); font-weight: 400; }
+.cy-avg-label { font-size: 0.58rem; color: var(--muted); margin: 0.2rem 0 0.35rem; }
+.cy-avg-bar { position: relative; width: 100%; height: 6px; background: rgba(128,128,128,0.15); border-radius: 3px; overflow: visible; }
+.cy-avg-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #00CC88, #FFD93D, #FF6B35); transition: width 1s ease; }
+.cy-avg-mark { position: absolute; top: -3px; width: 1.5px; height: 12px; background: #FF4444; }
+.cy-avg-note { font-size: 0.5rem; color: var(--muted); margin-top: 0.3rem; }
+
+/* ---- 通用小节标题 ---- */
+.cy-section-title { font-size: 0.72rem; font-weight: 700; color: var(--text); margin-bottom: 0.45rem; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+
+/* ---- 五维评分 ---- */
+.cy-scores, .cy-clock, .cy-ai, .cy-vs2008, .cy-timeline, .cy-triggers, .cy-alloc {
+  padding: 0.7rem 0.8rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border, rgba(255,255,255,0.08));
+  border-radius: 0.5rem;
+}
+.cy-score-row { margin-bottom: 0.6rem; }
+.cy-score-row:last-child { margin-bottom: 0; }
+.cy-score-head { display: flex; align-items: center; gap: 0.4rem; font-size: 0.68rem; }
+.cy-score-stage { font-size: 0.58rem; color: var(--muted); flex: 1; }
+.cy-score-num { font-weight: 700; font-family: Monaco, monospace; font-size: 0.75rem; }
+.cy-bar-ok { color: #00CC88; }
+.cy-bar-warn { color: #FFB800; }
+.cy-bar-danger { color: #FF5555; }
+.cy-score-bar { height: 5px; background: rgba(128,128,128,0.12); border-radius: 3px; margin: 0.25rem 0; overflow: hidden; }
+.cy-score-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+.cy-score-fill.cy-bar-ok { background: #00CC88; }
+.cy-score-fill.cy-bar-warn { background: #FFB800; }
+.cy-score-fill.cy-bar-danger { background: linear-gradient(90deg, #FF6B35, #FF3333); }
+.cy-score-logic { font-size: 0.6rem; color: var(--text); opacity: 0.85; line-height: 1.45; }
+.cy-score-facts { font-size: 0.55rem; color: var(--muted); line-height: 1.5; margin-top: 0.15rem; }
+
+/* ---- 美林时钟 ---- */
+.cy-clock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.cy-cell {
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.4rem;
+  background: rgba(128,128,128,0.06);
+  border: 1px solid transparent;
+  display: flex; flex-direction: column; gap: 0.15rem;
+}
+.cy-cell b { font-size: 0.72rem; color: var(--text); }
+.cy-cell span { font-size: 0.55rem; color: var(--muted); }
+.cy-cell i { font-size: 0.55rem; color: var(--muted); font-style: normal; opacity: 0.8; }
+.cy-cell-active {
+  background: linear-gradient(135deg, rgba(255,80,60,0.15), rgba(255,80,60,0.04));
+  border-color: rgba(255,80,60,0.45);
+  box-shadow: 0 0 12px rgba(255,80,60,0.15);
+  animation: cyCellPulse 2.5s ease-in-out infinite;
+}
+@keyframes cyCellPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,80,60,0.1); }
+  50% { box-shadow: 0 0 16px rgba(255,80,60,0.25); }
+}
+.cy-clock-order { font-size: 0.62rem; color: var(--text); opacity: 0.85; margin-top: 0.5rem; line-height: 1.6; }
+.cy-clock-note { color: var(--muted); font-size: 0.56rem; }
+
+/* ---- AI债务周期 ---- */
+.cy-ai-hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin-bottom: 0.6rem; }
+.cy-ai-fact {
+  padding: 0.5rem 0.4rem;
+  background: rgba(255,140,40,0.07);
+  border: 1px solid rgba(255,140,40,0.2);
+  border-radius: 0.4rem;
+  text-align: center;
+}
+.cy-ai-fact b { display: block; font-size: 0.85rem; color: #FF9E2C; font-family: Monaco, monospace; }
+.cy-ai-fact span { font-size: 0.5rem; color: var(--muted); line-height: 1.4; display: block; margin-top: 0.2rem; }
+.cy-flow-title { font-size: 0.62rem; font-weight: 700; color: var(--text); margin-bottom: 0.3rem; }
+.cy-flow {
+  font-size: 0.58rem; color: var(--text); opacity: 0.85; line-height: 1.7;
+  padding: 0.4rem 0.5rem;
+  background: rgba(0,200,255,0.04);
+  border-radius: 0.35rem;
+  border-left: 2px solid var(--accent);
+  margin-bottom: 0.4rem;
+}
+.cy-flow-split { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.cy-branch {
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.4rem;
+  font-size: 0.57rem;
+  line-height: 1.55;
+}
+.cy-branch b { display: block; margin-bottom: 0.2rem; font-size: 0.62rem; }
+.cy-branch-ok { background: rgba(0,170,0,0.06); border: 1px solid rgba(0,170,0,0.2); color: var(--text); }
+.cy-branch-ok b { color: #00CC88; }
+.cy-branch-bad { background: rgba(255,60,40,0.06); border: 1px solid rgba(255,60,40,0.25); color: var(--text); }
+.cy-branch-bad b { color: #FF5555; }
+.cy-ai-verdict {
+  font-size: 0.6rem; line-height: 1.6; color: var(--text);
+  padding: 0.45rem 0.55rem;
+  background: rgba(255,200,40,0.05);
+  border: 1px solid rgba(255,200,40,0.2);
+  border-radius: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+/* ---- 对比表 ---- */
+.cy-vs-table, .cy-trig-table, .cy-alloc-table { width: 100%; border-collapse: collapse; font-size: 0.58rem; }
+.cy-vs-table th, .cy-trig-table th, .cy-alloc-table th {
+  text-align: left; padding: 0.3rem 0.4rem;
+  color: var(--muted); font-weight: 600;
+  border-bottom: 1px solid rgba(128,128,128,0.2);
+  font-size: 0.55rem;
+}
+.cy-vs-table td, .cy-trig-table td, .cy-alloc-table td {
+  padding: 0.35rem 0.4rem;
+  color: var(--text);
+  border-bottom: 1px solid rgba(128,128,128,0.08);
+  vertical-align: top;
+  line-height: 1.5;
+}
+.cy-vs-table td:last-child, .cy-trig-table td:last-child { white-space: nowrap; }
+.cy-edge { color: #FF9E2C; font-weight: 600; font-size: 0.55rem; }
+.cy-vs-note { font-size: 0.56rem; color: var(--muted); line-height: 1.6; margin-top: 0.45rem; padding-top: 0.4rem; border-top: 1px dashed rgba(128,128,128,0.15); }
+
+/* ---- 时间线 ---- */
+.cy-tl-item { padding: 0.45rem 0; border-left: 2px solid rgba(0,200,255,0.25); padding-left: 0.7rem; margin-left: 0.3rem; position: relative; }
+.cy-tl-item::before { content: ''; position: absolute; left: -5px; top: 0.55rem; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.cy-tl-head { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.25rem; }
+.cy-tl-head b { font-size: 0.68rem; color: var(--text); }
+.cy-tl-conf { font-size: 0.5rem; padding: 1px 6px; border-radius: 8px; background: rgba(0,200,255,0.1); color: var(--accent); }
+.cy-tl-signal { font-size: 0.55rem; color: #FF9E2C; }
+.cy-tl-events { margin: 0; padding-left: 1rem; }
+.cy-tl-events li { font-size: 0.58rem; color: var(--text); opacity: 0.8; line-height: 1.7; }
+
+/* ---- 触发器 ---- */
+.cy-trig-now { font-family: Monaco, monospace; font-size: 0.55rem; color: var(--accent); white-space: nowrap; }
+.cy-lv { font-size: 0.5rem; padding: 1px 6px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
+.cy-lv-warn { background: rgba(255,184,0,0.12); color: #FFB800; }
+.cy-lv-key { background: rgba(255,110,50,0.15); color: #FF8B35; }
+.cy-lv-crisis { background: rgba(255,50,40,0.15); color: #FF4444; }
+.cy-trig-note { font-size: 0.55rem; color: var(--muted); margin-top: 0.4rem; padding-top: 0.35rem; border-top: 1px dashed rgba(128,128,128,0.15); }
+
+/* ---- 资产配置 ---- */
+.cy-weight { font-size: 0.55rem; padding: 1px 8px; border-radius: 8px; font-weight: 700; white-space: nowrap; }
+.cy-w-over { background: rgba(255,50,50,0.13); color: #FF5555; }
+.cy-w-under { background: rgba(255,184,0,0.12); color: #FFB800; }
+.cy-w-avoid { background: rgba(0,170,0,0.12); color: #00CC55; }
+.cy-w-neu { background: rgba(128,128,128,0.12); color: var(--muted); }
+.cy-disclaimer { font-size: 0.53rem; color: var(--muted); line-height: 1.6; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px dashed rgba(128,128,128,0.15); opacity: 0.85; }
+
+/* ---- 响应式 ---- */
+@media (max-width: 720px) {
+  .cy-hero { flex-direction: column; gap: 0.5rem; }
+  .cy-hero-right { min-width: 0; }
+  .cy-ai-hero { grid-template-columns: repeat(2, 1fr); }
+  .cy-flow-split { grid-template-columns: 1fr; }
+  .cy-stage-name { font-size: 1.1rem; }
+}
+@media (max-width: 420px) {
+  .cy-ai-hero { grid-template-columns: 1fr 1fr; }
+  .cy-clock-grid { grid-template-columns: 1fr; }
+  .cy-vs-table, .cy-trig-table, .cy-alloc-table { font-size: 0.54rem; }
+}

@@ -1208,6 +1208,8 @@ function initPage() {
   renderPolicyVane();
   // 渲染政策主线主题卡片（7大政策受益方向）
   renderPolicyThemes();
+  // 渲染经济周期判断面板（五维评分+美林时钟+AI债务周期）
+  renderCyclePanel();
   // 异步获取最新政策新闻，与静态数据合并
   fetchLatestPolicyNews();
 
