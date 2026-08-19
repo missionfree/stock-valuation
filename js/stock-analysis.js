@@ -6262,6 +6262,10 @@ function renderStockResult(stockData, finData, flowData, loading) {
         if (typeof renderSTF === 'function') {
           renderSTF(_currentKlineData.klData, _currentStockData || { name: _currentKlineData.stockName }, _currentKlineData.realtimePrice);
         }
+        // 重新渲染精准买卖点
+        if (typeof renderBS === 'function') {
+          renderBS(_currentKlineData.klData, _currentStockData || { name: _currentKlineData.stockName }, _currentKlineData.realtimePrice);
+        }
       }, 120);
     }
   }
@@ -7323,6 +7327,10 @@ function fetchAndRenderKlineChart(secCode, stockName, realtimePrice) {
         // 渲染STF短线爆发因子（FTF之后，确保联合决策可读取FTF得分）
         if (typeof renderSTF === 'function') {
           renderSTF(klData, _currentStockData || { name: stockName }, realtimePrice);
+        }
+        // 渲染精准买卖点（STF之后）
+        if (typeof renderBS === 'function') {
+          renderBS(klData, _currentStockData || { name: stockName }, realtimePrice);
         }
       }, 120);
     }

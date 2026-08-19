@@ -12524,3 +12524,163 @@ body {
   .sd-backbar-tip { display: none; }
   .sd-backbar-btn { padding: 0.28rem 0.55rem; font-size: 0.6rem; }
 }
+
+/* ============================================================
+   BS-Engine 精准买卖点面板
+   两种买点（突破/回踩）条件清单 + 卖点价格阶梯 + 执行便签
+   ============================================================ */
+.sd-bs-section { border-color: rgba(255, 107, 107, 0.18); }
+.bs-sub { font-size: 0.54rem; color: var(--muted, #8B949E); font-weight: 400; margin-left: 0.3rem; }
+
+/* 总状态头 */
+.bs-head {
+  padding: 0.5rem 0.7rem; margin-bottom: 0.55rem;
+  border-radius: 0.5rem; font-size: 0.66rem; font-weight: 700;
+  border: 1px solid; text-align: center;
+}
+.bs-head-trigger {
+  color: #FFD166; background: rgba(255, 107, 107, 0.12);
+  border-color: rgba(255, 107, 107, 0.5);
+  animation: bsPulse 1.6s ease-in-out infinite;
+}
+.bs-head-armed {
+  color: var(--accent, #00C8FF); background: rgba(0, 200, 255, 0.08);
+  border-color: rgba(0, 200, 255, 0.4);
+}
+.bs-head-wait {
+  color: var(--muted, #8B949E); background: rgba(139, 148, 158, 0.06);
+  border-color: rgba(139, 148, 158, 0.2);
+}
+@keyframes bsPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 107, 107, 0); }
+  50% { box-shadow: 0 0 12px rgba(255, 107, 107, 0.35); }
+}
+
+/* 买点卡片 */
+.bs-buy-grid { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+@media (min-width: 900px) { .bs-buy-grid { grid-template-columns: 1fr 1fr; } }
+
+.bs-card {
+  padding: 0.55rem 0.65rem; border-radius: 0.5rem;
+  background: var(--bg3, #16202E); border: 1px solid var(--rule, rgba(0, 200, 255, 0.12));
+}
+.bs-card.bs-on { border-color: rgba(255, 107, 107, 0.55); background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(22, 32, 46, 0.6)); }
+.bs-card.bs-armed { border-color: rgba(0, 200, 255, 0.45); }
+.bs-card.bs-form { border-color: rgba(255, 209, 102, 0.3); }
+
+.bs-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.45rem; }
+.bs-card-name { font-size: 0.68rem; font-weight: 700; color: var(--text, #E6EDF3); }
+.bs-state { font-size: 0.56rem; font-weight: 700; padding: 0.18rem 0.5rem; border-radius: 0.9rem; }
+.bs-state.bs-on { color: #FFD166; background: rgba(255, 107, 107, 0.18); border: 1px solid rgba(255, 107, 107, 0.5); }
+.bs-state.bs-armed { color: var(--accent, #00C8FF); background: rgba(0, 200, 255, 0.1); border: 1px solid rgba(0, 200, 255, 0.4); }
+.bs-state.bs-form { color: #FFD166; background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.35); }
+.bs-state.bs-off { color: var(--muted, #8B949E); background: rgba(139, 148, 158, 0.08); border: 1px solid rgba(139, 148, 158, 0.25); }
+
+/* 条件清单 */
+.bs-cond { display: flex; align-items: baseline; gap: 0.4rem; padding: 0.22rem 0; border-bottom: 1px dashed rgba(139, 148, 158, 0.12); font-size: 0.58rem; }
+.bs-cond:last-child { border-bottom: none; }
+.bs-cond-check { font-weight: 900; width: 0.8rem; flex-shrink: 0; font-size: 0.66rem; }
+.bs-cond-met .bs-cond-check { color: #4ADE80; }
+.bs-cond-miss .bs-cond-check { color: rgba(139, 148, 158, 0.5); }
+.bs-cond-name { color: var(--text, #E6EDF3); font-weight: 600; flex-shrink: 0; }
+.bs-cond-detail { color: var(--muted, #8B949E); font-family: var(--font-mono, Monaco, monospace); font-size: 0.54rem; }
+
+/* 触发提示 */
+.bs-trigger-tip {
+  margin-top: 0.45rem; padding: 0.35rem 0.55rem; border-radius: 0.4rem;
+  font-size: 0.58rem; color: var(--accent, #00C8FF);
+  background: rgba(0, 200, 255, 0.07); border: 1px dashed rgba(0, 200, 255, 0.3);
+}
+.bs-trigger-tip b { font-size: 0.72rem; }
+.bs-trigger-hit {
+  color: #FFD166; background: rgba(255, 107, 107, 0.1);
+  border-color: rgba(255, 107, 107, 0.45); border-style: solid;
+}
+.bs-trigger-dim { color: var(--muted, #8B949E); border-color: rgba(139, 148, 158, 0.2); }
+
+/* 卖点执行表 */
+.bs-sell-wrap { margin-top: 0.6rem; }
+.bs-block-title { font-size: 0.68rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text, #E6EDF3); }
+
+.bs-sell-meta {
+  display: flex; gap: 0.8rem; flex-wrap: wrap;
+  padding: 0.4rem 0.6rem; margin-bottom: 0.5rem;
+  border-radius: 0.4rem; font-size: 0.6rem; color: var(--muted, #8B949E);
+  background: rgba(0, 0, 0, 0.18);
+}
+.bs-sell-meta b { color: var(--text, #E6EDF3); font-family: var(--font-mono, Monaco, monospace); font-size: 0.66rem; }
+.bs-sell-meta .bs-up { color: #FF4D4F; }
+.bs-sell-meta .bs-down { color: #4ADE80; }
+.bs-entry-real { border-left: 3px solid #4ADE80; }
+.bs-entry-sim { border-left: 3px solid rgba(139, 148, 158, 0.4); }
+
+.bs-sell-group { margin-bottom: 0.5rem; }
+.bs-group-title { font-size: 0.62rem; font-weight: 700; margin-bottom: 0.3rem; padding-left: 0.45rem; border-left: 3px solid; }
+.bs-group-stop { color: #FF6B6B; border-color: #FF6B6B; }
+.bs-group-tp { color: #FFD166; border-color: #FFD166; }
+
+/* 价格行 */
+.bs-lv {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.32rem 0.5rem; margin-bottom: 0.22rem;
+  border-radius: 0.35rem; font-size: 0.58rem;
+  background: rgba(0, 0, 0, 0.14); border: 1px solid transparent;
+}
+.bs-lv-triggered { border-color: rgba(255, 77, 79, 0.55); background: rgba(255, 77, 79, 0.08); }
+.bs-lv-name { width: 7.2rem; flex-shrink: 0; font-weight: 600; color: var(--text, #E6EDF3); }
+.bs-lv-price {
+  width: 4rem; flex-shrink: 0; text-align: right;
+  font-family: var(--font-mono, Monaco, monospace); font-weight: 700;
+  color: var(--accent, #00C8FF); font-size: 0.66rem;
+}
+.bs-lv-triggered .bs-lv-price { color: #FF4D4F; }
+.bs-lv-desc { flex: 1; min-width: 0; color: var(--muted, #8B949E); font-size: 0.54rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bs-lv-dist { flex-shrink: 0; font-family: var(--font-mono, Monaco, monospace); font-size: 0.54rem; color: var(--muted, #8B949E); }
+.bs-lv-status { flex-shrink: 0; font-size: 0.54rem; font-weight: 700; padding: 0.12rem 0.4rem; border-radius: 0.8rem; }
+.bs-lv-hit { color: #FF4D4F; background: rgba(255, 77, 79, 0.14); }
+.bs-lv-wait { color: var(--muted, #8B949E); background: rgba(139, 148, 158, 0.1); }
+@media (max-width: 768px) {
+  .bs-lv { flex-wrap: wrap; gap: 0.3rem; }
+  .bs-lv-name { width: auto; }
+  .bs-lv-desc { display: none; }
+}
+
+/* 执行便签（便签纸样式） */
+.bs-note {
+  margin-top: 0.6rem; padding: 0.6rem 0.7rem 0.5rem;
+  border-radius: 0.45rem;
+  background: linear-gradient(160deg, rgba(255, 209, 102, 0.1), rgba(255, 209, 102, 0.03));
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.25);
+}
+.bs-note-title { font-size: 0.66rem; font-weight: 700; color: #FFD166; margin-bottom: 0.45rem; }
+.bs-note-body { display: flex; flex-direction: column; gap: 0.32rem; }
+.bs-note-line { display: flex; align-items: center; gap: 0.5rem; font-size: 0.6rem; }
+.bs-note-k {
+  flex-shrink: 0; width: 3.6rem; text-align: center;
+  padding: 0.15rem 0.3rem; border-radius: 0.3rem;
+  font-size: 0.56rem; font-weight: 700; color: #fff;
+}
+.bs-note-stop { background: rgba(255, 77, 79, 0.75); }
+.bs-note-cut { background: rgba(255, 159, 67, 0.75); }
+.bs-note-clear { background: rgba(239, 68, 68, 0.85); }
+.bs-note-tp { background: rgba(74, 222, 128, 0.65); }
+.bs-note-line b { font-family: var(--font-mono, Monaco, monospace); font-size: 0.68rem; color: var(--text, #E6EDF3); }
+.bs-note-v { font-size: 0.54rem; color: var(--muted, #8B949E); }
+.bs-note-foot {
+  margin-top: 0.5rem; padding-top: 0.4rem;
+  border-top: 1px dashed rgba(255, 209, 102, 0.3);
+  text-align: center; font-size: 0.56rem; color: #FFD166; font-weight: 600;
+}
+
+/* 规则说明 */
+.bs-guide { margin-top: 0.55rem; }
+.bs-guide-text {
+  font-size: 0.56rem; line-height: 1.7; color: var(--muted, #8B949E);
+  padding: 0.45rem 0.6rem; border-radius: 0.4rem;
+  background: rgba(0, 0, 0, 0.15);
+}
+.bs-guide-text b { color: var(--accent, #00C8FF); }
+.bs-disclaimer { margin-top: 0.3rem; font-size: 0.52rem; color: var(--muted, #8B949E); opacity: 0.8; }
+
+@media (prefers-reduced-motion: reduce) { .bs-head-trigger { animation: none; } }
