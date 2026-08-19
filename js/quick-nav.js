@@ -9,10 +9,82 @@
    1. 个股详情底部：组合个股快捷栏（点击即查下一只）+ 上一只/下一只
    2. 底部：搜索历史快捷chips
    3. 右下角悬浮FAB：随时返回组合Tab
+   4. 返回上一级导航栈：搜索个股时记录来源Tab+滚动位置，
+      详情顶部醒目「← 返回」栏一键回原位（不限于组合，任何来源）
    ============================================================ */
 
 /* 当前正在查看的股票（renderQuickNav时传入） */
 var _qnCurrentCode = null;
+
+/* ============================================================
+   返回上一级：导航历史栈
+   ------------------------------------------------------------
+   - qnPushHistory()：searchStock 入口调用，记录"从哪来"
+     （当前Tab+滚动位置）。已在策略Tab阅读个股时换股不叠加，
+     栈保持浅层，符合"返回上一步"直觉
+   - qnBackTarget()：读取栈顶（不弹出），用于渲染返回栏
+   - qnGoBack()：弹出并恢复Tab+滚动位置
+   ============================================================ */
+var _qnNavStack = [];
+var QN_TAB_LABELS = {
+  valuation: '估值强度',
+  industry: '行业全景',
+  strategy: '策略信号',
+  screener: '智能选股',
+  fund: '基金超市',
+  portfolio: '我的组合'
+};
+
+/** 当前激活的Tab名 */
+function qnCurrentTab() {
+  var btn = document.querySelector('.tab-nav-btn.active');
+  return btn ? btn.getAttribute('data-tab') : 'valuation';
+}
+
+/** 搜索发起时入栈（在 searchStock 开头调用） */
+function qnPushHistory() {
+  var cur = qnCurrentTab();
+  // 已在策略Tab阅读个股时切换标的：视为同层演进，不叠加历史
+  if (cur === 'strategy') return;
+  var label = QN_TAB_LABELS[cur] || cur;
+  // 栈顶已是同一来源则更新滚动位置，避免堆积
+  if (_qnNavStack.length && _qnNavStack[_qnNavStack.length - 1].tab === cur) {
+    _qnNavStack[_qnNavStack.length - 1].scrollY = window.scrollY;
+    return;
+  }
+  _qnNavStack.push({ tab: cur, scrollY: window.scrollY, label: label });
+  if (_qnNavStack.length > 6) _qnNavStack.shift();
+}
+
+/** 读取返回目标（不弹出） */
+function qnBackTarget() {
+  return _qnNavStack.length ? _qnNavStack[_qnNavStack.length - 1] : null;
+}
+
+/** 返回上一级：恢复来源Tab与滚动位置 */
+function qnGoBack() {
+  var prev = _qnNavStack.pop();
+  if (!prev) {
+    backToSearch(); // 无历史：退回搜索框
+    return;
+  }
+  switchTab(prev.tab);
+  if (prev.scrollY > 0) {
+    Perf.trackedSetTimeout(function() {
+      window.scrollTo({ top: prev.scrollY, behavior: 'smooth' });
+    }, 120);
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  showToast('已返回「' + prev.label + '」');
+}
+
+/** 智能返回：有历史回历史，无历史回组合（FAB用） */
+function qnSmartBack() {
+  var t = qnBackTarget();
+  if (t) qnGoBack();
+  else switchTab('portfolio');
+}
 
 /**
  * 获取所有组合的扁平个股列表（带组合归属）
@@ -164,18 +236,24 @@ function qnEnsureTopbar() {
 }
 
 /**
- * 更新悬浮条内容（当前个股 + 上一只/下一只 + 返回组合）
+ * 更新悬浮条内容（返回上一级 + 当前个股 + 上一只/下一只 + 返回组合）
  */
 function qnUpdateTopbar(flat, curIdx) {
   var tb = qnEnsureTopbar();
   var curItem = curIdx >= 0 && flat && flat[curIdx] ? flat[curIdx] : null;
   var prevItem = curIdx > 0 ? flat[curIdx - 1] : null;
   var nextItem = (curIdx >= 0 && flat && curIdx < flat.length - 1) ? flat[curIdx + 1] : null;
+  var backTarget = qnBackTarget();
 
   var nameHtml = '<span class="qn-topbar-name">' +
     (curItem ? '💼 ' + escHTML(curItem.name) + '<small>组合 ' + (curIdx + 1) + '/' + flat.length + ' · 阅读中</small>'
              : '📖 个股分析阅读中') +
     '</span>';
+
+  // 返回上一级（优先级最高：回来源Tab，而非仅组合）
+  var backHtml = backTarget
+    ? '<button class="qn-topbar-btn qn-topbar-back" onclick="qnGoBack()" title="返回「' + escHTML(backTarget.label) + '」">← 返回' + escHTML(backTarget.label) + '</button>'
+    : '<button class="qn-topbar-btn qn-topbar-back" onclick="qnGoBack()" title="返回搜索">← 返回</button>';
 
   var navHtml =
     (prevItem
@@ -185,12 +263,12 @@ function qnUpdateTopbar(flat, curIdx) {
       ? '<button class="qn-topbar-btn qn-topbar-nav" onclick="searchFromPortfolio(\'' + escHTML(nextItem.code) + '\',\'' + escHTML(nextItem.name) + '\')" title="查看下一只：' + escHTML(nextItem.name) + '">' + escHTML(nextItem.name) + ' →</button>'
       : '<button class="qn-topbar-btn qn-topbar-nav" disabled>下一只 →</button>');
 
-  tb.innerHTML = nameHtml + navHtml +
-    '<button class="qn-topbar-btn qn-topbar-back" onclick="switchTab(\'portfolio\')" title="返回我的组合">返回组合</button>';
+  tb.innerHTML = nameHtml + backHtml + navHtml +
+    '<button class="qn-topbar-btn" onclick="switchTab(\'portfolio\')" title="返回我的组合">组合</button>';
 }
 
 /**
- * 滚动监听（150ms节流）：向下超过600px且正在个股详情Tab时显示悬浮条
+ * 滚动监听（150ms节流）：向下超过350px且正在个股详情Tab时显示悬浮条
  */
 function qnOnScroll() {
   if (_qnScrollTimer) return;
@@ -201,7 +279,7 @@ function qnOnScroll() {
     var strategyTab = document.getElementById('tab-strategy');
     var inStrategy = strategyTab && strategyTab.classList.contains('active');
     var hasDetail = document.querySelector('#stockResultArea .stock-detail');
-    var show = window.scrollY > 600 && inStrategy && !!hasDetail;
+    var show = window.scrollY > 350 && inStrategy && !!hasDetail;
     tb.classList.toggle('show', show);
   }, 150);
 }
@@ -217,7 +295,7 @@ function clearQnHistory() {
 }
 
 /**
- * FAB悬浮按钮：随时返回组合
+ * FAB悬浮按钮：智能返回——有浏览历史回上一级，无历史回组合
  */
 function qnShowFab(show) {
   var fab = document.getElementById('qnFab');
@@ -226,11 +304,13 @@ function qnShowFab(show) {
     fab = document.createElement('div');
     fab.id = 'qnFab';
     fab.className = 'qn-fab';
-    fab.innerHTML = '💼<span class="qn-fab-label">组合</span>';
-    fab.title = '返回我的组合';
-    fab.onclick = function() { switchTab('portfolio'); };
+    fab.onclick = function() { qnSmartBack(); };
     document.body.appendChild(fab);
   }
+  // 动态更新文案：有返回目标显示目标名，否则显示组合
+  var t = qnBackTarget();
+  fab.innerHTML = '↩<span class="qn-fab-label">' + (t ? t.label : '组合') + '</span>';
+  fab.title = t ? '返回「' + t.label + '」' : '返回我的组合';
   fab.classList.toggle('show', !!show);
 }
 

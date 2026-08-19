@@ -119,6 +119,9 @@ function searchStock() {
   var keyword = input.value.trim();
   if (!keyword) { showToast('请输入股票代码或名称'); return; }
 
+  // 返回上一级导航栈：记录搜索发起时的来源Tab+滚动位置（阅读完一键返回）
+  if (typeof qnPushHistory === 'function') qnPushHistory();
+
   // 设置搜索进行中标志，阻止联想异步回调干扰
   _searchInProgress = true;
 
@@ -5750,6 +5753,16 @@ function renderStockResult(stockData, finData, flowData, loading) {
 
   // === 构建HTML ===
   var html = '<div class="stock-detail">';
+
+  // 0. 返回上一级导航栏（吸顶）：阅读完随时一键回来源Tab，不必滚回顶部
+  var _backTarget = (typeof qnBackTarget === 'function') ? qnBackTarget() : null;
+  html += '<div class="sd-backbar">' +
+    '<button class="sd-backbar-btn" onclick="qnGoBack()" title="返回' + (_backTarget ? escHTML(_backTarget.label) : '搜索') + '">' +
+      '← 返回' + (_backTarget ? escHTML(_backTarget.label) : '搜索') +
+    '</button>' +
+    '<span class="sd-backbar-tip">读完一键回去 · 继续浏览原页面</span>' +
+    '<span class="sd-backbar-price" style="color:' + changeColor + '">' + (d.price > 0 ? d.price.toFixed(2) : '—') + ' ' + changeStr + '</span>' +
+  '</div>';
 
   // 黑五类检测
   var blackFive = detectBlackFive(d, finData);

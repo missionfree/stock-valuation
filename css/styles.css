@@ -12387,3 +12387,140 @@ body {
   .scr-card, .scr-progress-fill, .scr-btn { transition: none; }
   .scr-card:hover { transform: none; }
 }
+
+/* ============================================================
+   FoldSys 通用折叠系统 —— 页面减负：大模块默认收起成细栏
+   结构：.fold-sec > .fold-head(点击切换) + .fold-body > .fold-inner
+   动画：grid-template-rows 0fr↔1fr，无需JS量高，canvas隐藏期间
+   宽度不变、绘制不受影响
+   ============================================================ */
+.fold-sec { margin: 0.45rem 0; }
+
+.fold-head {
+  display: flex; align-items: center; gap: 0.45rem;
+  padding: 0.5rem 0.7rem;
+  background: linear-gradient(90deg, rgba(0, 200, 255, 0.05), rgba(10, 16, 26, 0.4));
+  border: 1px solid var(--glass-border, rgba(0, 200, 255, 0.12));
+  border-radius: 0.5rem;
+  cursor: pointer; user-select: none;
+  transition: border-color 0.25s, background 0.25s;
+  min-height: 2rem;
+}
+.fold-head:hover {
+  border-color: rgba(0, 200, 255, 0.38);
+  background: linear-gradient(90deg, rgba(0, 200, 255, 0.1), rgba(10, 16, 26, 0.5));
+}
+.fold-head:focus-visible { outline: 2px solid var(--accent, #00C8FF); outline-offset: 2px; }
+
+.fold-arrow {
+  font-size: 0.52rem; color: var(--accent, #00C8FF);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0; width: 0.7rem; text-align: center;
+}
+.fold-sec:not(.fold-closed) .fold-arrow { transform: rotate(90deg); }
+
+.fold-title {
+  font-size: 0.74rem; font-weight: 700; font-family: var(--font);
+  color: var(--text, #E6EDF3); white-space: nowrap; flex-shrink: 0;
+}
+
+/* 头部小信息（国债利率/轮动日期等，原sec-title内的动态span） */
+.fold-mini {
+  font-size: 0.56rem; color: var(--muted, #8B949E); font-weight: 400;
+  font-family: var(--font-mono, Monaco, monospace);
+  white-space: nowrap; flex-shrink: 0;
+}
+
+/* 收起时的摘要：动态关键数据或静态副标题，右侧省略号截断 */
+.fold-sum {
+  flex: 1; min-width: 0;
+  font-size: 0.56rem; color: var(--muted, #8B949E);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-align: right; opacity: 0.9;
+}
+
+/* 一键全展/全收按钮 */
+.fold-all-btn {
+  padding: 0.22rem 0.55rem;
+  background: rgba(0, 200, 255, 0.08);
+  border: 1px solid rgba(0, 200, 255, 0.3);
+  border-radius: 0.35rem;
+  color: var(--accent, #00C8FF);
+  font-size: 0.56rem; font-weight: 700; cursor: pointer;
+  white-space: nowrap; transition: all 0.2s; flex-shrink: 0;
+}
+.fold-all-btn:hover { background: rgba(0, 200, 255, 0.18); }
+
+/* 展开动画容器：收起0fr/展开1fr，内层必须min-height:0+overflow:hidden */
+.fold-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fold-inner { overflow: hidden; min-height: 0; }
+.fold-sec.fold-closed .fold-body { grid-template-rows: 0fr; }
+
+/* 折叠内部首元素衔接：去掉原模块顶部多余间距 */
+.fold-inner > *:first-child { margin-top: 0.45rem; }
+
+/* 政策主线：折叠头已含标题，收起内部原标题避免重复 */
+#foldPolicyThemes .pt-section-title { display: none; }
+
+/* 折叠收起时头部微收窄 */
+.fold-sec.fold-closed .fold-head { padding-top: 0.42rem; padding-bottom: 0.42rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fold-body, .fold-arrow { transition: none; }
+}
+
+/* 移动端：头部字号/间距压缩 */
+@media (max-width: 768px) {
+  .fold-head { padding: 0.45rem 0.55rem; gap: 0.35rem; }
+  .fold-title { font-size: 0.7rem; }
+  .fold-sum { font-size: 0.52rem; }
+  .fold-all-btn { padding: 0.2rem 0.45rem; font-size: 0.52rem; }
+}
+
+/* ============================================================
+   个股详情「返回上一级」吸顶栏
+   ------------------------------------------------------------
+   阅读个股分析（长内容）时始终悬在stock-detail顶部，
+   一键回来源Tab（组合/选股/估值等），不必滚回页面顶部找返回
+   ============================================================ */
+.sd-backbar {
+  position: sticky; top: 0.25rem; z-index: 6;
+  display: flex; align-items: center; gap: 0.55rem;
+  padding: 0.4rem 0.6rem; margin-bottom: 0.55rem;
+  background: rgba(8, 13, 22, 0.92);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 200, 255, 0.22);
+  border-radius: 0.5rem;
+}
+.sd-backbar-btn {
+  padding: 0.32rem 0.75rem;
+  background: linear-gradient(135deg, rgba(0, 200, 255, 0.16), rgba(0, 114, 227, 0.1));
+  border: 1px solid rgba(0, 200, 255, 0.4);
+  border-radius: 0.4rem;
+  color: var(--accent, #00C8FF);
+  font-size: 0.64rem; font-weight: 700; cursor: pointer;
+  white-space: nowrap; transition: all 0.2s;
+}
+.sd-backbar-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 200, 255, 0.28), rgba(0, 114, 227, 0.18));
+  box-shadow: 0 0 10px rgba(0, 200, 255, 0.25);
+}
+.sd-backbar-tip {
+  flex: 1; min-width: 0;
+  font-size: 0.54rem; color: var(--muted, #8B949E);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sd-backbar-price {
+  font-size: 0.62rem; font-weight: 700;
+  font-family: var(--font-mono, Monaco, monospace);
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .sd-backbar { gap: 0.35rem; padding: 0.35rem 0.45rem; }
+  .sd-backbar-tip { display: none; }
+  .sd-backbar-btn { padding: 0.28rem 0.55rem; font-size: 0.6rem; }
+}
