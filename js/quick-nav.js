@@ -254,3 +254,41 @@ function qnOnTabSwitch(tabName) {
   var tb = document.getElementById('qnTopbar');
   if (tb && tabName !== 'strategy') tb.classList.remove('show');
 }
+
+/* ============================================================
+   全局回到顶部按钮：任何页面滚动超过一屏后，左下角出现
+   与右下角组合FAB错开，长内容读完后一键回顶
+   ============================================================ */
+var _qnBackTopTimer = null;
+
+function qnBackTopOnScroll() {
+  if (_qnBackTopTimer) return;
+  _qnBackTopTimer = setTimeout(function() {
+    _qnBackTopTimer = null;
+    var btn = document.getElementById('qnBackTop');
+    if (!btn) return;
+    btn.classList.toggle('show', window.scrollY > 800);
+  }, 150);
+}
+
+(function qnInitBackTop() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', qnCreateBackTop);
+  } else {
+    qnCreateBackTop();
+  }
+})();
+
+function qnCreateBackTop() {
+  if (document.getElementById('qnBackTop')) return;
+  var btn = document.createElement('div');
+  btn.id = 'qnBackTop';
+  btn.className = 'qn-backtop';
+  btn.setAttribute('role', 'button');
+  btn.setAttribute('aria-label', '回到顶部');
+  btn.title = '回到顶部';
+  btn.innerHTML = '↑<span class="qn-backtop-label">顶部</span>';
+  btn.onclick = function() { window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  document.body.appendChild(btn);
+  window.addEventListener('scroll', qnBackTopOnScroll, { passive: true });
+}

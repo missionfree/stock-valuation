@@ -180,6 +180,22 @@ var CYCLE_ALLOCATION = [
 /* ============================================================
    渲染
    ============================================================ */
+var CY_DETAIL_OPEN_KEY = 'cycle_detail_open_v1';
+
+/* 折叠/展开详细分析 */
+function toggleCycleDetail() {
+  var detail = document.getElementById('cycleDetail');
+  var btn = document.getElementById('cycleDetailBtn');
+  if (!detail) return;
+  var open = !detail.classList.contains('open');
+  detail.classList.toggle('open', open);
+  if (btn) {
+    btn.textContent = open ? '收起详细分析 ▲' : '展开详细分析（五维评分/AI债务/2008对比/触发器）▼';
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  try { localStorage.setItem(CY_DETAIL_OPEN_KEY, open ? '1' : '0'); } catch (e) {}
+}
+
 function renderCyclePanel() {
   var el = document.getElementById('cyclePanel');
   if (!el) return;
@@ -203,24 +219,42 @@ function renderCyclePanel() {
   var stage = calcCycleStage(scores);
   var avg = scores.reduce(function(a, b) { return a + b.score; }, 0) / scores.length;
   var clock = calcMerrillClock();
+  var topAlloc = CYCLE_ALLOCATION[0];
 
   var html = '';
 
-  // ===== 顶部：周期定位主卡 =====
+  // ===== 主卡（唯一默认可见）：阶段定位 =====
   html += '<div class="cy-hero ' + stage.cls + '">' +
     '<div class="cy-hero-left">' +
       '<div class="cy-stage-label">当前周期定位</div>' +
       '<div class="cy-stage-name">' + stage.name + '</div>' +
       '<div class="cy-stage-desc">' + stage.desc + '</div>' +
-      '<div class="cy-clock-pos">美林时钟：<b>' + clock.cellName + '</b> · ' + clock.cellDesc + '</div>' +
+      '<div class="cy-clock-pos">美林时钟：<b>' + clock.cellName + '</b> · 债券/黄金优先</div>' +
     '</div>' +
     '<div class="cy-hero-right">' +
       '<div class="cy-avg-score">' + avg.toFixed(0) + '<span class="cy-avg-unit">/100</span></div>' +
-      '<div class="cy-avg-label">五维周期温度计</div>' +
+      '<div class="cy-avg-label">周期温度计</div>' +
       '<div class="cy-avg-bar"><div class="cy-avg-fill" style="width:' + avg + '%"></div><div class="cy-avg-mark" style="left:72%"></div></div>' +
-      '<div class="cy-avg-note">72分为"顶部区"分界</div>' +
     '</div>' +
   '</div>';
+
+  // ===== 五维小结（一行chips，极简） =====
+  html += '<div class="cy-mini-scores">';
+  for (var i = 0; i < scores.length; i++) {
+    var s = scores[i];
+    var barCls = s.score >= 72 ? 'cy-bar-danger' : (s.score >= 60 ? 'cy-bar-warn' : 'cy-bar-ok');
+    html += '<span class="cy-mini-chip ' + barCls + '"><i>' + s.name + '</i><b>' + s.score + '</b></span>';
+  }
+  html += '<span class="cy-mini-alloc">当前策略：<b>' + topAlloc.asset + ' ' + topAlloc.weight + '</b></span></div>';
+
+  // ===== 折叠开关 =====
+  var detailOpen = false;
+  try { detailOpen = localStorage.getItem(CY_DETAIL_OPEN_KEY) === '1'; } catch (e) {}
+  html += '<button class="cy-toggle-btn" id="cycleDetailBtn" onclick="toggleCycleDetail()" aria-expanded="' + (detailOpen ? 'true' : 'false') + '">' +
+    (detailOpen ? '收起详细分析 ▲' : '展开详细分析（五维评分/AI债务/2008对比/触发器）▼') + '</button>';
+
+  // ===== 详细内容（默认收起） =====
+  html += '<div class="cy-detail' + (detailOpen ? ' open' : '') + '" id="cycleDetail">';
 
   // ===== 五维评分条 =====
   html += '<div class="cy-scores">' +
@@ -318,6 +352,9 @@ function renderCyclePanel() {
   html += '</tbody></table>' +
     '<div class="cy-disclaimer">⚠️ 周期判断基于' + CYCLE_DB.updated + '可核实数据（美联储/BIS/Moody\'s/S&P/公司公告）。部分市场传闻数据（如"CDC利差855bp""GPU债务$413B""违约率50%"）未能核实，未纳入评分。本内容仅为风险框架参考，不构成投资建议。</div>' +
   '</div>';
+
+  // ===== 关闭详细折叠区 =====
+  html += '</div>';
 
   el.innerHTML = html;
 }
