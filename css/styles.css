@@ -4850,12 +4850,12 @@ body {
   background: linear-gradient(90deg, transparent, rgba(59,130,246,0.18), transparent);
 }
 .tab-nav-btn {
-  flex: 1; padding: 0.7rem 0.3rem; text-align: center;
-  font-size: 0.72rem; font-weight: 600; font-family: var(--font);
+  flex: 1; padding: 0.68rem 0.25rem; text-align: center;
+  font-size: 0.68rem; font-weight: 600; font-family: var(--font);
   color: var(--muted); cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: none; border-right: 1px solid var(--glass-border);
-  background: transparent; letter-spacing: 0.02em;
+  background: transparent; letter-spacing: 0;
   position: relative; overflow: hidden;
   white-space: nowrap;
 }
@@ -6074,7 +6074,7 @@ body {
   .stat-card .val { font-size: 1.15rem; }
   .stat-card .lbl { font-size: 0.6rem; }
 
-  .tab-nav-btn { font-size: 0.75rem; padding: 0.7rem 0.5rem; }
+  .tab-nav-btn { font-size: 0.7rem; padding: 0.68rem 0.35rem; }
 
   .val-card { padding: 0.85rem; }
   .val-card .stk-name { font-size: 0.9rem; }
@@ -6147,7 +6147,7 @@ body {
   .stat-card .lbl { font-size: 0.62rem; }
 
   .tab-nav { margin: 1rem 0 0; border-radius: 3px; }
-  .tab-nav-btn { font-size: 0.82rem; padding: 0.8rem 0.8rem; }
+  .tab-nav-btn { font-size: 0.76rem; padding: 0.78rem 0.6rem; }
 
   .val-card { padding: 1rem; border-radius: 3px; }
   .val-card .stk-name { font-size: 0.95rem; }
@@ -6239,7 +6239,7 @@ body {
   .stock-detail .sd-grid-3 { grid-template-columns: 1fr; }
   .overview-grid { grid-template-columns: 1fr; }
   .dash-grid { grid-template-columns: 1fr; }
-  .tab-nav-btn { font-size: 0.6rem; padding: 0.5rem 0.15rem; }
+  .tab-nav-btn { font-size: 0.6rem; padding: 0.5rem 0.1rem; }
 }
 
 /* ==================== UI 全面美化覆盖层 ==================== */
@@ -12177,6 +12177,22 @@ body {
 }
 .scr-progress-info { margin-bottom: 0.5rem; }
 .scr-progress-info b { color: var(--accent, #00C8FF); font-family: var(--font-mono, Monaco, monospace); }
+.scr-progress-sub { margin-top: 0.45rem; font-size: 0.55rem; color: var(--muted, #8B949E); opacity: 0.85; }
+.scr-incomplete {
+  grid-column: 1 / -1;
+  padding: 0.45rem 0.6rem; margin-bottom: 0.45rem;
+  background: rgba(255, 158, 44, 0.08);
+  border: 1px solid rgba(255, 158, 44, 0.35);
+  border-radius: 0.45rem;
+  font-size: 0.6rem; color: #FFB84D;
+  display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.scr-retry-link {
+  color: #FF9E2C; font-weight: 700; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.scr-retry-link:hover { opacity: 0.8; }
 .scr-progress-bar {
   width: 100%; max-width: 420px; height: 6px; margin: 0 auto;
   background: rgba(128, 128, 128, 0.15); border-radius: 3px; overflow: hidden;

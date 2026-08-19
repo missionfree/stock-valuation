@@ -21,12 +21,17 @@ var _scr = {
   sortKey: null,
   sortDir: -1,
   updatedTs: 0,
+  incomplete: false,   // 快照是否不完整（有失败页）
   custom: []           // 自定义条件 [{field,op,v1,v2}]
 };
 
-var SCR_CACHE_KEY = 'screener_snapshot_v2';
+var SCR_CACHE_KEY = 'screener_snapshot_v3'; // v3: 旧版残缺快照(1200只)全部作废
 var SCR_CUSTOM_KEY = 'screener_custom_v2';
 var SCR_MAX_ROWS = 150;
+var SCR_PAGE_SIZE = 100;   // 东财clist接口单页硬上限=100（实测pz传大也只回100）
+var SCR_BATCH = 4;         // 分页并发数（温和，防限流）
+var SCR_PAGE_RETRY = 1;    // 单页失败重试次数（每次重试内部还会轮换3个域名）
+var _scrGen = 0;           // 扫描代际号：新扫描开始时旧扫描的结果直接作废
 
 /* ============================================================
    一、工具函数
@@ -119,7 +124,7 @@ function _scrFetchPage(pn, pz) {
   function tryHost() {
     if (i >= SCR_HOSTS.length) return Promise.reject(new Error('全市场接口请求失败'));
     var host = SCR_HOSTS[i++];
-    return emJsonp(_scrUrl(host, pn, pz), 12000).then(function(res) {
+    return emJsonp(_scrUrl(host, pn, pz), 8000).then(function(res) {
       if (!res || !res.data || !res.data.diff) throw new Error('empty');
       return res.data;
     }).catch(function() {
@@ -153,31 +158,72 @@ function _scrNormalize(d) {
 }
 
 /**
- * 拉取全市场快照：优先一次大pz请求，不足时分页补齐
- * @param {function} onProgress - (已获取数, 预计总数)
+ * 拉取全市场快照（固定100/页分页拉全，杜绝截断）
+ * 接口实测：clist单页硬上限100条，全A约5551只=56页
+ * - 第1页先拿total，再并发分批拉剩余页（SCR_BATCH页/批）
+ * - 单页失败自动重试（重试时内部轮换3个域名）
+ * - 按code去重，防止翻页期间数据变动造成重复
+ * - 代际号gen由调用方持有：期间若有新会话(_scrGen变化)，本会话所有回调作废
+ * @param {number} gen - 本次扫描的代际号（调用前先 ++_scrGen 取得）
+ * @param {function} onProgress - (已获取去重数, 预计总数)
+ * @returns {Promise<{list,total,failed}>}
  */
-function _scrFetchAll(onProgress) {
-  return _scrFetchPage(1, 6000).then(function(first) {
-    var total = first.total || first.diff.length;
-    var all = first.diff.slice();
-    onProgress && onProgress(all.length, total);
-    if (all.length >= total) return all;
+function _scrFetchAll(gen, onProgress) {
+  function alive() { return gen === _scrGen; }
 
-    // 大pz被截断时按500/页分页补齐（并行批3个）
-    var pages = Math.ceil(total / 500);
+  function fetchPageRetry(pn) {
+    var attempt = 0;
+    function tryOnce() {
+      if (!alive()) return Promise.reject(new Error('aborted'));
+      return _scrFetchPage(pn, SCR_PAGE_SIZE).catch(function(err) {
+        if (!alive() || attempt >= SCR_PAGE_RETRY) throw err;
+        attempt++;
+        return tryOnce();
+      });
+    }
+    return tryOnce();
+  }
+
+  var map = {};   // code -> 原始item（去重容器）
+  var got = 0;
+  function absorb(diffArr) {
+    for (var j = 0; j < diffArr.length; j++) {
+      var it = diffArr[j];
+      if (it && it.f12 && !map[it.f12]) { map[it.f12] = it; got++; }
+    }
+  }
+
+  return fetchPageRetry(1).then(function(first) {
+    if (!alive()) throw new Error('aborted');
+    var total = first.total || first.diff.length;
+    absorb(first.diff);
+    onProgress && onProgress(got, total);
+
+    var pages = Math.ceil(total / SCR_PAGE_SIZE);
     var next = 2;
+    var failedPages = 0;
+
     function batch() {
+      if (!alive()) return Promise.reject(new Error('aborted'));
       if (next > pages) return Promise.resolve();
       var ps = [];
-      for (var i = 0; i < 3 && next <= pages; i++, next++) ps.push(next);
+      for (var i = 0; i < SCR_BATCH && next <= pages; i++, next++) ps.push(next);
       return Promise.all(ps.map(function(p) {
-        return _scrFetchPage(p, 500).then(function(pg) {
-          all = all.concat(pg.diff || []);
-          onProgress && onProgress(all.length, total);
-        }).catch(function() { /* 单页失败忽略，快照尽量完整 */ });
-      })).then(batch);
+        return fetchPageRetry(p).then(function(pg) {
+          absorb(pg.diff || []);
+        }).catch(function() { failedPages++; });
+      })).then(function() {
+        onProgress && onProgress(got, total);
+        return batch();
+      });
     }
-    return batch().then(function() { return all; });
+
+    return batch().then(function() {
+      if (!alive()) throw new Error('aborted');
+      var list = [];
+      for (var k in map) list.push(map[k]);
+      return { list: list, total: total, failed: failedPages };
+    });
   });
 }
 
@@ -397,10 +443,13 @@ function _scrRenderStats() {
     el.innerHTML = '<div class="scr-loading">⏳ 全市场数据待加载，点击右上角「扫描全市场」开始</div>';
     return;
   }
+  var warn = _scr.incomplete
+    ? '<div class="scr-incomplete">⚠️ 本轮快照不完整（' + st.valid + ' 只），结果可能遗漏 · <span class="scr-retry-link" onclick="screenerRefresh(true)">重新扫描</span></div>'
+    : '';
   var inflowCls = st.inflow >= 0 ? 'scr-up' : 'scr-down';
   var mood = st.up > st.down * 1.5 ? '偏强' : (st.down > st.up * 1.5 ? '偏弱' : '均衡');
   var moodCls = st.up > st.down * 1.5 ? 'scr-up' : (st.down > st.up * 1.5 ? 'scr-down' : '');
-  el.innerHTML =
+  el.innerHTML = warn +
     '<div class="scr-stat-card">' +
       '<div class="scr-stat-val">' + st.valid + '<small>只</small></div>' +
       '<div class="scr-stat-lbl">扫描个股</div>' +
@@ -418,8 +467,9 @@ function _scrRenderProgress(cur, total) {
   if (!el) return;
   var pct = total > 0 ? Math.min(100, Math.round(cur / total * 100)) : 10;
   el.innerHTML = '<div class="scr-loading">' +
-    '<div class="scr-progress-info">📡 正在扫描全市场… 已获取 <b>' + cur + '</b> / ' + (total || '—') + ' 只</div>' +
+    '<div class="scr-progress-info">📡 正在扫描全市场（' + (total ? Math.ceil(total / SCR_PAGE_SIZE) : '—') + '页分批拉取）… <b>' + cur + '</b> / ' + (total || '—') + ' 只 · ' + pct + '%</div>' +
     '<div class="scr-progress-bar"><div class="scr-progress-fill" style="width:' + pct + '%"></div></div>' +
+    '<div class="scr-progress-sub">首次约需5-10秒 · 完成后缓存3分钟 · 请勿频繁重复扫描</div>' +
     '</div>';
 }
 
@@ -630,41 +680,58 @@ function screenerEnsureFresh() {
   screenerRefresh(false);
 }
 
-/** 全市场刷新 */
+/** 全市场刷新（并发防护：同一时刻只允许一个扫描会话） */
 function screenerRefresh(manual) {
-  if (_scr.loading) return;
+  if (_scr.loading) {
+    if (manual) showToast('正在扫描中，请稍候…');
+    return;
+  }
   _scr.loading = true;
   _scrRenderUpdated();
   _scrRenderProgress(0, 0);
 
-  _scrFetchAll(function(cur, total) {
+  // 取得新代际号：若上一会话仍有残留请求/回调，全部作废（并发防护双保险）
+  var gen = ++_scrGen;
+  _scrFetchAll(gen, function(cur, total) {
     _scrRenderProgress(cur, total);
-  }).then(function(diffArr) {
+  }).then(function(res) {
     _scr.stocks = [];
-    for (var i = 0; i < diffArr.length; i++) {
-      var s = _scrNormalize(diffArr[i]);
+    for (var i = 0; i < res.list.length; i++) {
+      var s = _scrNormalize(res.list[i]);
       if (s.code && s.name) _scr.stocks.push(s);
     }
     _scr.updatedTs = Date.now();
     _scr.stats = _scrComputeStats(_scr.stocks);
-    _scrSaveCache(_scr.stocks);
+    // 完整性判定：无失败页 且 覆盖率≥95%
+    _scr.incomplete = res.failed > 0 || _scr.stocks.length < res.total * 0.95;
+    if (!_scr.incomplete) _scrSaveCache(_scr.stocks); // 不完整快照不落缓存，避免劣币驱逐
     _scrRenderAll();
     // 若已有运行中的策略，自动重跑
     if (_scr.active === 'custom') screenerRunCustom(true);
     else if (_scr.active) screenerRun(_scr.active, true);
-    if (manual) showToast('全市场扫描完成：' + _scr.stocks.length + ' 只');
+    if (manual) {
+      if (_scr.incomplete) {
+        showToast('扫描完成但数据不完整：' + _scr.stocks.length + '/' + res.total + '（' + res.failed + '页失败），稍后可重试');
+      } else {
+        showToast('全市场扫描完成：' + _scr.stocks.length + ' 只');
+      }
+    }
   }).catch(function(err) {
+    if (err && err.message === 'aborted') return; // 被新扫描会话取代，静默退出
     if (_scr.stocks.length > 0) {
       _scrRenderAll();
-      showToast('刷新失败，继续使用缓存数据');
+      showToast('刷新失败，继续使用现有数据');
     } else {
       var el = document.getElementById('scrStats');
       if (el) el.innerHTML = '<div class="scr-loading scr-error">❌ ' + _scrEsc(err.message || '数据加载失败') + '，请点击右上角「扫描全市场」重试</div>';
       _scrRenderCards();
     }
   }).then(function() {
-    _scr.loading = false;
-    _scrRenderUpdated();
+    // 仅当本会话仍是当前代际时才解锁，避免误重置新会话的loading状态
+    if (gen === _scrGen) {
+      _scr.loading = false;
+      _scrRenderUpdated();
+    }
   });
 }
 
