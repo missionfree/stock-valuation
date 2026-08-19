@@ -1341,14 +1341,14 @@ function initPage() {
       return;
     }
 
-    // "1-5": 切换Tab
-    if (e.key >= '1' && e.key <= '5' && !isModifier) {
-      var tabMap = { '1': 'valuation', '2': 'industry', '3': 'strategy', '4': 'fund', '5': 'portfolio' };
+    // "1-6": 切换Tab
+    if (e.key >= '1' && e.key <= '6' && !isModifier) {
+      var tabMap = { '1': 'valuation', '2': 'industry', '3': 'strategy', '4': 'screener', '5': 'fund', '6': 'portfolio' };
       var targetTab = tabMap[e.key];
       if (targetTab) {
         e.preventDefault();
         switchTab(targetTab);
-        showToast('已切换到：' + ['估值强度', '行业全景', '策略信号', '基金超市', '我的组合'][parseInt(e.key) - 1]);
+        showToast('已切换到：' + ['估值强度', '行业全景', '策略信号', '智能选股', '基金超市', '我的组合'][parseInt(e.key) - 1]);
       }
       return;
     }

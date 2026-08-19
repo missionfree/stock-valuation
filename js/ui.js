@@ -58,6 +58,15 @@ function switchTab(tabName, direction) {
     window._fundInited = true;
     Perf.trackedSetTimeout(function() { FundUI.init(); }, 100);
   }
+  // 切换到智能选股时：首次初始化，之后缓存过期则静默刷新
+  if (tabName === 'screener' && typeof screenerInit === 'function') {
+    if (!window._screenerInited) {
+      window._screenerInited = true;
+      Perf.trackedSetTimeout(function() { screenerInit(); }, 100);
+    } else if (typeof screenerEnsureFresh === 'function') {
+      screenerEnsureFresh();
+    }
+  }
   // 快捷导航FAB：组合Tab隐藏，其他Tab显示（阅读个股时随时返回组合）
   if (typeof qnOnTabSwitch === 'function') qnOnTabSwitch(tabName);
   // 不再使用 scrollIntoView 滚动页面，改由穿透式特效完成视觉切换
@@ -66,7 +75,7 @@ function switchTab(tabName, direction) {
 /* ============================================================
    触摸滑动切换 Tab
    ============================================================ */
-var _tabOrder = ['valuation', 'industry', 'strategy', 'fund', 'portfolio'];
+var _tabOrder = ['valuation', 'industry', 'strategy', 'screener', 'fund', 'portfolio'];
 var _swipeStartX = 0;
 var _swipeStartY = 0;
 var _swipeStartT = 0;

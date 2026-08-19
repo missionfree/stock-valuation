@@ -48,7 +48,7 @@
 <link rel="preconnect" href="https://push2delay.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2his.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://datacenter-web.eastmoney.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=20260819a">
+<link rel="stylesheet" href="css/styles.css?v=20260819b">
 <link rel="stylesheet" href="css/fund.css?v=20260817c">
 
 </head>
@@ -300,8 +300,9 @@
     <button class="tab-nav-btn active" role="tab" aria-selected="true" data-tab="valuation" onclick="switchTab('valuation')">📊 估值强度<span class="tab-key-badge">1</span></button>
     <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="industry" onclick="switchTab('industry')">🏭 行业全景<span class="tab-key-badge">2</span></button>
     <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="strategy" onclick="switchTab('strategy')">⚡ 策略信号<span class="tab-key-badge">3</span></button>
-    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="fund" onclick="switchTab('fund')">🛒 基金超市<span class="tab-key-badge">4</span></button>
-    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="portfolio" onclick="switchTab('portfolio')">💼 我的组合<span class="tab-key-badge">5</span></button>
+    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="screener" onclick="switchTab('screener')">🔍 选股<span class="tab-key-badge">4</span></button>
+    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="fund" onclick="switchTab('fund')">🛒 基金超市<span class="tab-key-badge">5</span></button>
+    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="portfolio" onclick="switchTab('portfolio')">💼 我的组合<span class="tab-key-badge">6</span></button>
   </div>
 
   <!-- ====== Tab1: 估值强度 ====== -->
@@ -944,6 +945,32 @@
 
   </div><!-- /tab-strategy -->
 
+  <!-- ====== Tab: 智能选股 ====== -->
+  <div class="tab-content" id="tab-screener">
+    <div class="scr-header">
+      <div class="sec-title">智能选股 · <span class="scr-updated" id="scrUpdated">—</span></div>
+      <button class="scr-refresh-btn" id="scrRefreshBtn" onclick="screenerRefresh(true)">⟳ 扫描全市场</button>
+    </div>
+
+    <!-- 市场总览统计 -->
+    <div class="scr-stats" id="scrStats">
+      <div class="scr-loading">⏳ 正在加载全市场数据…</div>
+    </div>
+
+    <!-- 策略卡片 -->
+    <div class="scr-sub-title">📋 策略选股 · 一键扫描（点击卡片运行）</div>
+    <div class="scr-cards" id="scrCards"></div>
+
+    <!-- 策略结果 -->
+    <div id="scrResults"></div>
+
+    <!-- 自定义条件 -->
+    <div class="scr-sub-title">🧩 自定义条件选股</div>
+    <div id="scrCustom"></div>
+
+    <div class="scr-note">数据来源：东方财富全A实时快照（沪深主板/创业板/科创板，剔除ST）· 缓存3分钟 · 仅供研究参考，不构成投资建议</div>
+  </div><!-- /tab-screener -->
+
   <!-- ====== Tab4: 我的组合 ====== -->
   <div class="tab-content" id="tab-portfolio">
     <!-- 我的估值组合 -->
@@ -1136,6 +1163,7 @@
 <script defer src="js/stock-analysis.js?v=20260818a"></script>
 <script defer src="js/earnings-report.js?v=20260810k"></script>
 <script defer src="js/rotation.js?v=20260817b"></script>
+<script defer src="js/screener.js?v=20260819a"></script>
 <script defer src="js/pattern-analysis.js?v=20260814h"></script>
 <script defer src="js/ftf-engine.js?v=20260818a"></script>
 <script defer src="js/stf-engine.js?v=20260818a"></script>
@@ -1143,7 +1171,7 @@
 <script defer src="js/fund-data.js?v=20260816c"></script>
 <script defer src="js/fund-ui.js?v=20260817a"></script>
 <script defer src="js/quick-nav.js?v=20260819a"></script>
-<script defer src="js/ui.js?v=20260818a"></script>
-<script defer src="js/app.js?v=20260814b"></script>
+<script defer src="js/ui.js?v=20260819b"></script>
+<script defer src="js/app.js?v=20260819a"></script>
 </body>
 </html>
