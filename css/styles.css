@@ -12684,3 +12684,163 @@ body {
 .bs-disclaimer { margin-top: 0.3rem; font-size: 0.52rem; color: var(--muted, #8B949E); opacity: 0.8; }
 
 @media (prefers-reduced-motion: reduce) { .bs-head-trigger { animation: none; } }
+
+/* ============================================================
+   PF-Discipline 组合纪律体检面板（四大铁律）
+   ① MACD零轴回踩不破+金叉 ② MA20破线清仓
+   ③ 站稳放量建仓·+30%/+70%减仓 ④ 破线次日无条件离场
+   ============================================================ */
+.pf-disc-btn {
+  background: rgba(255, 107, 107, 0.08); color: #FF8A8A;
+  border-color: rgba(255, 107, 107, 0.25);
+}
+.pf-disc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.pf-disc {
+  margin: 0.5rem 0; padding: 0.55rem 0.65rem;
+  background: var(--bg3, #16202E);
+  border: 1px solid rgba(255, 107, 107, 0.18);
+  border-radius: 0.55rem;
+}
+.pf-disc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+.pf-disc-title { font-size: 0.7rem; font-weight: 700; color: var(--text, #E6EDF3); }
+.pf-disc-sub { font-size: 0.52rem; color: var(--muted, #8B949E); font-weight: 400; margin-left: 0.3rem; }
+.pf-disc-refresh {
+  cursor: pointer; font-size: 0.72rem; color: var(--muted, #8B949E);
+  padding: 0.1rem 0.35rem; border-radius: 0.3rem; transition: all 0.2s;
+}
+.pf-disc-refresh:hover { color: var(--accent, #00C8FF); background: rgba(0, 200, 255, 0.08); }
+
+/* 四大铁律速览条 */
+.pf-rules-bar {
+  display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem;
+  padding: 0.35rem 0.45rem; margin-bottom: 0.5rem;
+  background: rgba(0, 0, 0, 0.18); border-radius: 0.4rem;
+  font-size: 0.52rem; color: var(--muted, #8B949E);
+}
+.pf-rules-bar span::before { content: '▪ '; color: rgba(255, 107, 107, 0.6); }
+
+.pf-loading {
+  padding: 0.5rem; text-align: center; font-size: 0.56rem;
+  color: var(--accent, #00C8FF);
+}
+.pf-missing {
+  padding: 0.35rem; text-align: center; font-size: 0.52rem;
+  color: var(--muted, #8B949E); opacity: 0.75;
+}
+
+/* ===== 纪律卡片（按裁决分级着色） ===== */
+.pf-row {
+  padding: 0.5rem 0.6rem; margin-bottom: 0.45rem;
+  border-radius: 0.5rem; border: 1px solid;
+  background: rgba(0, 0, 0, 0.15);
+}
+.pf-row.pf-exit  { border-color: rgba(255, 77, 79, 0.65); background: linear-gradient(135deg, rgba(255, 77, 79, 0.12), rgba(0,0,0,0.15)); }
+.pf-row.pf-trim  { border-color: rgba(255, 209, 102, 0.55); background: linear-gradient(135deg, rgba(255, 209, 102, 0.08), rgba(0,0,0,0.15)); }
+.pf-row.pf-rebuy { border-color: rgba(74, 222, 128, 0.45); background: linear-gradient(135deg, rgba(74, 222, 128, 0.07), rgba(0,0,0,0.15)); }
+.pf-row.pf-alert { border-color: rgba(255, 159, 67, 0.45); }
+.pf-row.pf-hold  { border-color: rgba(0, 200, 255, 0.2); }
+
+.pf-row-head {
+  display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+  margin-bottom: 0.3rem;
+}
+.pf-row-name { font-size: 0.66rem; font-weight: 700; color: var(--text, #E6EDF3); }
+.pf-row-name i { font-style: normal; font-size: 0.52rem; color: var(--muted, #8B949E); font-weight: 400; }
+
+/* 裁决徽章 */
+.pf-verdict {
+  margin-left: auto; padding: 0.14rem 0.5rem;
+  border-radius: 0.35rem; font-size: 0.58rem; font-weight: 700;
+  border: 1px solid; white-space: nowrap;
+}
+.pf-verdict.pf-exit  { color: #FF6B6B; background: rgba(255, 77, 79, 0.15); border-color: rgba(255, 77, 79, 0.6); animation: pfPulse 1.6s ease-in-out infinite; }
+.pf-verdict.pf-trim  { color: #FFD166; background: rgba(255, 209, 102, 0.12); border-color: rgba(255, 209, 102, 0.5); }
+.pf-verdict.pf-rebuy { color: #4ADE80; background: rgba(74, 222, 128, 0.1); border-color: rgba(74, 222, 128, 0.45); }
+.pf-verdict.pf-alert { color: #FF9F43; background: rgba(255, 159, 67, 0.1); border-color: rgba(255, 159, 67, 0.45); }
+.pf-verdict.pf-hold  { color: var(--accent, #00C8FF); background: rgba(0, 200, 255, 0.07); border-color: rgba(0, 200, 255, 0.35); }
+@keyframes pfPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.35); }
+  50% { box-shadow: 0 0 0 4px rgba(255, 77, 79, 0.08); }
+}
+
+/* MACD零轴金叉标签（铁律①选股标准） */
+.pf-macd-tag {
+  padding: 0.1rem 0.4rem; border-radius: 0.3rem;
+  font-size: 0.52rem; border: 1px solid; white-space: nowrap;
+}
+.pf-macd-tag.hit   { color: #FFD166; background: rgba(255, 209, 102, 0.12); border-color: rgba(255, 209, 102, 0.55); font-weight: 700; }
+.pf-macd-tag.watch { color: var(--accent, #00C8FF); background: rgba(0, 200, 255, 0.07); border-color: rgba(0, 200, 255, 0.4); }
+.pf-macd-tag.form  { color: var(--muted, #8B949E); background: rgba(139, 148, 158, 0.06); border-color: rgba(139, 148, 158, 0.25); }
+.pf-macd-tag.off   { color: var(--muted, #8B949E); opacity: 0.6; border-color: transparent; }
+
+/* 执行指令行 */
+.pf-row-action {
+  font-size: 0.56rem; line-height: 1.6; margin-bottom: 0.35rem;
+  color: var(--text, #E6EDF3);
+  padding: 0.3rem 0.45rem; border-radius: 0.35rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+.pf-row.pf-exit .pf-row-action { color: #FFB3B3; }
+
+/* MA20行 */
+.pf-ma-line {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  font-size: 0.56rem; margin-bottom: 0.35rem;
+}
+.pf-ma-val b { font-family: var(--font-mono, Monaco, monospace); color: var(--text, #E6EDF3); }
+.pf-ma-dist { font-family: var(--font-mono, Monaco, monospace); }
+.pf-ma-dist.up { color: #FF4D4F; }
+.pf-ma-dist.down { color: #4ADE80; }
+.pf-ma-days { color: var(--muted, #8B949E); }
+
+/* 建仓三条件 */
+.pf-build { display: flex; gap: 0.5rem; flex-wrap: wrap; font-size: 0.54rem; margin-bottom: 0.35rem; }
+.pf-build .pf-ok { color: #4ADE80; }
+.pf-build .pf-no { color: var(--muted, #8B949E); text-decoration: line-through; opacity: 0.75; }
+
+/* 减仓阶梯（+30%/+70%） */
+.pf-ladder { margin-top: 0.3rem; }
+.pf-lad-track {
+  position: relative; height: 1.1rem;
+  background: linear-gradient(90deg, rgba(0, 200, 255, 0.05), rgba(255, 209, 102, 0.08), rgba(255, 107, 107, 0.1));
+  border-radius: 0.55rem; border: 1px solid rgba(0, 200, 255, 0.12);
+}
+.pf-lad-mark {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  font-size: 0.5rem; color: var(--muted, #8B949E); white-space: nowrap;
+}
+.pf-lad-mark i { font-style: normal; color: #FFD166; margin-left: 0.1rem; }
+.pf-lad-cur {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 0.42rem; height: 0.42rem; border-radius: 50%;
+  background: var(--accent, #00C8FF);
+  box-shadow: 0 0 6px rgba(0, 200, 255, 0.7);
+  transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pf-lad-info {
+  display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+  font-size: 0.54rem; color: var(--muted, #8B949E); margin-top: 0.28rem;
+  font-family: var(--font-mono, Monaco, monospace);
+}
+.pf-lad-info .up { color: #FF4D4F; }
+.pf-lad-info .down { color: #4ADE80; }
+.pf-lad-edit { cursor: pointer; color: var(--accent, #00C8FF); font-family: inherit; }
+.pf-lad-edit:hover { text-decoration: underline; }
+.pf-lad-stage {
+  font-size: 0.54rem; color: #FFD166; margin-top: 0.22rem;
+}
+.pf-ladder.nocost .pf-lad-set {
+  cursor: pointer; font-size: 0.54rem; color: var(--accent, #00C8FF);
+  padding: 0.3rem 0.45rem; border: 1px dashed rgba(0, 200, 255, 0.3);
+  border-radius: 0.4rem; display: inline-block; transition: all 0.2s;
+}
+.pf-ladder.nocost .pf-lad-set:hover { background: rgba(0, 200, 255, 0.07); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-verdict.pf-exit { animation: none; }
+  .pf-lad-cur { transition: none; }
+}

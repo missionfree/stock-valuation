@@ -48,7 +48,7 @@
 <link rel="preconnect" href="https://push2delay.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2his.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://datacenter-web.eastmoney.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=20260819e">
+<link rel="stylesheet" href="css/styles.css?v=20260821a">
 <link rel="stylesheet" href="css/fund.css?v=20260817c">
 
 </head>
@@ -1074,11 +1074,14 @@
         <div style="display:flex;gap:0.3rem">
           <button class="portfolio-btn refresh" id="portfolioRefreshBtn" onclick="refreshPortfolioPrices()" style="display:none">刷新行情</button>
           <button class="portfolio-btn analyze" id="portfolioAnalyzeBtn" onclick="analyzePortfolioSignals()" style="display:none">分析信号</button>
+          <button class="portfolio-btn pf-disc-btn" id="pfDisciplineBtn" onclick="pfDisciplineScan()" style="display:none">⚖️ 纪律体检</button>
           <button class="portfolio-btn" onclick="showPortfolioDialog()">+ 创建组合</button>
         </div>
       </div>
       <!-- 组合统计概览（有持仓时动态显示） -->
       <div class="portfolio-stats-bar" id="portfolioStatsBar" style="display:none"></div>
+      <!-- 四大铁律纪律体检面板（MACD零轴金叉/MA20保命线/减仓阶梯/止损纪律） -->
+      <div id="pfDisciplinePanel"></div>
       <!-- 组合深度分析面板（有持仓+有行情数据时动态显示） -->
       <div id="portfolioAnalysisPanel"></div>
       <!-- 排序工具栏（有持仓时动态显示） -->
@@ -1261,6 +1264,7 @@
 <script defer src="js/ftf-engine.js?v=20260818a"></script>
 <script defer src="js/stf-engine.js?v=20260818a"></script>
 <script defer src="js/bs-engine.js?v=20260819a"></script>
+<script defer src="js/pf-discipline.js?v=20260821a"></script>
 <script defer src="js/cycle-engine.js?v=20260819a"></script>
 <script defer src="js/fund-data.js?v=20260816c"></script>
 <script defer src="js/fund-ui.js?v=20260817a"></script>

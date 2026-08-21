@@ -1359,6 +1359,11 @@ function checkAnalysisDone(completed, total, btn) {
     if (sellCount > 0) msg += ' · ' + sellCount + '只见顶风险';
     if (buyCount > 0) msg += ' · ' + buyCount + '只见底机会';
     showToast(msg);
+
+    // 深度分析完成后自动接续纪律体检（四大铁律核验，K线已缓存时秒级完成）
+    if (typeof pfDisciplineScan === 'function') {
+      Perf.trackedSetTimeout(function() { pfDisciplineScan(); }, 300);
+    }
   }
 }
 
@@ -2091,12 +2096,26 @@ function renderPortfolio() {
   // 更新刷新按钮显示状态
   var refreshBtn = document.getElementById('portfolioRefreshBtn');
   var analyzeBtn = document.getElementById('portfolioAnalyzeBtn');
+  var pfDiscBtn = document.getElementById('pfDisciplineBtn');
   var hasStocks = _portfolios.some(function(p) { return p.items.length > 0; });
   if (refreshBtn) refreshBtn.style.display = hasStocks ? '' : 'none';
   if (analyzeBtn) analyzeBtn.style.display = hasStocks ? '' : 'none';
+  if (pfDiscBtn) pfDiscBtn.style.display = hasStocks ? '' : 'none';
 
   // 渲染组合统计概览
   renderPortfolioStats();
+
+  // 渲染纪律体检面板（四大铁律：零轴金叉选股/MA20保命线/减仓阶梯/止损纪律）
+  if (typeof renderPortfolioDiscipline === 'function') renderPortfolioDiscipline();
+  // 每会话首次进组合页自动体检一次（K线有24h缓存，负担可控）
+  if (hasStocks && !_pfAutoScanned && typeof pfDisciplineScan === 'function') {
+    _pfAutoScanned = true;
+    var anyMissing = false;
+    _portfolios.forEach(function(p) {
+      p.items.forEach(function(it) { if (!pfIsCacheValid(it.code)) anyMissing = true; });
+    });
+    if (anyMissing) Perf.trackedSetTimeout(function() { pfDisciplineScan(); }, 800);
+  }
 
   // 渲染组合深度分析面板
   renderPortfolioAnalysis();
