@@ -361,8 +361,48 @@ function pfSetCost(code) {
 }
 
 /* ============================================================
-   八、渲染：组合纪律面板
+   八、渲染：组合纪律面板（紧凑模式：需行动完整卡，正常持有单行）
+   ------------------------------------------------------------
+   页面减负三招：
+   1. 过滤器：默认只显示"需行动"（清仓/减仓/买回），持有/警戒收起
+   2. ALERT/HOLD 压成单行摘要条，点击展开完整卡片（状态记忆）
+   3. 头部统计徽章一眼看全组合纪律概况
    ============================================================ */
+
+/* 过滤器与展开状态持久化 */
+var PF_LS_FILTER = 'pf_disc_filter_v1';
+var PF_LS_EXPAND = 'pf_disc_expand_v1';
+var _pfFilter = null;      /* 'action'（默认） | 'all' */
+var _pfExpandSet = null;   /* {code: 1} 手动展开的紧凑行 */
+
+function pfLoadPrefs() {
+  if (!_pfFilter) {
+    try { _pfFilter = localStorage.getItem(PF_LS_FILTER) || 'action'; } catch (e) { _pfFilter = 'action'; }
+  }
+  if (!_pfExpandSet) {
+    try { _pfExpandSet = JSON.parse(localStorage.getItem(PF_LS_EXPAND) || '{}'); } catch (e) { _pfExpandSet = {}; }
+  }
+}
+function pfSavePrefs() {
+  try {
+    localStorage.setItem(PF_LS_FILTER, _pfFilter);
+    localStorage.setItem(PF_LS_EXPAND, JSON.stringify(_pfExpandSet));
+  } catch (e) {}
+}
+function pfSetFilter(f) {
+  pfLoadPrefs();
+  _pfFilter = f;
+  pfSavePrefs();
+  renderPortfolioDiscipline();
+}
+function pfToggleRow(code) {
+  pfLoadPrefs();
+  if (_pfExpandSet[code]) delete _pfExpandSet[code];
+  else _pfExpandSet[code] = 1;
+  pfSavePrefs();
+  renderPortfolioDiscipline();
+}
+
 function renderPortfolioDiscipline(loading, done, total) {
   var panel = document.getElementById('pfDisciplinePanel');
   if (!panel) return;
@@ -371,14 +411,12 @@ function renderPortfolioDiscipline(loading, done, total) {
   _portfolios.forEach(function(p) { p.items.forEach(function(it) { all.push(it); }); });
   if (all.length === 0) { panel.innerHTML = ''; panel.style.display = 'none'; return; }
   panel.style.display = '';
+  pfLoadPrefs();
 
   var html = '<div class="pf-disc">' +
     '<div class="pf-disc-head">' +
-      '<span class="pf-disc-title">⚖️ 纪律体检 <span class="pf-disc-sub">MACD零轴金叉选股 · MA20保命线 · +30%/+70%分批止盈</span></span>' +
+      '<span class="pf-disc-title">⚖️ 纪律体检 <span class="pf-disc-sub">零轴金叉选股 · MA20保命线 · +30%/+70%分批止盈</span></span>' +
       '<span class="pf-disc-refresh" onclick="pfDisciplineScan(true)" title="强制重新体检">⟳</span>' +
-    '</div>' +
-    '<div class="pf-rules-bar">' +
-      '<span>① 首选：MACD回踩零轴不破+金叉</span><span>② 破MA20即清仓</span><span>③ 站稳放量建仓·+30%/+70%减仓</span><span>④ 破线次日无条件走</span>' +
     '</div>';
 
   if (loading) {
@@ -397,10 +435,51 @@ function renderPortfolioDiscipline(loading, done, total) {
 
   if (rows.length === 0 && !loading) {
     html += '<div class="pf-loading">尚未体检 · 点击右上「⚖️ 纪律体检」或「分析信号」开始</div>';
+    html += '</div>';
+    panel.innerHTML = html;
+    return;
   }
 
-  rows.forEach(function(r) { html += pfRenderRow(r.item, r.res); });
+  /* 统计与过滤 */
+  var cnt = { EXIT: 0, TRIM: 0, REBUY: 0, ALERT: 0, HOLD: 0 };
+  var hitCnt = 0;
+  rows.forEach(function(r) {
+    cnt[r.res.verdict]++;
+    if (r.res.macdTag === 'zeroAxHit') hitCnt++;
+  });
+  var actCnt = cnt.EXIT + cnt.TRIM + cnt.REBUY;
+  var quietCnt = cnt.ALERT + cnt.HOLD;
+  var filter = _pfFilter || 'action';
 
+  /* 统计徽章行（含过滤器） */
+  html += '<div class="pf-stats-row">';
+  if (cnt.EXIT > 0) html += '<span class="pf-stat pf-exit" onclick="pfSetFilter(\'all\')" title="破线清仓">🚨 清仓 ' + cnt.EXIT + '</span>';
+  if (cnt.TRIM > 0) html += '<span class="pf-stat pf-trim" onclick="pfSetFilter(\'all\')" title="触发减仓阶梯">✂️ 减仓 ' + cnt.TRIM + '</span>';
+  if (cnt.REBUY > 0) html += '<span class="pf-stat pf-rebuy" onclick="pfSetFilter(\'all\')" title="破线后重新站上">🔁 买回 ' + cnt.REBUY + '</span>';
+  if (cnt.ALERT > 0) html += '<span class="pf-stat pf-alert" onclick="pfSetFilter(\'all\')" title="贴线警戒">⚠️ 警戒 ' + cnt.ALERT + '</span>';
+  if (cnt.HOLD > 0) html += '<span class="pf-stat pf-hold" onclick="pfSetFilter(\'all\')" title="纪律持有">✅ 持有 ' + cnt.HOLD + '</span>';
+  if (hitCnt > 0) html += '<span class="pf-stat pf-hit" onclick="pfSetFilter(\'all\')" title="MACD零轴金叉成立">🥇 金叉 ' + hitCnt + '</span>';
+  html += '<span class="pf-filter-tabs">' +
+    '<button class="' + (filter === 'action' ? 'active' : '') + '" onclick="pfSetFilter(\'action\')">需行动 ' + actCnt + '</button>' +
+    '<button class="' + (filter === 'all' ? 'active' : '') + '" onclick="pfSetFilter(\'all\')">全部 ' + rows.length + '</button>' +
+    '</span>';
+  html += '</div>';
+
+  /* 待体检时不过滤，让用户看到全部在跑 */
+  var showRows = (filter === 'all' || loading) ? rows : rows.filter(function(r) {
+    return r.res.verdict === 'EXIT' || r.res.verdict === 'TRIM' || r.res.verdict === 'REBUY';
+  });
+
+  showRows.forEach(function(r) {
+    /* 需行动的永远完整卡；警戒/持有默认单行，展开过的显示完整卡 */
+    var needAction = r.res.verdict === 'EXIT' || r.res.verdict === 'TRIM' || r.res.verdict === 'REBUY';
+    if (needAction || _pfExpandSet[r.item.code]) html += pfRenderRow(r.item, r.res);
+    else html += pfRenderMini(r.item, r.res);
+  });
+
+  if (filter === 'action' && quietCnt > 0 && !loading) {
+    html += '<div class="pf-quiet-hint">' + quietCnt + '只警戒/持有已折叠 · 点「全部」或上方徽章查看</div>';
+  }
   if (missing > 0 && !loading) html += '<div class="pf-missing">… 其余' + missing + '只待体检（点⟳强制全量）</div>';
 
   html += '</div>';
@@ -467,8 +546,35 @@ function pfRenderRow(item, R) {
       '<span class="pf-row-name">' + escHTML(item.name) + ' <i>' + item.code + '</i></span>' +
       macdHtml +
       '<span class="pf-verdict ' + vMeta.cls + '">' + vMeta.label + '</span>' +
+      '<span class="pf-row-fold" onclick="pfToggleRow(\'' + item.code + '\')" title="收起详情">▾</span>' +
     '</div>' +
     '<div class="pf-row-action">' + m.action + '</div>' +
     maHtml + buildHtml + ladHtml +
+  '</div>';
+}
+
+/* ---- 紧凑单行：警戒/持有默认形态（点击展开完整卡） ---- */
+function pfRenderMini(item, R) {
+  var m = R.ma, mac = R.macd, ld = R.ladder;
+  var vMeta = R.verdictMeta;
+
+  /* MACD超短标签 */
+  var macdMini = '';
+  if (mac.state === 'triggered') macdMini = '<span class="pfm-macd hit">🥇金叉</span>';
+  else if (mac.state === 'armed') macdMini = '<span class="pfm-macd watch">待金叉</span>';
+
+  /* 浮盈/浮亏（有成本才显示） */
+  var pnlHtml = '';
+  if (ld.hasCost) {
+    pnlHtml = '<span class="pfm-pnl ' + (ld.profitPct >= 0 ? 'up' : 'down') + '">' + _pf2(ld.profitPct) + '</span>';
+  }
+
+  return '<div class="pf-row-mini ' + vMeta.cls + '" onclick="pfToggleRow(\'' + item.code + '\')" title="点击展开纪律详情">' +
+    '<span class="pfm-arrow">▸</span>' +
+    '<span class="pfm-name">' + escHTML(item.name) + '</span>' +
+    '<span class="pf-verdict ' + vMeta.cls + ' mini">' + vMeta.short + '</span>' +
+    '<span class="pfm-dist ' + (m.above ? 'up' : 'down') + '">MA20 ' + _pf2(m.distPct) + '</span>' +
+    pnlHtml +
+    macdMini +
   '</div>';
 }

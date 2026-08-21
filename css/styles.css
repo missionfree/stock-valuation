@@ -12844,3 +12844,87 @@ body {
   .pf-verdict.pf-exit { animation: none; }
   .pf-lad-cur { transition: none; }
 }
+
+/* ===== 纪律面板紧凑化：统计徽章行 + 过滤器 ===== */
+.pf-stats-row {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;
+  margin-bottom: 0.45rem; padding-bottom: 0.4rem;
+  border-bottom: 1px dashed rgba(139, 148, 158, 0.18);
+}
+.pf-stat {
+  padding: 0.12rem 0.42rem; border-radius: 0.3rem;
+  font-size: 0.54rem; font-weight: 600; cursor: pointer;
+  border: 1px solid; white-space: nowrap; transition: transform 0.15s;
+}
+.pf-stat:active { transform: scale(0.93); }
+.pf-stat.pf-exit  { color: #FF6B6B; background: rgba(255, 77, 79, 0.1); border-color: rgba(255, 77, 79, 0.4); }
+.pf-stat.pf-trim  { color: #FFD166; background: rgba(255, 209, 102, 0.08); border-color: rgba(255, 209, 102, 0.35); }
+.pf-stat.pf-rebuy { color: #4ADE80; background: rgba(74, 222, 128, 0.07); border-color: rgba(74, 222, 128, 0.32); }
+.pf-stat.pf-alert { color: #FF9F43; background: rgba(255, 159, 67, 0.07); border-color: rgba(255, 159, 67, 0.32); }
+.pf-stat.pf-hold  { color: var(--accent, #00C8FF); background: rgba(0, 200, 255, 0.05); border-color: rgba(0, 200, 255, 0.28); }
+.pf-stat.pf-hit   { color: #FFD166; background: rgba(255, 209, 102, 0.1); border-color: rgba(255, 209, 102, 0.5); }
+
+.pf-filter-tabs { margin-left: auto; display: flex; gap: 0.25rem; }
+.pf-filter-tabs button {
+  padding: 0.14rem 0.5rem; border-radius: 0.35rem;
+  font-size: 0.54rem; cursor: pointer;
+  background: rgba(0, 0, 0, 0.25); color: var(--muted, #8B949E);
+  border: 1px solid rgba(139, 148, 158, 0.22); transition: all 0.2s;
+}
+.pf-filter-tabs button.active {
+  color: var(--accent, #00C8FF); border-color: rgba(0, 200, 255, 0.5);
+  background: rgba(0, 200, 255, 0.08); font-weight: 700;
+}
+
+/* ===== 紧凑单行（警戒/持有折叠形态） ===== */
+.pf-row-mini {
+  display: flex; align-items: center; gap: 0.45rem;
+  padding: 0.28rem 0.5rem; margin-bottom: 0.22rem;
+  border-radius: 0.4rem; cursor: pointer;
+  border: 1px solid rgba(139, 148, 158, 0.14);
+  background: rgba(0, 0, 0, 0.12);
+  font-size: 0.56rem; transition: border-color 0.2s, background 0.2s;
+}
+.pf-row-mini:hover { border-color: rgba(0, 200, 255, 0.3); background: rgba(0, 200, 255, 0.04); }
+.pf-row-mini.pf-alert { border-color: rgba(255, 159, 67, 0.28); }
+.pf-row-mini.pf-hold  { border-color: rgba(0, 200, 255, 0.16); }
+
+.pfm-arrow {
+  font-size: 0.5rem; color: var(--muted, #8B949E);
+  width: 0.55rem; text-align: center; flex-shrink: 0;
+  transition: transform 0.25s;
+}
+.pfm-name { font-weight: 600; color: var(--text, #E6EDF3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 5.4rem; }
+.pfm-dist { font-family: var(--font-mono, Monaco, monospace); white-space: nowrap; margin-left: auto; }
+.pfm-dist.up { color: #FF4D4F; }
+.pfm-dist.down { color: #4ADE80; }
+.pfm-pnl { font-family: var(--font-mono, Monaco, monospace); font-weight: 700; white-space: nowrap; }
+.pfm-pnl.up { color: #FF4D4F; }
+.pfm-pnl.down { color: #4ADE80; }
+.pfm-macd { font-size: 0.5rem; padding: 0.06rem 0.28rem; border-radius: 0.25rem; white-space: nowrap; }
+.pfm-macd.hit   { color: #FFD166; background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.4); }
+.pfm-macd.watch { color: var(--accent, #00C8FF); background: rgba(0, 200, 255, 0.06); border: 1px solid rgba(0, 200, 255, 0.3); }
+
+/* 完整卡上的收起按钮 */
+.pf-row-fold {
+  cursor: pointer; font-size: 0.56rem; color: var(--muted, #8B949E);
+  padding: 0 0.25rem; transition: color 0.2s;
+}
+.pf-row-fold:hover { color: var(--accent, #00C8FF); }
+
+/* 折叠提示行 */
+.pf-quiet-hint {
+  padding: 0.3rem; text-align: center; font-size: 0.52rem;
+  color: var(--muted, #8B949E); opacity: 0.8;
+  border: 1px dashed rgba(139, 148, 158, 0.18); border-radius: 0.35rem;
+}
+
+/* 徽章mini形态（紧凑行内） */
+.pf-verdict.mini { padding: 0.08rem 0.35rem; font-size: 0.52rem; }
+
+/* ===== 持仓列表：信号详情行截断为1行（页面减负） ===== */
+.pi-signal-detail {
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+  overflow: hidden; text-overflow: ellipsis; cursor: default;
+}
+.pi-signal-detail:hover { -webkit-line-clamp: unset; }
