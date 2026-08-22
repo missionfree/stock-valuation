@@ -1,47 +1,47 @@
 /* ==================== 高端金融仪表盘 · CSS 变量 ==================== */
 /* A股涨跌色标准：上涨=红(#FF0000) 下跌=绿(#00AA00) 平盘=灰(#9E9E9E) */
 :root {
-  --bg: #0A0F17;
-  --bg2: #0F1623;
-  --bg3: #16202E;
-  --bg4: #1E2A3D;
-  --ink: #E0E8F5;
-  --muted: #7E90AA;
-  --rule: rgba(0, 200, 255, 0.08);
-  --accent: #00C8FF;
-  --accent2: #FFAE00;
-  --neon-green: #00AA00;
-  --neon-green-bg: rgba(0, 170, 0, 0.12);
-  --neon-red: #FF0000;
-  --neon-red-bg: rgba(255, 0, 0, 0.12);
-  --neon-flat: #9E9E9E;
-  --neon-flat-bg: rgba(158, 158, 158, 0.12);
-  --neon-yellow: #FFAE00;
-  --neon-yellow-bg: rgba(255, 174, 0, 0.1);
-  --neon-cyan: #00C8FF;
-  --neon-cyan-bg: rgba(0, 200, 255, 0.1);
-  --neon-purple: #D06BFF;
-  --neon-purple-bg: rgba(189, 0, 255, 0.1);
-  --grid-line: rgba(0, 200, 255, 0.04);
-  --glow-green: 0 0 8px rgba(0, 170, 0, 0.4);
-  --glow-red: 0 0 8px rgba(255, 0, 0, 0.4);
-  --glow-cyan: 0 0 8px rgba(0, 200, 255, 0.4);
+  --bg: #0B0F16;
+  --bg2: #111722;
+  --bg3: #17202E;
+  --bg4: #1E2A3C;
+  --ink: #E7ECF4;
+  --muted: #8C98AA;
+  --rule: rgba(150, 165, 190, 0.16);
+  --accent: #4C8DFF;
+  --accent2: #E0A93E;
+  --neon-green: #22B573;
+  --neon-green-bg: rgba(34, 181, 115, 0.12);
+  --neon-red: #F0565C;
+  --neon-red-bg: rgba(240, 86, 92, 0.12);
+  --neon-flat: #8A96A8;
+  --neon-flat-bg: rgba(138, 150, 168, 0.12);
+  --neon-yellow: #E0A93E;
+  --neon-yellow-bg: rgba(224, 169, 62, 0.12);
+  --neon-cyan: #4C8DFF;
+  --neon-cyan-bg: rgba(76, 141, 255, 0.12);
+  --neon-purple: #8F7BF0;
+  --neon-purple-bg: rgba(143, 123, 240, 0.14);
+  --grid-line: rgba(150, 165, 190, 0.05);
+  --glow-green: none;
+  --glow-red: none;
+  --glow-cyan: none;
   --font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-mono: 'Fira Code', 'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', monospace;
-  --font-display: 'Orbitron', var(--font);
+  --font-display: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --radius: 10px;
   --radius-sm: 6px;
-  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 200, 255, 0.06);
-  --shadow-hover: 0 8px 32px rgba(0, 200, 255, 0.12), 0 0 0 1px rgba(0, 200, 255, 0.2);
-  --glass-bg: rgba(15, 22, 35, 0.5);
-  --glass-border: rgba(0, 200, 255, 0.08);
-  --star-glow: hsl(120, 100%, 70%);
-  --highlight-gold: rgba(255, 215, 0, 1);
-  --highlight-gold-bg: rgba(255, 215, 0, 0.1);
-  --highlight-gold-border: rgba(255, 215, 0, 0.25);
-  --highlight-gold-glow: 0 0 4px rgba(255, 215, 0, 0.4);
-  --policy-vane-top: linear-gradient(90deg, transparent, rgba(255,215,0,0.4), rgba(59,130,246,0.3), transparent);
-  --header-gradient: linear-gradient(135deg, #60A5FA, #38BDF8, #34D399);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(150, 165, 190, 0.05);
+  --shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(76, 141, 255, 0.22);
+  --glass-bg: rgba(17, 23, 34, 0.92);
+  --glass-border: rgba(150, 165, 190, 0.12);
+  --star-glow: #7FD8FF;
+  --highlight-gold: rgba(224, 169, 62, 1);
+  --highlight-gold-bg: rgba(224, 169, 62, 0.12);
+  --highlight-gold-border: rgba(224, 169, 62, 0.28);
+  --highlight-gold-glow: 0 0 4px rgba(224, 169, 62, 0.3);
+  --policy-vane-top: linear-gradient(90deg, transparent, rgba(224,169,62,0.35), rgba(76,141,255,0.28), transparent);
+  --header-gradient: linear-gradient(135deg, #4C8DFF, #22B573);
 }
 
 /* 键盘用户跳过导航链接 */
@@ -12958,58 +12958,150 @@ body {
   .fin-term-tip { max-width: 88vw; }
 }
 
+/* FIN-Onboarding 新手引导已移除（需求变更） */
+
 /* ============================================================
-   FIN-Onboarding 新手3步引导卡
-   需求②：增加新手引导，功能三步内完成
+   FIN-Professional 专业纯净重构层（v20260822）
+   去除霓虹/发光/动效，还原机构级金融终端质感
+   置于文件末尾，逐条覆盖上方的「视觉美学增强层」
    ============================================================ */
-.fin-ob {
-  position: fixed; z-index: 99800;
-  bottom: 1.1rem; right: 1rem;
-  width: 300px; max-width: calc(100vw - 1.6rem);
-  background: linear-gradient(160deg, #16202E, #0F1623);
-  border: 1px solid rgba(0, 200, 255, 0.28);
-  border-radius: 0.7rem;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 24px rgba(0, 200, 255, 0.1);
-  padding: 0.7rem;
-  animation: finObIn 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+
+/* —— 1. 纯净化页面背景：移除霓虹径向光晕，仅保留中性纵向层次 —— */
+body {
+  background-image: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 26rem) !important;
+  background-attachment: fixed;
+  background-size: 100% 100%;
 }
-@keyframes finObIn {
-  from { opacity: 0; transform: translateY(18px); }
-  to { opacity: 1; transform: translateY(0); }
+/* 移除「微光网格」赛博底纹 */
+body::before { display: none !important; }
+
+/* —— 2. 顶部标题栏：去除光晕与流动渐变，标题改为实色 —— */
+.app-header {
+  background: linear-gradient(180deg, rgba(19,24,41,0.94) 0%, rgba(11,15,26,0.88) 100%) !important;
+  border-bottom: 1px solid var(--rule) !important;
+  box-shadow: 0 1px 0 var(--rule), 0 1px 14px rgba(0,0,0,0.28) !important;
 }
-.fin-ob-head { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.55rem; }
-.fin-ob-badge {
-  font-size: 0.56rem; font-weight: 700; color: #FFD166;
-  background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.35);
-  padding: 0.08rem 0.4rem; border-radius: 0.3rem;
+.app-header::after { display: none !important; }
+.app-header h1 {
+  background: none !important;
+  -webkit-background-clip: initial !important; background-clip: initial !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--ink) !important;
+  animation: none !important;
+  text-shadow: none !important;
+  letter-spacing: 0.02em;
 }
-.fin-ob-step { margin-left: auto; font-size: 0.56rem; color: var(--muted, #7E90AA); }
-.fin-ob-close {
-  cursor: pointer; font-size: 0.85rem; line-height: 1; color: var(--muted, #7E90AA);
-  padding: 0 0.15rem; transition: color 0.2s;
+
+/* —— 3. 区块标题：实色竖条，去除发光与渐变 —— */
+.sec-title::before {
+  background: var(--accent) !important;
+  box-shadow: none !important;
+  border-radius: 2px;
 }
-.fin-ob-close:hover { color: var(--ink, #E0E8F5); }
-.fin-ob-body { text-align: center; padding: 0.25rem 0 0.5rem; }
-.fin-ob-icon { font-size: 1.5rem; margin-bottom: 0.25rem; }
-.fin-ob-title { font-size: 0.78rem; font-weight: 700; color: var(--ink, #E0E8F5); margin-bottom: 0.2rem; }
-.fin-ob-desc { font-size: 0.58rem; color: var(--muted, #7E90AA); line-height: 1.55; }
-.fin-ob-dots { display: flex; justify-content: center; gap: 0.3rem; margin: 0.4rem 0; }
-.fin-ob-dot { width: 0.36rem; height: 0.36rem; border-radius: 50%; background: rgba(0, 200, 255, 0.2); transition: all 0.25s; }
-.fin-ob-dot.active { background: var(--accent, #00C8FF); box-shadow: 0 0 8px rgba(0, 200, 255, 0.6); }
-.fin-ob-foot { display: flex; align-items: center; gap: 0.5rem; }
-.fin-ob-never { font-size: 0.52rem; color: var(--muted, #7E90AA); display: flex; align-items: center; gap: 0.2rem; cursor: pointer; }
-.fin-ob-never input { accent-color: var(--accent, #00C8FF); }
-.fin-ob-btn {
-  margin-left: auto; padding: 0.34rem 0.9rem;
-  font-size: 0.6rem; font-weight: 700; cursor: pointer;
-  color: #04121F; background: linear-gradient(135deg, #00C8FF, #38BDF8);
-  border: none; border-radius: 0.4rem; transition: transform 0.15s, box-shadow 0.2s;
+.sec-title::after { display: none !important; }
+
+/* —— 4. 卡片：中性描边 + 克制阴影，去除霓虹玻璃/发光 —— */
+.glass-card, .dash-card, .val-card, .stat-card,
+.insight, .spotlight-card, .rot-block, .market-flow {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid var(--rule) !important;
+  box-shadow: var(--shadow-card) !important;
 }
-.fin-ob-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 200, 255, 0.35); }
-.fin-ob-btn:active { transform: scale(0.96); }
-@media (max-width: 480px) {
-  .fin-ob { right: 0.6rem; bottom: 0.6rem; }
+/* 去除卡片顶部高光渐变条 */
+.val-card::before, .dash-card::before, .stat-card::before,
+.glass-card::before, .insight::before, .spotlight-card::before {
+  background: var(--rule) !important;
+  height: 1px !important;
+  opacity: 1 !important;
 }
-@media (prefers-reduced-motion: reduce) {
-  .fin-ob { animation: none; }
+
+/* —— 5. 数字与关键数值：清除发光 text-shadow —— */
+.stat-card .val, .dash-card .d-val, .tier1-big .tb-val,
+.val-card .stk-price, .overview-panel .ov-val,
+.t-green, .t-red, .t-yellow, .t-flat,
+[data-theme="cyber"] .t-green, [data-theme="cyber"] .t-red, [data-theme="cyber"] .t-yellow {
+  text-shadow: none !important;
+}
+
+/* —— 6. 主操作按钮：实色 + 简洁，去除流光/呼吸动效 —— */
+.btn-analyze {
+  background: var(--accent) !important;
+  background-size: auto !important;
+  animation: none !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+  border-radius: var(--radius-sm) !important;
+}
+.btn-analyze:not(:disabled):hover {
+  transform: none !important;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.35) !important;
+  filter: brightness(1.06);
+}
+[data-theme="light"] .btn-analyze,
+[data-theme="classical"] .btn-analyze {
+  background: var(--accent) !important;
+  animation: none !important;
+  color: #fff !important;
+}
+
+/* —— 7. Tab 导航：实色下划线，去除发光/渐变 —— */
+.tab-nav-btn::before {
+  background: var(--accent) !important;
+  border-radius: 2px 2px 0 0;
+}
+.tab-nav-btn.active {
+  color: var(--accent) !important;
+  background: transparent !important;
+}
+.tab-nav-btn.active::before { box-shadow: none !important; }
+
+/* —— 8. 状态栏在线指示：去除发光 —— */
+.sys-status-bar .ss-online { text-shadow: none !important; }
+
+/* —— 9. 搜索框聚焦：克制的焦点描边 —— */
+.search-bar input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(76,141,255,0.14) !important;
+}
+
+/* —— 10. 进度条：去除光泽扫动 —— */
+.pct-bar-fill::after, .pos-bar-fill::after { display: none !important; }
+
+/* —— 11. 滚动条：中性灰 —— */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(140,152,170,0.28);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(140,152,170,0.45); }
+
+/* —— 12. 主题切换按钮：去除旋转/呼吸 —— */
+.mode-toggle {
+  background: var(--bg3) !important;
+  border: 1px solid var(--rule) !important;
+  box-shadow: none !important;
+  transition: background 0.2s ease !important;
+}
+.mode-toggle:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  background: var(--bg4) !important;
+}
+
+/* —— 13. 卡片 hover：仅轻微抬升，去除缩放/发光 —— */
+@media (min-width: 768px) {
+  .val-card, .dash-card, .stat-card, .glass-card {
+    transition: box-shadow 0.2s ease, transform 0.2s ease !important;
+  }
+  .val-card:hover, .dash-card:hover, .glass-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-hover) !important;
+  }
+}
+
+/* —— 14. 彻底禁用残留动效画布层（HTML 已移除，防御性兜底） —— */
+#particleCanvas, #coinRainCanvas, #dataStreamWall, #scanLineOverlay {
+  display: none !important;
 }

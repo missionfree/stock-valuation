@@ -28,7 +28,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"沪深港股票估值分析","description":"沪深港股票估值分析终端：格雷厄姆指数、股债利差、核心指数PE分位、行业热力图、双线轮动策略信号。","url":"https://missionfree.github.io/stock-valuation/","applicationCategory":"FinanceApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}
 </script>
@@ -52,26 +52,13 @@
 <link rel="preconnect" href="https://web.ifzq.gtimg.cn" crossorigin>
 <link rel="dns-prefetch" href="https://ifzq.gtimg.cn">
 <link rel="dns-prefetch" href="https://web.ifzq.gtimg.cn">
-<link rel="stylesheet" href="css/styles.css?v=20260822a">
+<link rel="stylesheet" href="css/styles.css?v=20260822b">
 <link rel="stylesheet" href="css/fund.css?v=20260817c">
 
 </head>
 <body>
 
-<!-- 粒子背景画布 -->
-<canvas id="particleCanvas"></canvas>
-
-<!-- 金币散飞特效画布 -->
-<canvas id="coinRainCanvas"></canvas>
-
-<!-- 扫描线覆盖层 -->
-<div id="scanLineOverlay"></div>
-
-<!-- 数据流瀑布墙 -->
-<div id="dataStreamWall">
-  <div class="ds-track"></div>
-  <div class="ds-track"></div>
-</div>
+<!-- 动效画布层已移除，采用专业纯净深色主题 -->
 
 <!-- 键盘用户跳过导航 -->
 <a href="#main-content" class="skip-link">跳到主内容</a>
@@ -93,11 +80,11 @@
   <button class="mode-toggle" id="modeToggle" onclick="toggleThemePicker()" title="切换主题" aria-label="切换主题" aria-expanded="false">🎨</button>
   <button class="sd-back-search" id="backSearchBtn" onclick="backToSearch()" style="display:none">↑ 返回搜索</button>
   <div class="theme-picker" id="themePicker">
-    <div class="theme-option" data-theme="cyber" tabindex="0" role="button" aria-label="赛博暗黑主题" onclick="setTheme('cyber')"><span class="theme-dot cyber"></span>赛博暗黑</div>
-    <div class="theme-option" data-theme="light" tabindex="0" role="button" aria-label="极简暗夜主题" onclick="setTheme('light')"><span class="theme-dot light"></span>极简暗夜</div>
-    <div class="theme-option" data-theme="classical" tabindex="0" role="button" aria-label="暗夜古典主题" onclick="setTheme('classical')"><span class="theme-dot classical"></span>暗夜古典</div>
-    <div class="theme-option" data-theme="cyberpunk" tabindex="0" role="button" aria-label="赛博朋克主题" onclick="setTheme('cyberpunk')"><span class="theme-dot cyberpunk"></span>赛博朋克</div>
-    <div class="theme-option" data-theme="ocean" tabindex="0" role="button" aria-label="深海蓝主题" onclick="setTheme('ocean')"><span class="theme-dot ocean"></span>深海蓝</div>
+    <div class="theme-option" data-theme="cyber" tabindex="0" role="button" aria-label="经典暗黑主题" onclick="setTheme('cyber')"><span class="theme-dot cyber"></span>经典暗黑</div>
+    <div class="theme-option" data-theme="light" tabindex="0" role="button" aria-label="简洁石墨主题" onclick="setTheme('light')"><span class="theme-dot light"></span>简洁石墨</div>
+    <div class="theme-option" data-theme="classical" tabindex="0" role="button" aria-label="暖调古典主题" onclick="setTheme('classical')"><span class="theme-dot classical"></span>暖调古典</div>
+    <div class="theme-option" data-theme="cyberpunk" tabindex="0" role="button" aria-label="靛蓝极夜主题" onclick="setTheme('cyberpunk')"><span class="theme-dot cyberpunk"></span>靛蓝极夜</div>
+    <div class="theme-option" data-theme="ocean" tabindex="0" role="button" aria-label="深海蓝调主题" onclick="setTheme('ocean')"><span class="theme-dot ocean"></span>深海蓝调</div>
   </div>
 </header>
 
@@ -1260,7 +1247,6 @@
 <script defer src="js/config.js?v=20260810k"></script>
 <script defer src="js/utils.js?v=20260810k"></script>
 <script defer src="js/glossary.js?v=20260822a"></script>
-<script defer src="js/onboarding.js?v=20260822a"></script>
 <script defer src="js/render.js?v=20260817b"></script>
 <script defer src="js/stock-analysis.js?v=20260819c"></script>
 <script defer src="js/earnings-report.js?v=20260810k"></script>
@@ -1276,7 +1262,7 @@
 <script defer src="js/fund-ui.js?v=20260817a"></script>
 <script defer src="js/quick-nav.js?v=20260819b"></script>
 <script defer src="js/fold.js?v=20260819a"></script>
-<script defer src="js/ui.js?v=20260819b"></script>
+<script defer src="js/ui.js?v=20260822b"></script>
 <script defer src="js/app.js?v=20260819a"></script>
 </body>
 </html>

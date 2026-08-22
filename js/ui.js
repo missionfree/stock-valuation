@@ -277,7 +277,7 @@ function setTheme(theme) {
     body.setAttribute('data-theme', theme);
   }
   // 用户手动选择 → 持久化
-  try { localStorage.setItem('themeMode', theme); } catch(e) {}
+  try { localStorage.setItem('themeMode_v2', theme); } catch(e) {}
 
   // 清空颜色缓存（主题切换后CSS变量值已变）
   clearColorCache();
@@ -306,12 +306,12 @@ function setTheme(theme) {
 (function initTheme() {
   var validThemes = ['cyber', 'light', 'classical', 'cyberpunk', 'ocean'];
   try {
-    var saved = localStorage.getItem('themeMode');
+    var saved = localStorage.getItem('themeMode_v2');
     // 兼容旧值: 'dark' → 'cyber'
     if (saved === 'dark') saved = 'cyber';
-    // 首次进入（无记录）→ 随机选取
+    // 首次进入（无记录或非法值）→ 使用专业默认「经典暗黑」，不再随机
     if (!saved || validThemes.indexOf(saved) === -1) {
-      saved = validThemes[Math.floor(Math.random() * validThemes.length)];
+      saved = 'cyber';
     }
     if (saved === 'cyber') {
       document.body.removeAttribute('data-theme');
