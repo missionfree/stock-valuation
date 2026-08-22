@@ -38,7 +38,7 @@ var QN_TAB_LABELS = {
 /** 当前激活的Tab名 */
 function qnCurrentTab() {
   var btn = document.querySelector('.tab-nav-btn.active');
-  return btn ? btn.getAttribute('data-tab') : 'valuation';
+  return btn ? btn.getAttribute('data-tab') : 'portfolio';
 }
 
 /** 搜索发起时入栈（在 searchStock 开头调用） */
