@@ -331,6 +331,9 @@ function qnRefreshIfVisible() {
  */
 function qnOnTabSwitch(tabName) {
   qnShowFab(tabName !== 'portfolio');
+  // 浮动「我的组合」快捷组件：已在组合页时隐藏，避免冗余
+  var pfFloat = document.getElementById('floatPortfolioBtn');
+  if (pfFloat) pfFloat.classList.toggle('hide', tabName === 'portfolio');
   var tb = document.getElementById('qnTopbar');
   if (tb && tabName !== 'strategy') tb.classList.remove('show');
 }

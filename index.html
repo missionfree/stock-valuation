@@ -96,6 +96,14 @@
   <span>搜索</span>
 </button>
 
+<!-- 浮动「我的组合」快捷组件（点击即跳转组合，位于搜索浮动键上方） -->
+<button class="float-portfolio-btn" id="floatPortfolioBtn" onclick="switchTab('portfolio')" title="跳转到我的组合" aria-label="跳转到我的组合">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+  </svg>
+  <span>组合</span>
+</button>
+
 <main class="container" id="main-content">
 
   <!-- ==================== 顶部操作栏（实时行情自动获取，仅保留K线手动按钮） ==================== -->
@@ -119,7 +127,6 @@
     </div>
     <div class="search-suggest" id="searchSuggest" role="listbox"></div>
     <button onclick="searchStock()">查询</button>
-    <button class="pf-quick-btn" onclick="switchTab('portfolio')" title="跳转到我的组合" aria-label="跳转到我的组合">💼 组合</button>
   </div>
 
   <!-- ==================== 持仓聚焦提示栏（仅URL参数激活时显示） ==================== -->
