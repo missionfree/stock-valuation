@@ -1915,6 +1915,28 @@ body {
 }
 .search-bar button:active { transform: scale(0.96) translateY(0); box-shadow: 0 1px 4px rgba(59,130,246,0.25); }
 
+/* 搜索框旁的「我的组合」快捷组件（compact 次级按钮） */
+.search-bar .pf-quick-btn {
+  padding: 0.7rem 0.85rem !important;
+  background: var(--bg3) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--ink) !important;
+  font-weight: 700 !important;
+  font-size: 0.8rem !important;
+  letter-spacing: 0 !important;
+  box-shadow: none !important;
+  white-space: nowrap;
+}
+.search-bar .pf-quick-btn::after { display: none; }
+.search-bar .pf-quick-btn:hover {
+  background: var(--bg4) !important;
+  border-color: var(--accent) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.search-bar .pf-quick-btn:active { transform: scale(0.96) !important; box-shadow: none !important; }
+
 /* ==================== 指数/个股卡片 ==================== */
 .card-list { display: flex; flex-direction: column; gap: 0.55rem; }
 /* 仅核心指数卡片使用2列网格 */

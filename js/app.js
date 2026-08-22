@@ -1188,9 +1188,14 @@ function initPage() {
   loadPortfolios();
   renderPortfolio();
 
-  // 首屏固定落在「我的组合」，让用户一进入即可点击个股查看详情
-  // （不再基于 last_active_tab 恢复，保证进入网站第一时间是组合持仓视图）
-  switchTab('portfolio');
+  // 恢复上次查看的Tab（排除strategy，因为搜索时会自动切换到strategy）
+  try {
+    var lastTab = localStorage.getItem('last_active_tab');
+    if (lastTab && lastTab !== 'valuation' && lastTab !== 'strategy') {
+      // 仅恢复估值/行业/组合标签，不恢复strategy（避免首屏显示搜索结果区域）
+      switchTab(lastTab);
+    }
+  } catch(e) {}
 
   // 绑定事件（轻量操作，立即执行）
   bindHeatmapTabs();
@@ -1338,12 +1343,12 @@ function initPage() {
 
     // "1-6": 切换Tab
     if (e.key >= '1' && e.key <= '6' && !isModifier) {
-      var tabMap = { '1': 'portfolio', '2': 'valuation', '3': 'industry', '4': 'strategy', '5': 'screener', '6': 'fund' };
+      var tabMap = { '1': 'valuation', '2': 'industry', '3': 'strategy', '4': 'screener', '5': 'fund', '6': 'portfolio' };
       var targetTab = tabMap[e.key];
       if (targetTab) {
         e.preventDefault();
         switchTab(targetTab);
-        showToast('已切换到：' + ['我的组合', '估值强度', '行业全景', '策略信号', '智能选股', '基金超市'][parseInt(e.key) - 1]);
+        showToast('已切换到：' + ['估值强度', '行业全景', '策略信号', '智能选股', '基金超市', '我的组合'][parseInt(e.key) - 1]);
       }
       return;
     }

@@ -119,6 +119,7 @@
     </div>
     <div class="search-suggest" id="searchSuggest" role="listbox"></div>
     <button onclick="searchStock()">查询</button>
+    <button class="pf-quick-btn" onclick="switchTab('portfolio')" title="跳转到我的组合" aria-label="跳转到我的组合">💼 组合</button>
   </div>
 
   <!-- ==================== 持仓聚焦提示栏（仅URL参数激活时显示） ==================== -->
@@ -332,16 +333,16 @@
 
   <!-- ==================== 第二层：Tab切换 ==================== -->
   <div class="tab-nav" role="tablist" aria-label="主要功能">
-    <button class="tab-nav-btn active" role="tab" aria-selected="true" data-tab="portfolio" onclick="switchTab('portfolio')">💼 组合<span class="tab-key-badge">1</span></button>
-    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="valuation" onclick="switchTab('valuation')">📊 估值<span class="tab-key-badge">2</span></button>
-    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="industry" onclick="switchTab('industry')">🏭 行业<span class="tab-key-badge">3</span></button>
-    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="strategy" onclick="switchTab('strategy')">⚡ 策略<span class="tab-key-badge">4</span></button>
-    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="screener" onclick="switchTab('screener')">🔍 选股<span class="tab-key-badge">5</span></button>
-    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="fund" onclick="switchTab('fund')">🛒 基金<span class="tab-key-badge">6</span></button>
+    <button class="tab-nav-btn active" role="tab" aria-selected="true" data-tab="valuation" onclick="switchTab('valuation')">📊 估值<span class="tab-key-badge">1</span></button>
+    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="industry" onclick="switchTab('industry')">🏭 行业<span class="tab-key-badge">2</span></button>
+    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="strategy" onclick="switchTab('strategy')">⚡ 策略<span class="tab-key-badge">3</span></button>
+    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="screener" onclick="switchTab('screener')">🔍 选股<span class="tab-key-badge">4</span></button>
+    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="fund" onclick="switchTab('fund')">🛒 基金<span class="tab-key-badge">5</span></button>
+    <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab="portfolio" onclick="switchTab('portfolio')">💼 组合<span class="tab-key-badge">6</span></button>
   </div>
 
   <!-- ====== Tab1: 估值强度 ====== -->
-  <div class="tab-content" id="tab-valuation">
+  <div class="tab-content active" id="tab-valuation">
     <!-- 市场情绪面板（可折叠·默认展开） -->
     <div class="fold-sec" id="foldSentiment" data-fold data-def="open" data-sub="A股情绪驱动·实时">
       <div class="fold-head" onclick="FoldSys.toggle('foldSentiment')" role="button" tabindex="0" aria-expanded="true" title="点击展开/收起">
@@ -1056,7 +1057,7 @@
   </div><!-- /tab-screener -->
 
   <!-- ====== Tab4: 我的组合 ====== -->
-  <div class="tab-content active" id="tab-portfolio">
+  <div class="tab-content" id="tab-portfolio">
     <!-- 我的估值组合 -->
     <div class="sec-title">我的估值组合</div>
     <div class="portfolio-section">

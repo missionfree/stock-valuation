@@ -75,7 +75,7 @@ function switchTab(tabName, direction) {
 /* ============================================================
    触摸滑动切换 Tab
    ============================================================ */
-var _tabOrder = ['portfolio', 'valuation', 'industry', 'strategy', 'screener', 'fund'];
+var _tabOrder = ['valuation', 'industry', 'strategy', 'screener', 'fund', 'portfolio'];
 var _swipeStartX = 0;
 var _swipeStartY = 0;
 var _swipeStartT = 0;
@@ -2277,7 +2277,7 @@ function showKeyboardHint() {
     '<div class="kb-hint-title">键盘快捷键</div>' +
     '<div class="kb-hint-grid">' +
       '<div class="kb-hint-item"><kbd>/</kbd><span>搜索</span></div>' +
-      '<div class="kb-hint-item"><kbd>1</kbd>-<kbd>6</kbd><span>切换Tab</span></div>' +
+      '<div class="kb-hint-item"><kbd>1</kbd>-<kbd>4</kbd><span>切换Tab</span></div>' +
       '<div class="kb-hint-item"><kbd>Alt</kbd>+<kbd>R</kbd><span>刷新数据</span></div>' +
       '<div class="kb-hint-item"><kbd>Alt</kbd>+<kbd>T</kbd><span>切换主题</span></div>' +
       '<div class="kb-hint-item"><kbd>Alt</kbd>+<kbd>←→</kbd><span>左右Tab</span></div>' +
