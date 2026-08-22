@@ -6,7 +6,7 @@
   --bg3: #16202E;
   --bg4: #1E2A3D;
   --ink: #E0E8F5;
-  --muted: #6B7D99;
+  --muted: #7E90AA;
   --rule: rgba(0, 200, 255, 0.08);
   --accent: #00C8FF;
   --accent2: #FFAE00;
@@ -20,7 +20,7 @@
   --neon-yellow-bg: rgba(255, 174, 0, 0.1);
   --neon-cyan: #00C8FF;
   --neon-cyan-bg: rgba(0, 200, 255, 0.1);
-  --neon-purple: #BD00FF;
+  --neon-purple: #D06BFF;
   --neon-purple-bg: rgba(189, 0, 255, 0.1);
   --grid-line: rgba(0, 200, 255, 0.04);
   --glow-green: 0 0 8px rgba(0, 170, 0, 0.4);
@@ -12928,3 +12928,88 @@ body {
   overflow: hidden; text-overflow: ellipsis; cursor: default;
 }
 .pi-signal-detail:hover { -webkit-line-clamp: unset; }
+
+/* ============================================================
+   FIN-Glossary 金融术语通俗弹窗
+   需求④：专业术语配套 ≤15字 通俗解释弹窗
+   ============================================================ */
+[data-term] {
+  border-bottom: 1px dashed rgba(0, 200, 255, 0.35);
+  cursor: help;
+  text-decoration: none;
+}
+.fin-term-tip {
+  position: fixed; z-index: 99999;
+  max-width: 240px; min-width: 150px;
+  padding: 0.55rem 0.7rem;
+  background: #131E2E;
+  border: 1px solid rgba(0, 200, 255, 0.35);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 200, 255, 0.08);
+  opacity: 0; visibility: hidden; transform: translateY(4px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  pointer-events: none;
+}
+.fin-term-tip[data-active="1"] { opacity: 1; visibility: visible; transform: translateY(0); }
+.fin-term-tip-term { font-size: 0.62rem; font-weight: 700; color: var(--accent, #00C8FF); margin-bottom: 0.15rem; }
+.fin-term-tip-plain { font-size: 0.66rem; font-weight: 700; color: var(--ink, #E0E8F5); line-height: 1.45; }
+.fin-term-tip-full { font-size: 0.56rem; color: var(--muted, #7E90AA); line-height: 1.55; margin-top: 0.2rem; }
+@media (hover: none) and (pointer: coarse) {
+  .fin-term-tip { max-width: 88vw; }
+}
+
+/* ============================================================
+   FIN-Onboarding 新手3步引导卡
+   需求②：增加新手引导，功能三步内完成
+   ============================================================ */
+.fin-ob {
+  position: fixed; z-index: 99800;
+  bottom: 1.1rem; right: 1rem;
+  width: 300px; max-width: calc(100vw - 1.6rem);
+  background: linear-gradient(160deg, #16202E, #0F1623);
+  border: 1px solid rgba(0, 200, 255, 0.28);
+  border-radius: 0.7rem;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 24px rgba(0, 200, 255, 0.1);
+  padding: 0.7rem;
+  animation: finObIn 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes finObIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fin-ob-head { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.55rem; }
+.fin-ob-badge {
+  font-size: 0.56rem; font-weight: 700; color: #FFD166;
+  background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.35);
+  padding: 0.08rem 0.4rem; border-radius: 0.3rem;
+}
+.fin-ob-step { margin-left: auto; font-size: 0.56rem; color: var(--muted, #7E90AA); }
+.fin-ob-close {
+  cursor: pointer; font-size: 0.85rem; line-height: 1; color: var(--muted, #7E90AA);
+  padding: 0 0.15rem; transition: color 0.2s;
+}
+.fin-ob-close:hover { color: var(--ink, #E0E8F5); }
+.fin-ob-body { text-align: center; padding: 0.25rem 0 0.5rem; }
+.fin-ob-icon { font-size: 1.5rem; margin-bottom: 0.25rem; }
+.fin-ob-title { font-size: 0.78rem; font-weight: 700; color: var(--ink, #E0E8F5); margin-bottom: 0.2rem; }
+.fin-ob-desc { font-size: 0.58rem; color: var(--muted, #7E90AA); line-height: 1.55; }
+.fin-ob-dots { display: flex; justify-content: center; gap: 0.3rem; margin: 0.4rem 0; }
+.fin-ob-dot { width: 0.36rem; height: 0.36rem; border-radius: 50%; background: rgba(0, 200, 255, 0.2); transition: all 0.25s; }
+.fin-ob-dot.active { background: var(--accent, #00C8FF); box-shadow: 0 0 8px rgba(0, 200, 255, 0.6); }
+.fin-ob-foot { display: flex; align-items: center; gap: 0.5rem; }
+.fin-ob-never { font-size: 0.52rem; color: var(--muted, #7E90AA); display: flex; align-items: center; gap: 0.2rem; cursor: pointer; }
+.fin-ob-never input { accent-color: var(--accent, #00C8FF); }
+.fin-ob-btn {
+  margin-left: auto; padding: 0.34rem 0.9rem;
+  font-size: 0.6rem; font-weight: 700; cursor: pointer;
+  color: #04121F; background: linear-gradient(135deg, #00C8FF, #38BDF8);
+  border: none; border-radius: 0.4rem; transition: transform 0.15s, box-shadow 0.2s;
+}
+.fin-ob-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 200, 255, 0.35); }
+.fin-ob-btn:active { transform: scale(0.96); }
+@media (max-width: 480px) {
+  .fin-ob { right: 0.6rem; bottom: 0.6rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fin-ob { animation: none; }
+}

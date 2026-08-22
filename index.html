@@ -48,7 +48,11 @@
 <link rel="preconnect" href="https://push2delay.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://push2his.eastmoney.com" crossorigin>
 <link rel="preconnect" href="https://datacenter-web.eastmoney.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=20260821b">
+<link rel="preconnect" href="https://ifzq.gtimg.cn" crossorigin>
+<link rel="preconnect" href="https://web.ifzq.gtimg.cn" crossorigin>
+<link rel="dns-prefetch" href="https://ifzq.gtimg.cn">
+<link rel="dns-prefetch" href="https://web.ifzq.gtimg.cn">
+<link rel="stylesheet" href="css/styles.css?v=20260822a">
 <link rel="stylesheet" href="css/fund.css?v=20260817c">
 
 </head>
@@ -151,9 +155,9 @@
     <div class="dash-grid dash-grid-hero" id="heroDash">
     <!-- 卡片1: 市场温度（恐慌贪婪指数 0-100） -->
     <div class="dash-card glass-card" id="dashTemp">
-      <div class="d-label">市场温度</div>
+      <div class="d-label" data-term="恐慌贪婪指数">市场温度</div>
       <div class="d-val">—</div>
-      <div class="d-sub">恐慌贪婪指数·0~100</div>
+      <div class="d-sub" data-term="恐慌贪婪指数">恐慌贪婪指数·0~100</div>
       <div class="temp-bar" id="dashTempBar">
         <div class="temp-bar-track"><div class="temp-bar-fill"></div></div>
       </div>
@@ -161,7 +165,7 @@
     </div>
     <!-- 卡片2: 主力资金净流入 -->
     <div class="dash-card glass-card" id="dashFlow">
-      <div class="d-label">主力资金</div>
+      <div class="d-label" data-term="主力净流入">主力资金</div>
       <div class="d-val">—</div>
       <div class="d-sub" id="dashFlowSub">板块资金·实时</div>
       <div class="d-tag gray">等待数据</div>
@@ -711,7 +715,7 @@
       <div class="sec-toolbar">
         <button class="sort-btn" data-sort="pct10" onclick="sortIndexCards('pct10')">分位排序</button>
         <button class="sort-btn" data-sort="pe" onclick="sortIndexCards('pe')">PE排序</button>
-        <button class="sort-btn" data-sort="dy" onclick="sortIndexCards('dy')">股息率排序</button>
+        <button class="sort-btn" data-sort="dy" data-term="股息率" onclick="sortIndexCards('dy')">股息率排序</button>
         <button class="export-btn" onclick="exportIndexCSV()">导出CSV</button>
       </div>
     </div>
@@ -781,9 +785,9 @@
     <div class="chart-card">
       <div class="hm-toolbar">
         <div class="hm-tabs">
-          <button class="hm-tab active" data-type="pe">PE分位</button>
-          <button class="hm-tab" data-type="pb">PB分位</button>
-          <button class="hm-tab" data-type="dy">股息率分位</button>
+          <button class="hm-tab active" data-type="pe" data-term="PE">PE分位</button>
+          <button class="hm-tab" data-type="pb" data-term="PB">PB分位</button>
+          <button class="hm-tab" data-type="dy" data-term="股息率">股息率分位</button>
           <button class="hm-tab" data-type="growth">行业增速</button>
         </div>
         <div class="hm-filters">
@@ -1255,6 +1259,8 @@
 <script defer src="js/performance.js?v=20260810k"></script>
 <script defer src="js/config.js?v=20260810k"></script>
 <script defer src="js/utils.js?v=20260810k"></script>
+<script defer src="js/glossary.js?v=20260822a"></script>
+<script defer src="js/onboarding.js?v=20260822a"></script>
 <script defer src="js/render.js?v=20260817b"></script>
 <script defer src="js/stock-analysis.js?v=20260819c"></script>
 <script defer src="js/earnings-report.js?v=20260810k"></script>
