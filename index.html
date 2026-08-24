@@ -52,7 +52,7 @@
 <link rel="preconnect" href="https://web.ifzq.gtimg.cn" crossorigin>
 <link rel="dns-prefetch" href="https://ifzq.gtimg.cn">
 <link rel="dns-prefetch" href="https://web.ifzq.gtimg.cn">
-<link rel="stylesheet" href="css/styles.css?v=20260822b">
+<link rel="stylesheet" href="css/styles.css?v=20260824a">
 <link rel="stylesheet" href="css/fund.css?v=20260817c">
 
 </head>
@@ -681,6 +681,76 @@
       </div></div><!-- /fold-inner /fold-body -->
     </div><!-- /foldPattern -->
 
+    <!-- 交互式技术分析：K线+金叉死叉识别+MACD/RSI验证+趋势推断（可折叠·默认收起·展开才加载） -->
+    <div class="fold-sec" id="foldTA" data-fold data-def="closed" data-sub="K线·金叉死叉·MACD/RSI验证·趋势推断">
+      <div class="fold-head" onclick="FoldSys.toggle('foldTA')" role="button" tabindex="0" aria-expanded="false" title="点击展开/收起">
+        <span class="fold-arrow">▸</span>
+        <span class="fold-title">交互式技术分析</span>
+        <span class="fold-sum">K线·金叉死叉·MACD/RSI验证·趋势推断</span>
+      </div>
+      <div class="fold-body"><div class="fold-inner">
+    <div class="ta-panel" id="taPanel">
+      <!-- 新信号提醒横幅（默认隐藏） -->
+      <div class="ta-alert-bar" id="taAlertBar" role="alert"></div>
+
+      <!-- 工具栏：标的 + 均线配置 + 预设 + 提醒开关 + 刷新 -->
+      <div class="ta-toolbar">
+        <div class="ta-toolbar-group">
+          <label class="ta-label" for="taIndexSel">标的</label>
+          <select class="ta-select" id="taIndexSel" aria-label="选择分析标的"></select>
+        </div>
+        <div class="ta-toolbar-group">
+          <label class="ta-label" for="taMaShort">均线</label>
+          <input type="number" class="ta-input" id="taMaShort" min="1" max="249" value="5" aria-label="短均线周期"> /
+          <input type="number" class="ta-input" id="taMaLong" min="2" max="250" value="20" aria-label="长均线周期">
+          <button class="ta-btn" id="taApplyBtn" title="应用自定义均线周期">应用</button>
+        </div>
+        <div class="ta-toolbar-group ta-presets">
+          <button class="ta-btn ta-preset" data-ma="5/20">5/20</button>
+          <button class="ta-btn ta-preset" data-ma="10/30">10/30</button>
+          <button class="ta-btn ta-preset" data-ma="20/60">20/60</button>
+        </div>
+        <div class="ta-toolbar-spacer"></div>
+        <button class="ta-btn" id="taAlertToggle" title="新信号弹窗提醒开关">🔔 提醒开</button>
+        <button class="ta-btn ta-btn-primary" id="taRefreshBtn">⟳ 刷新</button>
+      </div>
+      <div class="ta-data-status" id="taDataStatus">展开即加载K线（首次约1秒，之后走缓存）</div>
+
+      <!-- 趋势推断结论 -->
+      <div class="ta-trend-box" id="taTrendBox">
+        <div class="ta-trend-empty">等待K线数据加载…</div>
+      </div>
+
+      <!-- K线图 + 十字线提示 -->
+      <div class="ta-chart-wrap">
+        <canvas id="taChartCanvas" class="ta-canvas" aria-label="K线图：金叉死叉信号标注"></canvas>
+        <div class="ta-tip" id="taTip"></div>
+        <div class="ta-legend" id="taLegend"></div>
+      </div>
+      <div class="ta-chart-note">交互提示：鼠标悬停/点击K线查看当日开盘·收盘·最高·最低·成交量·均线·MACD·RSI；▲红=金叉（短均线上穿长均线） ▼绿=死叉（短均线下穿长均线）</div>
+
+      <!-- 近30日信号统计 -->
+      <div class="ta-stats-summary" id="taStatsSummary"></div>
+
+      <!-- 历史信号明细表 -->
+      <div class="ta-table-wrap">
+        <table class="ta-table" aria-label="历史金叉死叉信号统计">
+          <thead>
+            <tr><th>日期</th><th>信号</th><th>点位</th><th>后5日涨跌</th><th>验证结果</th><th>MACD/RSI共振</th></tr>
+          </thead>
+          <tbody id="taSignalTbody">
+            <tr><td colspan="6" class="ta-table-empty">等待信号识别…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="ta-foot-note">
+        <span>判定口径：金叉=MA短周期自下而上穿越长周期；成功=信号后5个交易日方向一致；统计窗口=近30个日历日</span>
+        <span>数据：日K+分钟级实时行情修正（延迟≤5分钟） · 兼容 Chrome/Edge/Firefox/Safari · 仅供参考，非投资建议</span>
+      </div>
+    </div>
+      </div></div><!-- /fold-inner /fold-body -->
+    </div><!-- /foldTA -->
+
     <!-- 今日复盘（可折叠·默认收起） -->
     <div class="fold-sec" id="foldReview" data-fold data-def="closed" data-sub="行情走向详解·自动生成">
       <div class="fold-head" onclick="FoldSys.toggle('foldReview')" role="button" tabindex="0" aria-expanded="false" title="点击展开/收起">
@@ -1260,7 +1330,8 @@
 <script defer src="js/earnings-report.js?v=20260810k"></script>
 <script defer src="js/rotation.js?v=20260817b"></script>
 <script defer src="js/screener.js?v=20260819a"></script>
-<script defer src="js/pattern-analysis.js?v=20260822c"></script>
+<script defer src="js/pattern-analysis.js?v=20260824a"></script>
+<script defer src="js/ta-interactive.js?v=20260824a"></script>
 <script defer src="js/ftf-engine.js?v=20260818a"></script>
 <script defer src="js/stf-engine.js?v=20260818a"></script>
 <script defer src="js/bs-engine.js?v=20260819a"></script>
@@ -1270,7 +1341,7 @@
 <script defer src="js/fund-ui.js?v=20260817a"></script>
 <script defer src="js/quick-nav.js?v=20260819b"></script>
 <script defer src="js/fold.js?v=20260819a"></script>
-<script defer src="js/ui.js?v=20260822b"></script>
+<script defer src="js/ui.js?v=20260824a"></script>
 <script defer src="js/app.js?v=20260819a"></script>
 </body>
 </html>

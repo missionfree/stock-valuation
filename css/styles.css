@@ -13148,3 +13148,296 @@ body::before { display: none !important; }
 #particleCanvas, #coinRainCanvas, #dataStreamWall, #scanLineOverlay {
   display: none !important;
 }
+
+/* ============================================================
+   —— 46. 交互式技术分析面板（TA Interactive） ——
+   K线 + 金叉死叉识别 + MACD/RSI验证 + 趋势推断
+   专业金融风格：中性面板、克制的红涨绿跌语义色
+   ============================================================ */
+.ta-panel {
+  background: var(--bg2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.8rem;
+  margin: 0.6rem 0;
+}
+
+/* ---- 新信号提醒横幅 ---- */
+.ta-alert-bar {
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  margin-bottom: 0.7rem;
+  animation: taSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ta-alert-bar.show { display: flex; }
+.ta-alert-bar.golden {
+  background: var(--neon-red-bg);
+  border: 1px solid rgba(240, 86, 92, 0.35);
+  color: var(--ink);
+}
+.ta-alert-bar.death {
+  background: var(--neon-green-bg);
+  border: 1px solid rgba(34, 181, 115, 0.35);
+  color: var(--ink);
+}
+.ta-alert-ico { font-size: 1rem; flex-shrink: 0; }
+.ta-alert-txt b { color: var(--neon-red); }
+.ta-alert-bar.death .ta-alert-txt b { color: var(--neon-green); }
+.ta-alert-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+.ta-alert-close:hover { color: var(--ink); background: var(--bg3); }
+@keyframes taSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- 工具栏 ---- */
+.ta-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--rule);
+}
+.ta-toolbar-group { display: flex; align-items: center; gap: 0.35rem; }
+.ta-toolbar-spacer { flex: 1; }
+.ta-label { font-size: 0.68rem; color: var(--muted); white-space: nowrap; }
+.ta-select, .ta-input {
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.7rem;
+  padding: 0.32rem 0.45rem;
+  font-family: var(--font-mono);
+  outline: none;
+}
+.ta-input { width: 3.4rem; text-align: center; }
+.ta-select:focus, .ta-input:focus { border-color: var(--accent); }
+.ta-select option { background: var(--bg3); color: var(--ink); }
+.ta-btn {
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.32rem 0.6rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ta-btn:hover { background: var(--bg4); border-color: var(--accent); }
+.ta-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ta-btn-primary { border-color: var(--accent); color: var(--accent); }
+.ta-btn-primary:hover { background: var(--neon-cyan-bg); }
+.ta-btn.off { color: var(--muted); }
+.ta-data-status {
+  font-size: 0.62rem;
+  color: var(--muted);
+  padding: 0.45rem 0 0.55rem;
+  font-family: var(--font-mono);
+}
+
+/* ---- 趋势推断 ---- */
+.ta-trend-box {
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 0.7rem;
+}
+.ta-trend-empty { color: var(--muted); font-size: 0.7rem; text-align: center; padding: 0.5rem 0; }
+.ta-trend-main { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+.ta-trend-chip {
+  flex: 1;
+  min-width: 180px;
+  background: var(--bg2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.7rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.6rem;
+  align-items: center;
+}
+.ta-trend-chip .ta-trend-k { font-size: 0.62rem; color: var(--muted); grid-row: span 2; }
+.ta-trend-chip .ta-trend-v { font-size: 0.95rem; font-weight: 800; letter-spacing: 0.02em; }
+.ta-trend-chip.bull .ta-trend-v { color: var(--neon-red); }
+.ta-trend-chip.bear .ta-trend-v { color: var(--neon-green); }
+.ta-trend-chip.flat .ta-trend-v { color: var(--neon-flat); }
+.ta-trend-conf {
+  grid-column: 2;
+  height: 3px;
+  background: var(--bg4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.ta-trend-conf i { display: block; height: 100%; background: var(--accent); transition: width 0.6s ease; }
+.ta-trend-chip.bull .ta-trend-conf i { background: var(--neon-red); }
+.ta-trend-chip.bear .ta-trend-conf i { background: var(--neon-green); }
+.ta-trend-confnum { grid-column: 2; font-size: 0.56rem; color: var(--muted); }
+.ta-trend-verdict { font-size: 0.74rem; margin-top: 0.6rem; color: var(--ink); }
+.ta-trend-verdict b { color: var(--accent); }
+.ta-latest-sig {
+  margin-top: 0.5rem;
+  font-size: 0.68rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--neon-red);
+  background: var(--neon-red-bg);
+}
+.ta-latest-sig.death { border-left-color: var(--neon-green); background: var(--neon-green-bg); }
+.ta-agree { margin-left: 0.4rem; }
+.ta-agree .agree2 { color: var(--neon-red); }
+.ta-agree .agree1 { color: var(--accent2); }
+.ta-agree .agree0 { color: var(--muted); }
+.ta-trend-aux {
+  margin-top: 0.45rem;
+  font-size: 0.64rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.ta-trend-bits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.4rem;
+  margin-top: 0.5rem;
+}
+.ta-trend-bits span {
+  font-size: 0.6rem;
+  color: var(--muted);
+  background: var(--bg2);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.14rem 0.4rem;
+}
+
+/* ---- K线图区 ---- */
+.ta-chart-wrap { position: relative; background: var(--bg3); border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: 0.4rem; }
+.ta-canvas { display: block; width: 100%; height: 330px; cursor: crosshair; }
+.ta-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  padding: 0.35rem 0.3rem 0.15rem;
+  color: var(--muted);
+}
+.ta-chart-note { font-size: 0.58rem; color: var(--muted); padding: 0.4rem 0.1rem 0.55rem; line-height: 1.6; }
+
+/* 十字线悬浮提示 */
+.ta-tip {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  min-width: 140px;
+  background: rgba(17, 23, 34, 0.96);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.6rem;
+  font-size: 0.62rem;
+  line-height: 1.65;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.ta-tip.show { display: block; }
+.ta-tip-date { color: var(--ink); font-weight: 700; margin-bottom: 0.15rem; }
+.ta-tip-sig { margin-top: 0.2rem; font-weight: 700; }
+.ta-tip-sig.golden { color: var(--neon-red); }
+.ta-tip-sig.death { color: var(--neon-green); }
+.ta-up { color: var(--neon-red); }
+.ta-down { color: var(--neon-green); }
+.ta-ok { color: var(--neon-red); }
+.ta-fail { color: var(--neon-green); }
+.ta-pending { color: var(--muted); }
+
+/* ---- 统计卡片 ---- */
+.ta-stats-summary { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+.ta-stat {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--neon-red);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.66rem;
+  color: var(--muted);
+}
+.ta-stat.death { border-left-color: var(--neon-green); }
+.ta-stat b { font-size: 1.05rem; color: var(--ink); font-family: var(--font-mono); }
+.ta-stat-sub { font-size: 0.6rem; }
+
+/* ---- 信号明细表 ---- */
+.ta-table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius-sm); }
+.ta-table { width: 100%; border-collapse: collapse; font-size: 0.66rem; }
+.ta-table th {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  background: var(--bg3);
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--rule);
+}
+.ta-table td {
+  padding: 0.42rem 0.6rem;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.ta-table tbody tr:last-child td { border-bottom: none; }
+.ta-table tbody tr:hover td { background: var(--bg3); }
+.ta-num { font-family: var(--font-mono); }
+.ta-type { font-weight: 700; }
+.ta-type.golden { color: var(--neon-red); }
+.ta-type.death { color: var(--neon-green); }
+.ta-table .agree2 { color: var(--neon-red); font-weight: 700; }
+.ta-table .agree1 { color: var(--accent2); font-weight: 700; }
+.ta-table .agree0 { color: var(--muted); font-weight: 700; }
+.ta-rsi { color: var(--muted); font-size: 0.58rem; margin-left: 0.3rem; }
+.ta-table-empty { text-align: center; color: var(--muted); padding: 0.9rem 0 !important; }
+.ta-foot-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.56rem;
+  color: var(--muted);
+  padding-top: 0.55rem;
+  line-height: 1.6;
+}
+
+/* ---- 主题适配（浅色主题微调） ---- */
+[data-theme="light"] .ta-tip { background: rgba(245, 246, 248, 0.97); }
+[data-theme="light"] .ta-canvas { cursor: crosshair; }
+
+/* ---- 响应式 ---- */
+@media (max-width: 640px) {
+  .ta-toolbar { gap: 0.4rem 0.6rem; }
+  .ta-toolbar-spacer { display: none; }
+  .ta-trend-chip { min-width: 100%; }
+  .ta-canvas { height: 280px; }
+  .ta-stat { min-width: 100%; }
+}
