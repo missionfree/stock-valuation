@@ -109,12 +109,25 @@ var RaceTrack = (function() {
   }
 
   /* ---------- 统一序列获取：返回升序收盘价数组 ---------- */
+  var _US_EM_SECID = { 'QQQ': '105.QQQ', 'SPY': '107.SPY', 'DIA': '107.DIA', 'AAPL': '105.AAPL', 'NVDA': '105.NVDA' };
   function fetchSeries(horse, barCount) {
     if (horse.type === 'fund') {
       // 基金按自然日取（约 barCount*1.45 个自然日 ≈ 对应交易日数）
       var calDays = Math.ceil(barCount * 1.5) + 20;
       return fetchFundNav(horse.code, calDays).then(function(arr) {
         return arr.map(function(p) { return p.c; });
+      });
+    }
+    // 美股：腾讯接口对美股不稳定（WAF拦截/需后缀），直接走东财JSONP
+    if (horse.tag === '美') {
+      var secid = _US_EM_SECID[horse.code.substring(2)];
+      if (!secid) throw new Error('未知美股代码');
+      var emUrl = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=' + secid +
+        '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58&klt=101&fqt=1&end=20500101&lmt=' + (barCount + 30);
+      return emJsonp(emUrl, 10000).then(function(d) {
+        var kArr = d && d.data && d.data.klines;
+        if (!kArr || kArr.length < 20) throw new Error('东财美股K线不足');
+        return kArr.map(function(k) { return parseFloat(k.split(',')[2]); }).filter(function(c) { return c > 0; });
       });
     }
     return fetchKline(horse.code, barCount + 30).then(function(k) {
