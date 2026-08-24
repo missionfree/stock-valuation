@@ -1104,6 +1104,33 @@
     <div class="sec-title" id="stockResultTitle" style="display:none">个股估值详情</div>
     <div class="card-list" id="stockResultArea"></div>
 
+    <!-- ====== 赛马场：本金A+定投B → 收益C ====== -->
+    <div class="fold-sec" id="foldRace" data-fold data-def="closed" data-sub="本金A+定投B·18选手同场竞技·短跑/长跑双赛道">
+      <div class="fold-head" onclick="FoldSys.toggle('foldRace')" role="button" tabindex="0" aria-expanded="false" title="点击展开/收起">
+        <span class="fold-arrow">▸</span>
+        <span class="fold-title">🏇 策略赛马场</span>
+        <span class="fold-mini">模拟回测</span>
+        <span class="fold-sum">本金A+定投B·18选手同场竞技·短跑/长跑双赛道</span>
+      </div>
+      <div class="fold-body"><div class="fold-inner">
+        <div class="race-setup">
+          <label>本金 A：<input type="number" id="racePrincipal" value="10000" min="0" step="1000"></label>
+          <label>每10交易日定投 B：<input type="number" id="raceInvest" value="1000" min="0" step="100"></label>
+          <button class="btn-analyze" id="raceStartBtn" onclick="RaceTrack.startRace()">🏇 开赛！</button>
+        </div>
+        <div class="race-progress" id="raceProgress"></div>
+        <div class="race-league">
+          <div class="race-league-title">⚡ 短跑组 · 近60个交易日</div>
+          <div id="raceShortResult"><div class="race-empty">点击「开赛」让选手们上跑道</div></div>
+        </div>
+        <div class="race-league">
+          <div class="race-league-title">🐢 长跑组 · 近250个交易日（约一年）</div>
+          <div id="raceLongResult"><div class="race-empty">同上，耐心等发令枪</div></div>
+        </div>
+        <p class="race-note">⚠️ 赛马结果为历史数据模拟回测，不代表未来收益。投资有风险，入市需谨慎。</p>
+      </div></div>
+    </div><!-- /foldRace -->
+
   </div><!-- /tab-strategy -->
 
   <!-- ====== Tab: 智能选股 ====== -->
@@ -1342,5 +1369,6 @@
 <script defer src="js/fold.js?v=20260819a"></script>
 <script defer src="js/ui.js?v=20260824a"></script>
 <script defer src="js/app.js?v=20260819a"></script>
+<script src="js/race.js?v=20260824a"></script>
 </body>
 </html>

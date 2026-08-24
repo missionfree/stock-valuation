@@ -13502,3 +13502,46 @@ body::before { display: none !important; }
   .ta-canvas { height: 280px; }
   .ta-stat { min-width: 100%; }
 }
+
+/* ==================== 赛马场 ==================== */
+.race-setup {
+  display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center;
+  padding: 10px 12px; margin-bottom: 10px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 10px;
+}
+.race-setup label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.race-setup input {
+  width: 90px; padding: 5px 8px; border-radius: 6px;
+  background: rgba(127,127,127,0.08); color: var(--ink);
+  border: 1px solid var(--rule); font-size: 13px;
+}
+.race-progress { font-size: 12px; color: var(--muted); margin-bottom: 8px; min-height: 16px; }
+.race-league { margin-bottom: 14px; }
+.race-league-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+.race-empty { font-size: 13px; color: var(--muted); text-align: center; padding: 18px 0; }
+.race-champ-banner {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;
+  padding: 9px 12px; margin-bottom: 8px; border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255,201,77,0.12), rgba(255,201,77,0.03));
+  border: 1px solid rgba(255,201,77,0.3); font-size: 13px;
+}
+.race-champ-cup { font-size: 15px; }
+.race-champ-sub { font-size: 11px; color: var(--muted); }
+.race-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.race-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+.race-table th, .race-table td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--rule); }
+.race-table th:first-child, .race-table td:first-child,
+.race-table th:nth-child(2), .race-table td:nth-child(2) { text-align: left; }
+.race-table thead th { color: var(--muted); font-weight: 600; font-size: 11px; }
+tr.race-champion td { background: rgba(255,201,77,0.06); }
+.race-name { font-weight: 600; }
+.race-medal { font-size: 14px; }
+.race-rank { color: var(--muted); }
+.race-tag {
+  display: inline-block; margin-left: 5px; padding: 0 4px; border-radius: 4px;
+  font-size: 10px; vertical-align: 1px;
+}
+.race-tag-etf { background: rgba(108,92,231,0.15); color: #8E7BFF; }
+.race-tag-fund { background: rgba(0,210,198,0.12); color: #00D2C6; }
+.race-tag-stock { background: rgba(255,71,87,0.12); color: #FF7A85; }
+.race-note { font-size: 11px; color: var(--muted); opacity: 0.75; line-height: 1.5; }
