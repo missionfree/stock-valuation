@@ -1117,7 +1117,7 @@
           <label>本金 A：<input type="number" id="racePrincipal" value="10000" min="0" step="1000"></label>
           <label>每交易日定投 B：<input type="number" id="raceInvest" value="100" min="0" step="10"></label>
           <label>短跑(交易日)：<input type="number" id="raceShortDays" value="60" min="20" max="500" step="10"></label>
-          <label>长跑(交易日)：<input type="number" id="raceLongDays" value="250" min="60" max="750" step="10"></label>
+          <label>长跑(交易日，最长3000)：<input type="number" id="raceLongDays" value="250" min="60" max="3000" step="10"></label>
           <button class="btn-analyze" id="raceStartBtn" onclick="RaceTrack.startRace()">🏇 开赛！</button>
         </div>
         <div class="race-progress" id="raceProgress"></div>
@@ -1372,6 +1372,6 @@
 <script defer src="js/fold.js?v=20260819a"></script>
 <script defer src="js/ui.js?v=20260824a"></script>
 <script defer src="js/app.js?v=20260819a"></script>
-<script src="js/race.js?v=20260824d"></script>
+<script src="js/race.js?v=20260824e"></script>
 </body>
 </html>

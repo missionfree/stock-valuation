@@ -195,9 +195,12 @@ var RaceTrack = (function() {
       var typeTag = r.horse.type === 'fund' ? '<span class="race-tag race-tag-fund">基金</span>'
                   : r.horse.type === 'etf' ? '<span class="race-tag race-tag-etf">ETF' + (r.horse.tag === '美' ? '·美</span>' : '</span>')
                   : '<span class="race-tag race-tag-stock">' + (r.horse.tag === '美' ? '美股' : '个股') + '</span>';
+      // ETF/个股选手名可点击 → 弹出同类优质ETF推荐
+      var clickable = r.horse.type !== 'fund'
+        ? ' style="cursor:pointer" onclick="event.stopPropagation();RaceTrack.openRec(\'' + r.horse.code + '\',\'' + r.horse.name.replace(/'/g, '') + '\')" title="点击查看相关优质ETF推荐"' : '';
       return '<tr class="' + (i === 0 ? 'race-champion' : '') + '">' +
         '<td>' + badge + '</td>' +
-        '<td class="race-name">' + r.horse.name + typeTag + '</td>' +
+        '<td class="race-name"' + clickable + '>' + r.horse.name + typeTag + (r.horse.type !== 'fund' ? ' <span class="race-rec-hint">🔍</span>' : '') + '</td>' +
         '<td class="' + _cls(r.profitRate) + '"><b>' + _fmtPct(r.profitRate) + '</b></td>' +
         '<td>' + (r.invested).toFixed(0) + '</td>' +
         '<td class="' + _cls(r.finalValue - r.invested) + '">' + (r.finalValue - r.invested >= 0 ? '+' : '') + (r.finalValue - r.invested).toFixed(0) + '</td>' +
@@ -224,8 +227,8 @@ var RaceTrack = (function() {
     var investPer = parseFloat(document.getElementById('raceInvest').value) || 100;
     var shortDays = parseInt(document.getElementById('raceShortDays').value, 10) || 60;
     var longDays = parseInt(document.getElementById('raceLongDays').value, 10) || 250;
-    shortDays = Math.min(Math.max(shortDays, 20), 500);
-    longDays = Math.min(Math.max(longDays, 60), 750);
+    shortDays = Math.min(Math.max(shortDays, 20), 1500);
+    longDays = Math.min(Math.max(longDays, 60), 3000);
     var btn = document.getElementById('raceStartBtn');
     var shortEl = document.getElementById('raceShortResult');
     var longEl = document.getElementById('raceLongResult');
@@ -288,5 +291,25 @@ var RaceTrack = (function() {
     }
   }, true);
 
-  return { startRace: startRace };
+  /* ---------- 点击选手 → 弹出同类优质ETF推荐 ---------- */
+  var _US_REC_MAP = {
+    'usQQQ':  { code: 'sh513100', name: '纳指ETF',      cat: 'broad' },
+    'usSPY':  { code: 'sh513500', name: '标普500ETF',   cat: 'broad' },
+    'usDIA':  { code: 'sh513520', name: '道琼斯ETF',    cat: 'broad' },
+    'usAAPL': { code: 'sh513100', name: '纳指ETF',      cat: 'broad' },
+    'usNVDA': { code: 'sh512480', name: '半导体ETF',    cat: 'industries' }
+  };
+  function openRec(code, name) {
+    if (typeof showEtfRecommend !== 'function') return;
+    var mapped = _US_REC_MAP[code];
+    var target = mapped || { code: code, name: name, cat: null };
+    // showEtfRecommend(代码, 名称, 分类, side)：side='right' 走趋势方向推荐
+    try {
+      showEtfRecommend(target.code, (mapped ? mapped.name + '(美股' + name + '同类)' : name), target.cat || 'broad', 'right');
+    } catch(e) {
+      console.warn('[赛马] 推荐弹窗异常', e);
+    }
+  }
+
+  return { startRace: startRace, openRec: openRec };
 })();
