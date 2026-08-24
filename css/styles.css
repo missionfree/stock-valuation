@@ -185,7 +185,7 @@ font-family: var(--font);
 .theme-dot.light { background: linear-gradient(135deg, #58A6FF, #0D1117); }
 .theme-dot.classical { background: linear-gradient(135deg, #D4A843, #1A1410); }
 .theme-dot.cyberpunk { background: linear-gradient(135deg, #ff00ff, #0d0015); }
-.theme-dot.ocean { background: linear-gradient(135deg, #00aaff, #001428); }
+.theme-dot.ocean { background: linear-gradient(135deg, #6C5CE7, #00D2C6); }
 .live-dot {
   width: 6px; height: 6px; background: var(--neon-red);
   border-radius: 50%; flex-shrink: 0;
@@ -647,41 +647,84 @@ font-family: var(--font);
 }
 
 /* ==================== 主题：深海蓝 ==================== */
+/* ★ AURORA 极光主题（原深海蓝调位）★ */
 [data-theme="ocean"] {
-  --bg: #001428;
-  --bg2: #002040;
-  --bg3: #003055;
-  --bg4: #004070;
-  --ink: #F0F8FF;
-  --muted: #90B0D0;
-  --rule: rgba(0,170,255,0.15);
-  --accent: #0EA5E9;
-  --accent2: #14B8A6;
-  --neon-green: #00AA00;
-  --neon-green-bg: rgba(0, 170, 0, 0.15);
-  --neon-red: #FF0000;
-  --neon-red-bg: rgba(255, 0, 0, 0.15);
+  --bg: #070A12;
+  --bg2: #0C111D;
+  --bg3: #121A2B;
+  --bg4: #1A2438;
+  --ink: #EDF1FA;
+  --muted: #7E8BA3;
+  --rule: rgba(140,155,200,0.13);
+  --accent: #6C5CE7;
+  --accent2: #00D2C6;
+  --neon-green: #22B573;
+  --neon-green-bg: rgba(34,181,115,0.15);
+  --neon-red: #FF4757;
+  --neon-red-bg: rgba(255,71,87,0.15);
   --neon-flat: #9E9E9E;
-  --neon-flat-bg: rgba(158, 158, 158, 0.12);
-  --neon-yellow: #FBBF24;
-  --neon-yellow-bg: rgba(251,191,36,0.12);
-  --neon-cyan: #38BDF8;
-  --neon-cyan-bg: rgba(56,189,248,0.12);
+  --neon-flat-bg: rgba(158,158,158,0.12);
+  --neon-yellow: #FFC94D;
+  --neon-yellow-bg: rgba(255,201,77,0.12);
+  --neon-cyan: #00E5CF;
+  --neon-cyan-bg: rgba(0,229,207,0.12);
   --glow-green: none;
   --glow-red: none;
   --glow-cyan: none;
-  --grid-line: rgba(0,170,255,0.05);
-  --glass-bg: rgba(0,48,85,0.55);
-  --glass-border: rgba(0,170,255,0.12);
-  --shadow-card: 0 2px 8px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,170,255,0.08);
-  --shadow-hover: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(14,165,233,0.25);
-  --highlight-gold: rgba(251, 191, 36, 1);
-  --highlight-gold-bg: rgba(251, 191, 36, 0.12);
-  --highlight-gold-border: rgba(251, 191, 36, 0.3);
-  --highlight-gold-glow: 0 0 4px rgba(251, 191, 36, 0.3);
-  --policy-vane-top: linear-gradient(90deg, transparent, rgba(251,191,36,0.3), rgba(14,165,233,0.2), transparent);
-  --header-gradient: linear-gradient(135deg, #0EA5E9, #14B8A6, #00AA00);
+  --grid-line: rgba(108,92,231,0.06);
+  --glass-bg: rgba(14,20,36,0.78);
+  --glass-border: rgba(150,165,220,0.10);
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(150,165,220,0.06);
+  --shadow-hover: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(108,92,231,0.35);
+  --highlight-gold: rgba(255,201,77,1);
+  --highlight-gold-bg: rgba(255,201,77,0.12);
+  --highlight-gold-border: rgba(255,201,77,0.3);
+  --highlight-gold-glow: 0 0 4px rgba(255,201,77,0.3);
+  --policy-vane-top: linear-gradient(90deg, transparent, rgba(108,92,231,0.35), rgba(0,210,198,0.25), transparent);
+  --header-gradient: linear-gradient(135deg, #6C5CE7, #8E7BFF, #00D2C6);
 }
+/* 极光主题专属视觉 */
+[data-theme="ocean"] body {
+  background:
+    radial-gradient(1200px 500px at 85% -100px, rgba(108,92,231,0.16), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(0,210,198,0.09), transparent 60%),
+    radial-gradient(700px 400px at 50% 110%, rgba(142,123,255,0.08), transparent 65%),
+    var(--bg);
+  background-attachment: fixed;
+}
+[data-theme="ocean"] .app-header {
+  background: linear-gradient(180deg, rgba(13,18,33,0.88), rgba(7,10,18,0.82)) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: none !important;
+  position: relative;
+}
+[data-theme="ocean"] .app-header::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px;
+  background: linear-gradient(90deg, transparent 5%, #6C5CE7 30%, #00D2C6 60%, transparent 95%);
+  opacity: 0.75; pointer-events: none;
+}
+[data-theme="ocean"] .app-header h1 {
+  background: linear-gradient(135deg, #A78BFA, #8E7BFF, #00E5CF);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: titleShift 6s ease-in-out infinite;
+}
+[data-theme="ocean"] .sec-title::before {
+  width: 4px; height: 17px;
+  background: linear-gradient(135deg, #6C5CE7, #00D2C6) !important;
+  box-shadow: 0 0 10px rgba(108,92,231,0.55) !important;
+  border-radius: 3px;
+}
+[data-theme="ocean"] .tab-nav-btn.active {
+  background: linear-gradient(135deg, #6C5CE7, #00D2C6) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 18px rgba(108,92,231,0.4) !important;
+}
+[data-theme="ocean"] ::selection { background: rgba(108,92,231,0.45) !important; color: #fff !important; }
+[data-theme="ocean"] ::-webkit-scrollbar-thumb { background: rgba(108,92,231,0.45); border-radius: 3px; }
 [data-theme="light"] body {
   background-image:
     radial-gradient(ellipse at 50% -20%, rgba(88,166,255,0.06), transparent 70%),
