@@ -34,7 +34,13 @@ var RaceTrack = (function() {
     { code: 'sh512010', name: '医药ETF',     type: 'etf' },
     { code: 'sh600519', name: '贵州茅台',    type: 'stock' },
     { code: 'sz300750', name: '宁德时代',    type: 'stock' },
-    { code: 'sh601318', name: '中国平安',    type: 'stock' }
+    { code: 'sh601318', name: '中国平安',    type: 'stock' },
+    /* —— 美股选手（腾讯 us 前缀，走同一 K线管道）—— */
+    { code: 'usQQQ',  name: '纳指100ETF',   type: 'etf', tag: '美' },
+    { code: 'usSPY',  name: '标普500ETF',   type: 'etf', tag: '美' },
+    { code: 'usDIA',  name: '道琼斯ETF',    type: 'etf', tag: '美' },
+    { code: 'usAAPL', name: '苹果',         type: 'stock', tag: '美' },
+    { code: 'usNVDA', name: '英伟达',       type: 'stock', tag: '美' }
   ];
   // 场外基金：东财基金代码（走净值历史）
   var HORSES_FUND = [
@@ -174,8 +180,8 @@ var RaceTrack = (function() {
     var rows = results.map(function(r, i) {
       var badge = i < 3 ? '<span class="race-medal">' + medals[i] + '</span>' : '<span class="race-rank">' + (i + 1) + '</span>';
       var typeTag = r.horse.type === 'fund' ? '<span class="race-tag race-tag-fund">基金</span>'
-                  : r.horse.type === 'etf' ? '<span class="race-tag race-tag-etf">ETF</span>'
-                  : '<span class="race-tag race-tag-stock">个股</span>';
+                  : r.horse.type === 'etf' ? '<span class="race-tag race-tag-etf">ETF' + (r.horse.tag === '美' ? '·美</span>' : '</span>')
+                  : '<span class="race-tag race-tag-stock">' + (r.horse.tag === '美' ? '美股' : '个股') + '</span>';
       return '<tr class="' + (i === 0 ? 'race-champion' : '') + '">' +
         '<td>' + badge + '</td>' +
         '<td class="race-name">' + r.horse.name + typeTag + '</td>' +
@@ -218,11 +224,30 @@ var RaceTrack = (function() {
 
     // 并行跑两场
     var pShort = runLeague(HORSES_MARKET.concat(HORSES_FUND), 60, principal, investPer, prog)
-      .then(function(rs) { renderLeague('raceShortResult', rs, '短跑组(60日)'); });
+      .then(function(rs) { renderLeague('raceShortResult', rs, '短跑组(60日)'); return rs; });
     var pLong = runLeague(HORSES_MARKET.concat(HORSES_FUND), 250, principal, investPer, prog)
-      .then(function(rs) { renderLeague('raceLongResult', rs, '长跑组(250日)'); });
+      .then(function(rs) { renderLeague('raceLongResult', rs, '长跑组(250日)'); return rs; });
 
-    Promise.all([pShort, pLong]).catch(function(e) {
+    Promise.all([pShort, pLong]).then(function(rs) {
+      // 全场总冠军：短跑冠军与长跑冠军中收益率更高者
+      var shortRs = (rs[0] || []).slice().sort(function(a,b){return b.profitRate-a.profitRate;});
+      var longRs  = (rs[1] || []).slice().sort(function(a,b){return b.profitRate-a.profitRate;});
+      var best = null;
+      if (shortRs.length && longRs.length) {
+        best = longRs[0].profitRate >= shortRs[0].profitRate ? longRs[0] : shortRs[0];
+      } else best = shortRs[0] || longRs[0] || null;
+      var el = document.getElementById('raceBestPick');
+      if (el && best) {
+        var horizon = shortRs.length && best === shortRs[0] ? '短跑赛道' : '长跑赛道';
+        el.innerHTML = '<div class="race-best">' +
+          '🎯 <b>帮你选好了：' + best.horse.name + '</b>' +
+          '<span class="' + _cls(best.profitRate) + '">（' + horizon + '·' + _fmtPct(best.profitRate) + '）</span>' +
+          '<span class="race-champ-sub">按当前参数投入 ' + best.invested.toFixed(0) + ' → 市值 ' + best.finalValue.toFixed(0) + '</span>' +
+        '</div>';
+        if (progEl) progEl.textContent = '';
+      }
+      return rs;
+    }).catch(function(e) {
       console.warn('[赛马] 异常', e);
     }).then(function() {
       _running = false;
@@ -231,6 +256,20 @@ var RaceTrack = (function() {
       if (progEl) progEl.textContent = '';
     });
   }
+
+    /* ---------- 展开板块自动开赛（每次会话一次） ---------- */
+  var _autoStarted = false;
+  document.addEventListener('click', function(e) {
+    if (_autoStarted) return;
+    var head = e.target && e.target.closest ? e.target.closest('#foldRace .fold-head') : null;
+    if (!head) return;
+    var sec = document.getElementById('foldRace');
+    if (sec && sec.getAttribute('data-open') !== '1' && !sec.classList.contains('folded')) {
+      // 延迟到折叠动画后再跑，避免阻塞
+      _autoStarted = true;
+      Perf.trackedSetTimeout(function() { try { startRace(); } catch(ex){} }, 350);
+    }
+  }, true);
 
   return { startRace: startRace };
 })();

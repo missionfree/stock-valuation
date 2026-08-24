@@ -13544,4 +13544,10 @@ tr.race-champion td { background: rgba(255,201,77,0.06); }
 .race-tag-etf { background: rgba(108,92,231,0.15); color: #8E7BFF; }
 .race-tag-fund { background: rgba(0,210,198,0.12); color: #00D2C6; }
 .race-tag-stock { background: rgba(255,71,87,0.12); color: #FF7A85; }
+.race-best {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;
+  padding: 10px 12px; margin-bottom: 10px; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(108,92,231,0.15), rgba(0,210,198,0.06));
+  border: 1px solid rgba(108,92,231,0.35); font-size: 14px;
+}
 .race-note { font-size: 11px; color: var(--muted); opacity: 0.75; line-height: 1.5; }
