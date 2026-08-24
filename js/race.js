@@ -123,13 +123,13 @@ var RaceTrack = (function() {
     });
   }
 
-  /* ---------- 核心回测：A + 每 step 日定投 B ---------- */
-  function backtest(closes, principal, investPer, stepDays) {
+  /* ---------- 核心回测：A + 每个交易日定投 B ---------- */
+  function backtest(closes, principal, investPer) {
     var n = closes.length;
     if (n < 10) return null;
     var shares = principal / closes[0];
     var invested = principal;
-    for (var i = stepDays; i < n; i += stepDays) {
+    for (var i = 1; i < n; i++) {
       shares += investPer / closes[i];
       invested += investPer;
     }
@@ -154,7 +154,7 @@ var RaceTrack = (function() {
     return new Promise(function(resolve) {
       horses.forEach(function(h) {
         fetchSeries(h, barCount).then(function(closes) {
-          var r = backtest(closes, principal, investPer, 10);
+          var r = backtest(closes, principal, investPer);
           if (r) { r.horse = h; results.push(r); }
         }).catch(function(err) {
           console.warn('[赛马] 弃赛:', h.name, err.message);
@@ -208,7 +208,11 @@ var RaceTrack = (function() {
     if (_running) return;
     _running = true;
     var principal = parseFloat(document.getElementById('racePrincipal').value) || 10000;
-    var investPer = parseFloat(document.getElementById('raceInvest').value) || 1000;
+    var investPer = parseFloat(document.getElementById('raceInvest').value) || 100;
+    var shortDays = parseInt(document.getElementById('raceShortDays').value, 10) || 60;
+    var longDays = parseInt(document.getElementById('raceLongDays').value, 10) || 250;
+    shortDays = Math.min(Math.max(shortDays, 20), 500);
+    longDays = Math.min(Math.max(longDays, 60), 750);
     var btn = document.getElementById('raceStartBtn');
     var shortEl = document.getElementById('raceShortResult');
     var longEl = document.getElementById('raceLongResult');
@@ -223,10 +227,10 @@ var RaceTrack = (function() {
     }
 
     // 并行跑两场
-    var pShort = runLeague(HORSES_MARKET.concat(HORSES_FUND), 60, principal, investPer, prog)
-      .then(function(rs) { renderLeague('raceShortResult', rs, '短跑组(60日)'); return rs; });
-    var pLong = runLeague(HORSES_MARKET.concat(HORSES_FUND), 250, principal, investPer, prog)
-      .then(function(rs) { renderLeague('raceLongResult', rs, '长跑组(250日)'); return rs; });
+    var pShort = runLeague(HORSES_MARKET.concat(HORSES_FUND), shortDays, principal, investPer, prog)
+      .then(function(rs) { renderLeague('raceShortResult', rs, '短跑组(' + shortDays + '日)'); return rs; });
+    var pLong = runLeague(HORSES_MARKET.concat(HORSES_FUND), longDays, principal, investPer, prog)
+      .then(function(rs) { renderLeague('raceLongResult', rs, '长跑组(' + longDays + '日)'); return rs; });
 
     Promise.all([pShort, pLong]).then(function(rs) {
       // 全场总冠军：短跑冠军与长跑冠军中收益率更高者
