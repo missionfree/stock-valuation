@@ -51,7 +51,7 @@
 <link rel="preconnect" href="https://ifzq.gtimg.cn" crossorigin>
 <link rel="preconnect" href="https://web.ifzq.gtimg.cn" crossorigin>
 
-<link rel="stylesheet" href="css/styles.css?v=20260827a">
+<link rel="stylesheet" href="css/styles.css?v=20260827b">
 <link rel="stylesheet" href="css/fund.css?v=20260817c">
 
 </head>
@@ -213,10 +213,10 @@
         </div>
       </div>
 
-      <!-- 四大指数实时卡 -->
+      <!-- 四大指数实时卡（上证指数为权重主指数，排首位） -->
       <div class="rt-index-row" id="rtIndexRow">
+        <div class="rt-idx-card main" id="rtIdx-sh000001"><div class="rt-idx-head"><span class="rt-idx-name">★ 上证指数</span><span class="rt-idx-code">SH</span></div><div class="rt-idx-price">—</div><div class="rt-idx-chg">—</div></div>
         <div class="rt-idx-card" id="rtIdx-sh000300"><div class="rt-idx-head"><span class="rt-idx-name">沪深300</span><span class="rt-idx-code">HS300</span></div><div class="rt-idx-price">—</div><div class="rt-idx-chg">—</div></div>
-        <div class="rt-idx-card" id="rtIdx-sh000001"><div class="rt-idx-head"><span class="rt-idx-name">上证指数</span><span class="rt-idx-code">SH</span></div><div class="rt-idx-price">—</div><div class="rt-idx-chg">—</div></div>
         <div class="rt-idx-card" id="rtIdx-sz399001"><div class="rt-idx-head"><span class="rt-idx-name">深证成指</span><span class="rt-idx-code">SZ</span></div><div class="rt-idx-price">—</div><div class="rt-idx-chg">—</div></div>
         <div class="rt-idx-card" id="rtIdx-sz399006"><div class="rt-idx-head"><span class="rt-idx-name">创业板指</span><span class="rt-idx-code">CYB</span></div><div class="rt-idx-price">—</div><div class="rt-idx-chg">—</div></div>
       </div>
@@ -224,9 +224,9 @@
       <!-- 主区：分时图 + AI解读 -->
       <div class="rt-main">
         <div class="rt-chart-col">
-          <div class="rt-col-title">分时走势 · 沪深300<span class="rt-col-sub">自打开本页起逐笔累积 · 悬停查看</span></div>
+          <div class="rt-col-title">分时走势 · 上证指数<span class="rt-col-sub">自打开本页起逐笔累积 · 悬停查看</span></div>
           <div class="rt-chart-wrap">
-            <canvas id="rtChartCanvas" class="rt-canvas" aria-label="沪深300实时分时走势图"></canvas>
+            <canvas id="rtChartCanvas" class="rt-canvas" aria-label="上证指数实时分时走势图"></canvas>
           </div>
           <div class="rt-chart-legend" id="rtChartLegend"></div>
         </div>
@@ -1426,7 +1426,7 @@
 <script defer src="js/screener.js?v=20260819a"></script>
 <script defer src="js/pattern-analysis.js?v=20260824a"></script>
 <script defer src="js/ta-interactive.js?v=20260824a"></script>
-<script defer src="js/rt-watch.js?v=20260827a"></script>
+<script defer src="js/rt-watch.js?v=20260827b"></script>
 <script defer src="js/ftf-engine.js?v=20260818a"></script>
 <script defer src="js/stf-engine.js?v=20260818a"></script>
 <script defer src="js/bs-engine.js?v=20260819a"></script>

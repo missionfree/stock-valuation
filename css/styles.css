@@ -13631,6 +13631,13 @@ tr.race-champion td { background: rgba(255,201,77,0.06); }
 }
 .rt-idx-card.up { border-left: 3px solid var(--neon-red); }
 .rt-idx-card.down { border-left: 3px solid var(--neon-green); }
+/* 主指数（上证）高亮：金色描边 + 微光底 */
+.rt-idx-card.main {
+  border: 1px solid var(--highlight-gold-border);
+  background: linear-gradient(160deg, var(--bg3), var(--neon-yellow-bg));
+  box-shadow: var(--highlight-gold-glow);
+}
+.rt-idx-card.main .rt-idx-name { color: var(--accent2); }
 .rt-idx-card.flash-up { animation: rtFlashUp 0.7s ease; }
 .rt-idx-card.flash-down { animation: rtFlashDown 0.7s ease; }
 @keyframes rtFlashUp {
