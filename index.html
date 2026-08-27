@@ -51,7 +51,7 @@
 <link rel="preconnect" href="https://ifzq.gtimg.cn" crossorigin>
 <link rel="preconnect" href="https://web.ifzq.gtimg.cn" crossorigin>
 
-<link rel="stylesheet" href="css/styles.css?v=20260824c">
+<link rel="stylesheet" href="css/styles.css?v=20260827a">
 <link rel="stylesheet" href="css/fund.css?v=20260817c">
 
 </head>
@@ -186,6 +186,71 @@
   </div>
     </div></div><!-- /fold-inner /fold-body -->
   </div><!-- /foldDash -->
+
+  <!-- ==================== 实时盯盘 · AI 量化终端（分钟级轮询·自动分析·信号流，可折叠·默认展开） ==================== -->
+  <div class="fold-sec" id="foldRT" data-fold data-def="open" data-sub="分钟级盯盘·AI自动解读·量化信号流">
+    <div class="fold-head" onclick="FoldSys.toggle('foldRT')" role="button" tabindex="0" aria-expanded="true" title="点击展开/收起">
+      <span class="fold-arrow">▸</span>
+      <span class="fold-title">实时盯盘 · AI量化终端</span>
+      <span class="fold-mini" id="rtHeadMini">LIVE</span>
+      <span class="fold-sum">分钟级盯盘·AI自动解读·量化信号流</span>
+      <span class="data-driven-label">实时数据</span>
+    </div>
+    <div class="fold-body"><div class="fold-inner">
+    <div class="rt-panel" id="rtPanel">
+
+      <!-- 顶部状态条 -->
+      <div class="rt-status-bar">
+        <div class="rt-status-left">
+          <span class="rt-live-dot live" id="rtLiveDot"></span>
+          <span class="rt-status-text" id="rtStatus">● 正在连接行情…</span>
+        </div>
+        <div class="rt-status-right">
+          <span class="rt-clock" id="rtClock">--:--:--</span>
+          <span class="rt-next" id="rtNext"></span>
+          <button class="rt-btn" id="rtPauseBtn" title="暂停/恢复盯盘轮询">⏸ 暂停</button>
+          <button class="rt-btn rt-btn-primary" id="rtRefreshBtn" title="立即刷新行情">⟳ 刷新</button>
+        </div>
+      </div>
+
+      <!-- 四大指数实时卡 -->
+      <div class="rt-index-row" id="rtIndexRow">
+        <div class="rt-idx-card" id="rtIdx-sh000300"><div class="rt-idx-head"><span class="rt-idx-name">沪深300</span><span class="rt-idx-code">HS300</span></div><div class="rt-idx-price">—</div><div class="rt-idx-chg">—</div></div>
+        <div class="rt-idx-card" id="rtIdx-sh000001"><div class="rt-idx-head"><span class="rt-idx-name">上证指数</span><span class="rt-idx-code">SH</span></div><div class="rt-idx-price">—</div><div class="rt-idx-chg">—</div></div>
+        <div class="rt-idx-card" id="rtIdx-sz399001"><div class="rt-idx-head"><span class="rt-idx-name">深证成指</span><span class="rt-idx-code">SZ</span></div><div class="rt-idx-price">—</div><div class="rt-idx-chg">—</div></div>
+        <div class="rt-idx-card" id="rtIdx-sz399006"><div class="rt-idx-head"><span class="rt-idx-name">创业板指</span><span class="rt-idx-code">CYB</span></div><div class="rt-idx-price">—</div><div class="rt-idx-chg">—</div></div>
+      </div>
+
+      <!-- 主区：分时图 + AI解读 -->
+      <div class="rt-main">
+        <div class="rt-chart-col">
+          <div class="rt-col-title">分时走势 · 沪深300<span class="rt-col-sub">自打开本页起逐笔累积 · 悬停查看</span></div>
+          <div class="rt-chart-wrap">
+            <canvas id="rtChartCanvas" class="rt-canvas" aria-label="沪深300实时分时走势图"></canvas>
+          </div>
+          <div class="rt-chart-legend" id="rtChartLegend"></div>
+        </div>
+        <div class="rt-ai-col">
+          <div class="rt-col-title rt-ai-title">✦ AI 智能解读<span class="rt-col-sub">每tick自动重组</span></div>
+          <div class="rt-ai-text" id="rtAiText"><div class="rt-ai-wait">AI 解读引擎等待行情数据…</div></div>
+          <div class="rt-col-title">量化因子<span class="rt-col-sub">五因子实时评分</span></div>
+          <div class="rt-factors" id="rtFactors"><div class="rt-factor-empty">量化引擎启动中…</div></div>
+        </div>
+      </div>
+
+      <!-- 量化信号流 -->
+      <div class="rt-signal-section">
+        <div class="rt-col-title">⚡ 量化信号流<span class="rt-col-sub">自动检测 · 实时滚动 · 同类10分钟去重</span></div>
+        <div class="rt-signal-feed" id="rtSignalFeed"><div class="rt-sig-empty">盯盘引擎启动中…</div></div>
+      </div>
+
+      <div class="rt-foot-note">
+        <span>盯盘节奏：盘中20秒 / 午休60秒 / 休市5分钟自适应轮询；标签页隐藏自动暂停，切回即补拉</span>
+        <span>信号类型：急拉急跌·新高新低·均价线穿越·量能异动·风格切换·超买超卖 | 规则化量化引擎，非投资建议</span>
+      </div>
+    </div>
+    </div></div><!-- /fold-inner /fold-body -->
+  </div><!-- /foldRT -->
 
   <!-- 旧的核心指标总览（估值仪表盘）已移除，由上方高敏感度实时仪表盘替代 -->
 
@@ -1361,6 +1426,7 @@
 <script defer src="js/screener.js?v=20260819a"></script>
 <script defer src="js/pattern-analysis.js?v=20260824a"></script>
 <script defer src="js/ta-interactive.js?v=20260824a"></script>
+<script defer src="js/rt-watch.js?v=20260827a"></script>
 <script defer src="js/ftf-engine.js?v=20260818a"></script>
 <script defer src="js/stf-engine.js?v=20260818a"></script>
 <script defer src="js/bs-engine.js?v=20260819a"></script>
