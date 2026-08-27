@@ -76,7 +76,10 @@ var RTWatch = (function() {
     tickCount: 0,
     quotes: {},
     prevQuotes: {},
-    series: {},               // code → [{m, p}]
+    series: {},               // code → [{m, p}]（分钟底稿 + 实时尾点）
+    seriesDate: '',           // 分时底稿所属交易日 YYYYMMDD
+    _minuteFetchedAt: 0,      // 分时接口最近拉取时间（节流）
+    pollCount: 0,             // 轮询计数（驱动底稿周期刷新）
     seriesAvg: [],            // 主力累计均价序列（增量维护）
     _avgSum: 0,               // 均价累计和
     _avgDirty: true,          // 序列重建后需重算
@@ -126,10 +129,107 @@ var RTWatch = (function() {
     return 240;
   }
 
+  /* ---------- 分时底稿（腾讯分钟级接口，真实全天数据） ----------
+     响应: data.{code}.data = { date:'YYYYMMDD', data:["0930 3911.89 累计量 累计额", ...] }
+     每分钟一条：HHMM 价格 累计成交量(手) 累计成交额(元)
+     修复：原先从打开页面起自攒报价点，盘中打开只有「开盘价→现价」两点连线，
+     盘后打开更是一条直线；改为直接拉取交易所分钟级真实分时 */
+  var MINUTE_HOSTS = ['https://web.ifzq.gtimg.cn', 'https://ifzq.gtimg.cn'];
+  var MINUTE_REFRESH_POLLS = 15;   // 盘中每15次轮询(约5分钟)刷新一次分时底稿
+  var MINUTE_FETCH_GAP = 60000;    // 分时接口最小间隔（防手点刷新刷爆）
+
+  function fetchMinuteRaw(code, hostIdx) {
+    hostIdx = hostIdx || 0;
+    var url = MINUTE_HOSTS[hostIdx] + '/appstock/app/minute/query?code=' + code + '&r=' + Date.now();
+    var p = (typeof fetchWithTimeout === 'function')
+      ? fetchWithTimeout(url, { cache: 'no-store' }, 8000)
+      : fetch(url, { cache: 'no-store' });
+    return p.then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function(j) {
+      var node = j && j.data && j.data[code] && j.data[code].data;
+      var rows = node && node.data;
+      if (!rows || !rows.length) throw new Error('无分时数据');
+      return { date: node.date || '', rows: rows };
+    }).catch(function(err) {
+      if (hostIdx + 1 < MINUTE_HOSTS.length) return fetchMinuteRaw(code, hostIdx + 1);
+      throw err;
+    });
+  }
+
+  /** "0930 3911.89 ..." → {m:交易分钟(0-240), p:价格}；同分钟去重保留最后 */
+  function parseMinuteRows(rows) {
+    var out = [];
+    for (var i = 0; i < rows.length; i++) {
+      var f = String(rows[i]).split(' ');
+      if (f.length < 2) continue;
+      var p = parseFloat(f[1]);
+      if (isNaN(p) || p <= 0) continue;
+      var t = f[0];
+      if (!t || t.length < 4) continue;
+      var h = parseInt(t.slice(0, 2), 10), mi = parseInt(t.slice(2, 4), 10);
+      if (isNaN(h) || isNaN(mi)) continue;
+      var mins = h * 60 + mi;
+      var m;
+      if (mins < 690) m = Math.max(0, mins - 570);       // 早盘 9:30-11:29 → 0-119
+      else if (mins < 780) m = 120;                       // 11:30 收位
+      else m = Math.min(240, 120 + (mins - 780));         // 午盘 13:00-15:00 → 120-240
+      var last = out[out.length - 1];
+      if (last && last.m === m) last.p = p;
+      else out.push({ m: m, p: p });
+    }
+    return out;
+  }
+
+  /** 拉取全部指数的分钟底稿并重建分时序列（串行轻量，失败保留实时累积兜底） */
+  function loadMinuteData(force) {
+    if (!force && Date.now() - (_st._minuteFetchedAt || 0) < MINUTE_FETCH_GAP) return;
+    _st._minuteFetchedAt = Date.now();
+    var idx = 0;
+    function next() {
+      if (idx >= CODES.length) {
+        /* 全部完成：重建均价线、重算因子并重绘 */
+        _st._avgDirty = true;
+        if (_st.quotes[MAIN_CODE]) { computeFactors(); buildVerdict(); }
+        renderIndexCards();
+        renderChart();
+        renderFactors();
+        renderVerdict();
+        return;
+      }
+      var c = CODES[idx++];
+      fetchMinuteRaw(c).then(function(res) {
+        var pts = parseMinuteRows(res.rows);
+        if (pts.length >= 2) {
+          _st.series[c] = pts;
+          if (c === MAIN_CODE) {
+            _st._avgDirty = true;
+            _st.seriesDate = res.date;   // 数据所属交易日（盘后/周末为最近交易日）
+          }
+        }
+      }).catch(function() {
+        /* 失败：保留现有序列（实时轮询仍在累积） */
+      }).then(next);
+    }
+    next();
+  }
+
+  /** '20260827' → '08-27' */
+  function fmtSeriesDate(s) {
+    if (!s || s.length !== 8) return '';
+    return s.slice(4, 6) + '-' + s.slice(6, 8);
+  }
+
   /* ---------- 数据获取 ---------- */
   function poll(manual) {
     if (typeof fetchTencentBatch !== 'function') return;
     _st.lastPollAt = Date.now();
+    _st.pollCount = (_st.pollCount || 0) + 1;
+    /* 手动刷新或盘中每15次轮询(约5分钟) → 刷新分时底稿 */
+    if (manual || (_st.pollCount % MINUTE_REFRESH_POLLS === 0 && session().session !== 'closed')) {
+      loadMinuteData(false);
+    }
     fetchTencentBatch(CODES).then(function(data) {
       _st.failCount = 0;
       onTick(data, manual);
@@ -171,11 +271,17 @@ var RTWatch = (function() {
         arr.push({ m: 0, p: q.open });
       }
       var last = arr[arr.length - 1];
-      if (!last || last.m < m || Math.abs(last.p - q.price) > 0.001) {
+      if (last && last.m === m) {
+        /* 同一分钟：只更新尾点为最新价（标准分时的一分钟一点） */
+        if (Math.abs(last.p - q.price) > 0.0001) {
+          last.p = q.price;
+          if (c === MAIN_CODE) _st._avgDirty = true;
+        }
+      } else if (!last || last.m < m) {
+        /* 新的分钟：追加新点 */
         arr.push({ m: m, p: q.price });
         if (arr.length > MAX_TICKS) {
           arr.splice(0, arr.length - MAX_TICKS);
-          if (c === MAIN_CODE) _st._avgDirty = true; // 截断后需全量重算
         }
         if (c === MAIN_CODE) _st._avgDirty = true;
       }
@@ -873,7 +979,8 @@ var RTWatch = (function() {
     _st.timer = Perf.setInterval(function() {
       if (!isActive()) return;
       var s2 = session();
-      if (s2.session !== s.session) { scheduleLoop(); return; }
+      /* 时段切换 → 重设频率 + 刷新分时底稿（9:30开盘/13:00复盘换新数据） */
+      if (s2.session !== s.session) { scheduleLoop(); loadMinuteData(true); return; }
       poll(false);
     }, interval);
   }
@@ -967,8 +1074,9 @@ var RTWatch = (function() {
       });
     }
 
-    /* 启动 */
+    /* 启动：拉取分时底稿 + 行情 + 昨日量能基准 */
     Perf.trackedSetTimeout(function() {
+      loadMinuteData(true);
       if (isActive()) {
         poll(false);
         scheduleLoop();
