@@ -1,0 +1,501 @@
+/* ============================================================================
+   PRO-UI · 统一设计系统层（最终权威层）
+   ----------------------------------------------------------------------------
+   定位：本文件在所有样式之后加载，是全站 UI 的「单一事实来源」。
+   历史背景：styles.css 历经多轮迭代留下 9 个 :root、6 处滚动条定义、
+   大量 !important 覆盖层与多套并存色值（--neon-* / --stock-* / --color-*）。
+   本层做法：
+     1. 以 --ds-* 为唯一权威令牌，五套主题各自只定义一次令牌值；
+     2. 旧变量（--neon-red 等）全部改为指向 --ds-* 的别名，
+        3 万行旧选择器零改动即可从同一令牌取色；
+     3. 组件精修仅在历史层已用 !important 封锁的属性上使用 !important
+        （标注 WIN），其余一律靠层叠顺序生效。
+   ============================================================================ */
+
+/* --------------------------------------------------------------------------
+   1. 设计令牌（默认主题 · 专业暗黑）
+   -------------------------------------------------------------------------- */
+:root {
+  /* 表面层级 */
+  --ds-bg: #0B0F16;
+  --ds-surface-1: #111722;   /* 卡片底 */
+  --ds-surface-2: #17202E;   /* 嵌套底 / 输入框 */
+  --ds-surface-3: #1E2A3C;   /* 悬停 / 高亮底 */
+
+  /* 文字 */
+  --ds-ink: #E7ECF4;
+  --ds-ink-2: #8C98AA;
+  --ds-line: rgba(150, 165, 190, 0.16);
+  --ds-line-soft: rgba(150, 165, 190, 0.08);
+
+  /* 品牌与语义（A股：红涨绿跌） */
+  --ds-accent: #4C8DFF;
+  --ds-accent-soft: rgba(76, 141, 255, 0.14);
+  --ds-gold: #E0A93E;
+  --ds-up: #F0565C;
+  --ds-up-bg: rgba(240, 86, 92, 0.12);
+  --ds-down: #22B573;
+  --ds-down-bg: rgba(34, 181, 115, 0.12);
+  --ds-flat: #8A96A8;
+  --ds-flat-bg: rgba(138, 150, 168, 0.12);
+  --ds-warn: #E0A93E;
+  --ds-warn-bg: rgba(224, 169, 62, 0.12);
+
+  /* 阴影（克制、无发光） */
+  --ds-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--ds-line-soft);
+  --ds-shadow-2: 0 6px 20px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--ds-accent-soft);
+
+  /* 圆角 */
+  --ds-r-sm: 8px;
+  --ds-r-md: 12px;
+  --ds-r-lg: 16px;
+
+  /* 动效 */
+  --ds-dur-1: 0.15s;
+  --ds-dur-2: 0.25s;
+  --ds-dur-3: 0.4s;
+  --ds-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-glass: rgba(17, 23, 34, 0.92);
+  --ds-glass-hover: rgba(30, 42, 60, 0.95);
+
+  --ease-out: var(--ds-ease);
+  --dur-fast: var(--ds-dur-1);
+  --dur-base: var(--ds-dur-2);
+  --dur-slow: var(--ds-dur-3);
+}
+
+/* --------------------------------------------------------------------------
+   1b. 遗留变量别名（作用于 :root 与所有主题 body）
+   历史主题块把变量直接写在 body[data-theme] 上，:root 别名无法生效，
+   因此别名必须放在这条共享规则中：选择器特异性与历史主题块相同、
+   文件层叠在最后 → 一律由本层接管。标 !important 的项是历史层
+   （styles.css 6627/7097 行）已用 !important 封锁、必须强行收复的令牌。
+   -------------------------------------------------------------------------- */
+:root, [data-theme] {
+  --bg: var(--ds-bg);
+  --bg2: var(--ds-surface-1);
+  --bg3: var(--ds-surface-2);
+  --bg4: var(--ds-surface-3);
+  --ink: var(--ds-ink);
+  --muted: var(--ds-ink-2);
+  --rule: var(--ds-line);
+  --accent: var(--ds-accent);
+  --accent2: var(--ds-gold);
+  --neon-red: var(--ds-up);
+  --neon-red-bg: var(--ds-up-bg);
+  --neon-green: var(--ds-down);
+  --neon-green-bg: var(--ds-down-bg);
+  --neon-flat: var(--ds-flat);
+  --neon-flat-bg: var(--ds-flat-bg);
+  --neon-yellow: var(--ds-warn);
+  --neon-yellow-bg: var(--ds-warn-bg);
+  --neon-cyan: var(--ds-accent);
+  --neon-cyan-bg: var(--ds-accent-soft);
+  --neon-purple: #8F7BF0;
+  --neon-purple-bg: rgba(143, 123, 240, 0.14);
+  --stock-up: var(--ds-up);
+  --stock-up-bg: var(--ds-up-bg);
+  --stock-down: var(--ds-down);
+  --stock-down-bg: var(--ds-down-bg);
+  --stock-flat: var(--ds-flat);
+  --stock-flat-bg: var(--ds-flat-bg);
+  --color-success: var(--ds-down);
+  --color-success-bg: var(--ds-down-bg);
+  --color-danger: var(--ds-up);
+  --color-danger-bg: var(--ds-up-bg);
+  --color-warning: var(--ds-warn);
+  --color-warning-bg: var(--ds-warn-bg);
+  --color-info: var(--ds-accent);
+  --color-info-bg: var(--ds-accent-soft);
+  --highlight-gold: var(--ds-gold);
+  --radius: var(--ds-r-md) !important;
+  --radius-sm: var(--ds-r-sm) !important;
+  --radius-lg: var(--ds-r-lg);
+  --shadow-card: var(--ds-shadow-1) !important;
+  --shadow-hover: var(--ds-shadow-2) !important;
+  --glass-bg: var(--ds-glass) !important;
+  --glass-bg-hover: var(--ds-glass-hover) !important;
+  --glass-border: var(--ds-line) !important;
+  --glow-green: none;
+  --glow-red: none;
+  --glow-cyan: none;
+  --grid-line: var(--ds-line-soft);
+  --ease-out: var(--ds-ease);
+  --dur-fast: var(--ds-dur-1);
+  --dur-base: var(--ds-dur-2);
+  --dur-slow: var(--ds-dur-3);
+}
+
+/* --------------------------------------------------------------------------
+   2. 主题令牌覆盖（每主题仅在此处定义一次；别名随令牌自动更新）
+   -------------------------------------------------------------------------- */
+[data-theme="light"] {
+  color-scheme: dark;
+  --ds-bg: #0D1117;
+  --ds-surface-1: #161B22;
+  --ds-surface-2: #1C2330;
+  --ds-surface-3: #262E3D;
+  --ds-ink: #E6EDF3;
+  --ds-ink-2: #8B949E;
+  --ds-line: rgba(88, 166, 255, 0.14);
+  --ds-accent: #58A6FF;
+  --ds-accent-soft: rgba(88, 166, 255, 0.14);
+  --ds-gold: #F0883E;
+  --ds-up: #E5484D;
+  --ds-up-bg: rgba(229, 72, 77, 0.13);
+  --ds-down: #2E9E6B;
+  --ds-down-bg: rgba(46, 158, 107, 0.13);
+  --ds-warn: #F0883E;
+  --ds-warn-bg: rgba(240, 136, 62, 0.13);
+  --ds-glass: rgba(22, 27, 34, 0.94);
+  --ds-glass-hover: rgba(38, 46, 61, 0.96);
+}
+
+[data-theme="classical"] {
+  --ds-bg: #1A1410;
+  --ds-surface-1: #241C16;
+  --ds-surface-2: #2E251D;
+  --ds-surface-3: #3A2E23;
+  --ds-ink: #F5E6D3;
+  --ds-ink-2: #B09880;
+  --ds-line: rgba(212, 168, 67, 0.16);
+  --ds-accent: #D4A843;
+  --ds-accent-soft: rgba(212, 168, 67, 0.14);
+  --ds-gold: #E8B84B;
+  --ds-up: #E85A4F;
+  --ds-up-bg: rgba(232, 90, 79, 0.13);
+  --ds-down: #5FA57A;
+  --ds-down-bg: rgba(95, 165, 122, 0.13);
+  --ds-warn: #E8B84B;
+  --ds-warn-bg: rgba(232, 184, 75, 0.14);
+  --ds-glass: rgba(36, 28, 22, 0.94);
+  --ds-glass-hover: rgba(58, 46, 35, 0.96);
+}
+
+[data-theme="cyberpunk"] {
+  --ds-bg: #0D0015;
+  --ds-surface-1: #14001F;
+  --ds-surface-2: #1A0028;
+  --ds-surface-3: #200032;
+  --ds-ink: #FFE8FF;
+  --ds-ink-2: #C0A0D0;
+  --ds-line: rgba(217, 70, 239, 0.18);
+  --ds-accent: #D946EF;
+  --ds-accent-soft: rgba(217, 70, 239, 0.15);
+  --ds-gold: #00E5CF;
+  --ds-up: #FF4D6D;
+  --ds-up-bg: rgba(255, 77, 109, 0.15);
+  --ds-down: #2ED573;
+  --ds-down-bg: rgba(46, 213, 115, 0.15);
+  --ds-warn: #FFEE00;
+  --ds-warn-bg: rgba(255, 238, 0, 0.12);
+  --ds-glass: rgba(26, 0, 40, 0.94);
+  --ds-glass-hover: rgba(32, 0, 50, 0.96);
+}
+
+[data-theme="ocean"] {
+  --ds-bg: #070A12;
+  --ds-surface-1: #0C111D;
+  --ds-surface-2: #121A2B;
+  --ds-surface-3: #1A2438;
+  --ds-ink: #EDF1FA;
+  --ds-ink-2: #7E8BA3;
+  --ds-line: rgba(140, 155, 200, 0.14);
+  --ds-accent: #7C6CF0;
+  --ds-accent-soft: rgba(124, 108, 240, 0.15);
+  --ds-gold: #00D2C6;
+  --ds-up: #FF5B6A;
+  --ds-up-bg: rgba(255, 91, 106, 0.14);
+  --ds-down: #2BC48A;
+  --ds-down-bg: rgba(43, 196, 138, 0.14);
+  --ds-warn: #FFC94D;
+  --ds-warn-bg: rgba(255, 201, 77, 0.12);
+  --ds-glass: rgba(12, 17, 29, 0.94);
+  --ds-glass-hover: rgba(26, 36, 56, 0.96);
+}
+
+/* --------------------------------------------------------------------------
+   3. 全局基元：滚动条统一（历史 6 处定义由此一处终结）
+   -------------------------------------------------------------------------- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 152, 170, 0.28);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(140, 152, 170, 0.48); background-clip: padding-box; }
+* { scrollbar-width: thin; scrollbar-color: rgba(140, 152, 170, 0.35) transparent; }
+
+/* 文本选择色 */
+::selection { background: var(--ds-accent-soft); color: var(--ds-ink); }
+
+/* 键盘可达性：统一焦点环 */
+:focus-visible {
+  outline: 2px solid var(--ds-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* 触摸设备去点按高亮 */
+button, a, [onclick] { -webkit-tap-highlight-color: transparent; }
+
+/* 动效减弱偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 主题切换平滑过渡（JS 切换瞬间给 body 加 .theme-anim，300ms 后移除；
+   替代历史层「* { transition-duration: 0s }」的全局硬重置 hack） */
+body.theme-anim,
+body.theme-anim .app-header,
+body.theme-anim .fold-sec,
+body.theme-anim .tab-nav,
+body.theme-anim .glass-card,
+body.theme-anim .dash-card,
+body.theme-anim .val-card,
+body.theme-anim .stat-card,
+body.theme-anim .search-bar,
+body.theme-anim .fund-search-bar {
+  transition: background-color var(--ds-dur-2) var(--ds-ease),
+              border-color var(--ds-dur-2) var(--ds-ease),
+              color var(--ds-dur-2) var(--ds-ease),
+              box-shadow var(--ds-dur-2) var(--ds-ease) !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. 表面与卡片（历史层已对下列属性使用 !important，此处为最终权威 · WIN）
+   -------------------------------------------------------------------------- */
+.glass-card, .dash-card, .val-card, .stat-card,
+.insight, .spotlight-card, .rot-block, .market-flow {
+  background: var(--glass-bg) !important;                 /* WIN */
+  border: 1px solid var(--ds-line) !important;            /* WIN */
+  border-radius: var(--ds-r-md) !important;               /* WIN */
+  box-shadow: var(--ds-shadow-1) !important;              /* WIN */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover, .dash-card:hover, .val-card:hover,
+  .stat-card:hover, .spotlight-card:hover {
+    border-color: var(--ds-accent) !important;            /* WIN */
+    box-shadow: var(--ds-shadow-2) !important;            /* WIN */
+    transform: translateY(-2px);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. 顶栏与标题
+   -------------------------------------------------------------------------- */
+.app-header {
+  border-bottom: 1px solid var(--ds-line);
+  background: linear-gradient(180deg, var(--ds-surface-1), transparent);
+}
+.app-header h1 { letter-spacing: 0.02em; }
+
+/* 系统状态舱：去发光、扁平化 */
+#sysStatusBar .sys-pill, .sys-pill {
+  border: 1px solid var(--ds-line) !important;
+  background: var(--ds-surface-2) !important;
+  box-shadow: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. 主 Tab 导航：吸顶 + 激活态下划线
+   -------------------------------------------------------------------------- */
+.tab-nav {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  background: var(--glass-bg) !important;                 /* WIN */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--ds-line) !important;            /* WIN */
+  border-radius: var(--ds-r-md) !important;               /* WIN */
+  box-shadow: var(--ds-shadow-1) !important;              /* WIN */
+}
+.tab-nav-btn {
+  position: relative;
+  border-radius: var(--ds-r-sm) !important;               /* WIN */
+  transition: color var(--ds-dur-1) var(--ds-ease), background var(--ds-dur-1) var(--ds-ease);
+}
+.tab-nav-btn::after {
+  content: '';
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ds-accent);
+  transform: scaleX(0);
+  transition: transform var(--ds-dur-2) var(--ds-ease);
+}
+.tab-nav-btn.active { color: var(--ds-accent) !important; background: var(--ds-accent-soft) !important; }
+.tab-nav-btn.active::after { transform: scaleX(1); }
+
+/* --------------------------------------------------------------------------
+   7. 折叠区：头部悬停反馈 + 箭头旋转
+   -------------------------------------------------------------------------- */
+.fold-sec {
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-r-md);
+  background: var(--glass-bg);
+  box-shadow: var(--ds-shadow-1);
+  overflow: hidden;
+}
+.fold-head {
+  transition: background var(--ds-dur-1) var(--ds-ease);
+  cursor: pointer;
+  user-select: none;
+}
+.fold-head:hover { background: var(--ds-accent-soft); }
+.fold-arrow {
+  display: inline-block;
+  transition: transform var(--ds-dur-2) var(--ds-ease);
+  color: var(--ds-ink-2);
+}
+.fold-sec:not(.fold-closed) .fold-arrow { transform: rotate(90deg); color: var(--ds-accent); }
+
+/* --------------------------------------------------------------------------
+   8. 搜索栏与输入框
+   -------------------------------------------------------------------------- */
+.search-bar, .fund-search-bar {
+  border: 1px solid var(--ds-line) !important;            /* WIN */
+  border-radius: var(--ds-r-md) !important;               /* WIN */
+  background: var(--glass-bg) !important;                 /* WIN */
+  box-shadow: var(--ds-shadow-1) !important;              /* WIN */
+  transition: border-color var(--ds-dur-1) var(--ds-ease), box-shadow var(--ds-dur-1) var(--ds-ease);
+}
+.search-bar:focus-within, .fund-search-bar:focus-within {
+  border-color: var(--ds-accent) !important;              /* WIN */
+  box-shadow: 0 0 0 3px var(--ds-accent-soft) !important; /* WIN */
+}
+.search-bar input, .fund-search-bar input { color: var(--ds-ink); }
+.search-bar input::placeholder, .fund-search-bar input::placeholder { color: var(--ds-ink-2); opacity: 0.7; }
+
+input, select, textarea {
+  border-radius: var(--ds-r-sm);
+  caret-color: var(--ds-accent);
+}
+
+/* --------------------------------------------------------------------------
+   9. 按钮体系：统一按压反馈
+   -------------------------------------------------------------------------- */
+.btn-analyze, .card-refresh-btn, .fund-order-btn, .fund-reset-btn,
+.fund-risk-group button, .fund-rating-group button, .fund-range-tab {
+  border-radius: var(--ds-r-sm) !important;               /* WIN */
+  transition: transform var(--ds-dur-1) var(--ds-ease),
+              box-shadow var(--ds-dur-1) var(--ds-ease),
+              background var(--ds-dur-1) var(--ds-ease),
+              border-color var(--ds-dur-1) var(--ds-ease),
+              color var(--ds-dur-1) var(--ds-ease) !important; /* WIN */
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-analyze:hover, .card-refresh-btn:hover { transform: translateY(-1px); }
+}
+.btn-analyze:active, .card-refresh-btn:active,
+.fund-order-btn:active, .fund-reset-btn:active { transform: translateY(0) scale(0.97); }
+button:disabled, .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+/* --------------------------------------------------------------------------
+   10. 主题选择器 / Toast / 弹窗 / 固定免责条
+   -------------------------------------------------------------------------- */
+.theme-picker {
+  background: var(--glass-bg) !important;                 /* WIN */
+  border: 1px solid var(--ds-line) !important;            /* WIN */
+  border-radius: var(--ds-r-md) !important;               /* WIN */
+  box-shadow: var(--ds-shadow-2) !important;              /* WIN */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.theme-option { border-radius: var(--ds-r-sm) !important; transition: background var(--ds-dur-1) var(--ds-ease); }
+.theme-option:hover { background: var(--ds-accent-soft) !important; }
+.theme-option.active { background: var(--ds-accent-soft) !important; box-shadow: inset 0 0 0 1px var(--ds-accent); }
+
+.toast {
+  border-radius: var(--ds-r-md) !important;
+  box-shadow: var(--ds-shadow-2) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.etf-recommend-panel {
+  border-radius: var(--ds-r-lg);
+  border: 1px solid var(--ds-line);
+  box-shadow: var(--ds-shadow-2);
+}
+
+.fixed-disclaimer {
+  background: var(--glass-bg) !important;
+  border-top: 1px solid var(--ds-line) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 0.6rem;
+  letter-spacing: 0.02em;
+}
+
+/* --------------------------------------------------------------------------
+   11. 快速导航（顶部悬浮条 / FAB / 回到顶部 / chips）
+   -------------------------------------------------------------------------- */
+.qn-topbar {
+  background: var(--glass-bg);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-r-md);
+  box-shadow: var(--ds-shadow-2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.qn-fab, .qn-backtop {
+  border: 1px solid var(--ds-line) !important;
+  background: var(--glass-bg) !important;
+  box-shadow: var(--ds-shadow-1) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform var(--ds-dur-1) var(--ds-ease), box-shadow var(--ds-dur-1) var(--ds-ease);
+}
+.qn-fab:hover, .qn-backtop:hover { transform: translateY(-2px); box-shadow: var(--ds-shadow-2) !important; }
+.qn-chip {
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-r-sm);
+  transition: background var(--ds-dur-1) var(--ds-ease), border-color var(--ds-dur-1) var(--ds-ease);
+}
+.qn-chip:hover { border-color: var(--ds-accent); background: var(--ds-accent-soft); }
+.qn-chip-current, .qn-chip-current:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--ds-accent);
+}
+
+/* --------------------------------------------------------------------------
+   12. 表格与数据展示统一
+   -------------------------------------------------------------------------- */
+table { border-collapse: collapse; }
+th { color: var(--ds-ink-2); font-weight: 600; letter-spacing: 0.03em; }
+td, th { border-color: var(--ds-line-soft) !important; }
+
+/* --------------------------------------------------------------------------
+   13. 实时盯盘终端精修
+   -------------------------------------------------------------------------- */
+.rt-chart-wrap, .rt-ai-text, .rt-signal-feed {
+  border-radius: var(--ds-r-sm) !important;
+  border-color: var(--ds-line) !important;
+}
+.rt-factor-bar { background: var(--ds-surface-3) !important; }
+
+/* --------------------------------------------------------------------------
+   14. 响应式微调
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .tab-nav { top: 0; margin-left: -2px; margin-right: -2px; }
+  .glass-card, .dash-card, .val-card, .stat-card { border-radius: var(--ds-r-sm) !important; }
+  .fold-sec { border-radius: var(--ds-r-sm); }
+}

@@ -10969,18 +10969,9 @@ html {
   transition: all var(--dur-base) var(--ease-out) !important;
 }
 
-/* 主题切换平滑过渡 */
-*, *::before, *::after {
-  transition-property: background-color, border-color, color, box-shadow;
-  transition-duration: 0s;
-}
-body, .app-header, .glass-card, .dash-card, .val-card, .stat-card,
-.tab-nav, .fund-search-bar, .fund-filter-bar, .fund-industry-recommend,
-.fund-detail-header, .fund-detail-section, .fund-industry-card {
-  transition: background-color var(--dur-slow) var(--ease-smooth),
-              border-color var(--dur-slow) var(--ease-smooth),
-              color var(--dur-slow) var(--ease-smooth);
-}
+/* 主题切换平滑过渡（已迁移：原先「* { transition-duration: 0s }」全局硬重置
+   会无差别清空所有元素的过渡属性，副作用大。现由 css/pro-ui.css 的
+   body.theme-anim 作用域机制接管——仅主题切换瞬间启用、300ms 后移除） */
 
 /* ---- 4. 卡片视觉层次优化 ---- */
 /* 主卡片：更强的深度感和内发光 */

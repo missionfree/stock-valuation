@@ -264,12 +264,44 @@ function toggleThemePicker() {
   }
 }
 
+/* 点击选择器外部 / 按 Esc → 关闭主题选择器（原先只能再次点按钮关闭） */
+document.addEventListener('click', function(e) {
+  var picker = document.getElementById('themePicker');
+  if (!picker || !picker.classList.contains('show')) return;
+  if (e.target.closest('#themePicker') || e.target.closest('#modeToggle')) return;
+  picker.classList.remove('show');
+  var btn = document.getElementById('modeToggle');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  var picker = document.getElementById('themePicker');
+  if (picker && picker.classList.contains('show')) {
+    picker.classList.remove('show');
+    var btn = document.getElementById('modeToggle');
+    if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.focus(); }
+  }
+});
+
+/* 各主题对应的浏览器UI主题色（同步 meta theme-color，移动端地址栏随主题变色） */
+var THEME_META_COLOR = {
+  cyber: '#0B0F16',
+  light: '#0D1117',
+  classical: '#1A1410',
+  cyberpunk: '#0D0015',
+  ocean: '#070A12'
+};
+
 /**
  * 设置主题
  * @param {string} theme - 主题名: 'cyber' | 'light' | 'classical' | 'cyberpunk' | 'ocean'
  */
 function setTheme(theme) {
   var body = document.body;
+  /* 启用作用域过渡（替代旧版全局 transition:0s hack），动画结束即移除 */
+  body.classList.add('theme-anim');
+  Perf.trackedSetTimeout(function() { body.classList.remove('theme-anim'); }, 350);
+
   // cyber 是默认主题，不需要 data-theme 属性
   if (theme === 'cyber') {
     body.removeAttribute('data-theme');
@@ -278,6 +310,10 @@ function setTheme(theme) {
   }
   // 用户手动选择 → 持久化
   try { localStorage.setItem('themeMode_v2', theme); } catch(e) {}
+
+  // 同步浏览器UI主题色
+  var metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme && THEME_META_COLOR[theme]) metaTheme.setAttribute('content', THEME_META_COLOR[theme]);
 
   // 清空颜色缓存（主题切换后CSS变量值已变）
   clearColorCache();
@@ -318,6 +354,9 @@ function setTheme(theme) {
     } else {
       document.body.setAttribute('data-theme', saved);
     }
+    // 同步浏览器UI主题色（恢复已保存主题时）
+    var metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme && THEME_META_COLOR[saved]) metaTheme.setAttribute('content', THEME_META_COLOR[saved]);
     // 标记当前选中（基于 data-theme 属性，与 setTheme 保持一致）
     document.querySelectorAll('.theme-option').forEach(function(opt) {
       var isActive = opt.getAttribute('data-theme') === saved;

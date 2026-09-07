@@ -10,7 +10,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#070A12">
+<meta name="theme-color" content="#0B0F16">
 <title>沪深港股票估值分析</title>
 <meta name="description" content="沪深港股票估值分析终端：格雷厄姆指数、股债利差、核心指数PE分位、行业热力图、双线轮动策略信号。">
 <meta name="keywords" content="股票估值,格雷厄姆指数,股债利差,PE分位,行业热力图,双线轮动,A股,港股,投资分析">
@@ -51,8 +51,10 @@
 <link rel="preconnect" href="https://ifzq.gtimg.cn" crossorigin>
 <link rel="preconnect" href="https://web.ifzq.gtimg.cn" crossorigin>
 
-<link rel="stylesheet" href="css/styles.css?v=20260827b">
-<link rel="stylesheet" href="css/fund.css?v=20260817c">
+<link rel="stylesheet" href="css/styles.css?v=20260907a">
+<link rel="stylesheet" href="css/fund.css?v=20260907a">
+<!-- 统一设计系统层：设计令牌单一来源 + 组件精修（必须最后加载） -->
+<link rel="stylesheet" href="css/pro-ui.css?v=20260907a">
 
 </head>
 <body>
@@ -1379,10 +1381,9 @@
 <footer class="app-footer">
   <p>数据来源：腾讯财经(主备双源) + 东方财富 | 估值分位参考近30年历史</p>
   <p>数据更新于每日10:30 · 免费接口存在延迟，估值数据仅供参考</p>
-  <p style="margin-top:0.3rem;font-size:0.55rem;opacity:0.6">本工具仅供个人投资者参考，不构成投资建议。投资有风险，入市需谨慎。</p>
 </footer>
 
-<!-- 固定底部免责声明 -->
+<!-- 固定底部免责声明（风险提示统一由此常驻条展示，footer 不再重复） -->
 <div class="fixed-disclaimer">
   本工具仅供个人投资者参考，不构成投资建议。投资有风险，入市需谨慎。数据更新于10:30
 </div>
@@ -1436,7 +1437,7 @@
 <script defer src="js/fund-ui.js?v=20260817a"></script>
 <script defer src="js/quick-nav.js?v=20260819b"></script>
 <script defer src="js/fold.js?v=20260819a"></script>
-<script defer src="js/ui.js?v=20260824a"></script>
+<script defer src="js/ui.js?v=20260907a"></script>
 <script defer src="js/app.js?v=20260819a"></script>
 <script src="js/race.js?v=20260824e"></script>
 </body>
