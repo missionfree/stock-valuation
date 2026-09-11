@@ -13815,3 +13815,235 @@ tr.race-champion td { background: rgba(255,201,77,0.06); }
   .rt-next { min-width: 0; }
   .rt-canvas { height: 200px; }
 }
+
+/* ============================================================
+   —— 47.5 实时盯盘 v3 增强层 ——
+   延迟徽标 / 视图切换 / 高度拖拽 / 关键点位面板 /
+   B/S图例 / AI点位与触发段 / 全屏盯盘模式
+   ============================================================ */
+
+/* ---- 数据延迟徽标（接口行情时间 vs 本地时钟） ---- */
+.rt-latency {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  color: var(--muted);
+  white-space: nowrap;
+  background: var(--bg3);
+}
+.rt-latency.ok   { color: var(--neon-green); border-color: rgba(46, 204, 113, 0.35); background: rgba(46, 204, 113, 0.08); }
+.rt-latency.mid  { color: #f0b429; border-color: rgba(240, 180, 41, 0.35); background: rgba(240, 180, 41, 0.08); }
+.rt-latency.bad  { color: var(--neon-red);   border-color: rgba(232, 76, 61, 0.35);  background: rgba(232, 76, 61, 0.08); }
+[data-theme="light"] .rt-latency.ok   { color: #1e8e4e; border-color: rgba(30, 142, 78, 0.3);  background: rgba(30, 142, 78, 0.07); }
+[data-theme="light"] .rt-latency.mid  { color: #b07d10; border-color: rgba(176, 125, 16, 0.3); background: rgba(176, 125, 16, 0.07); }
+[data-theme="light"] .rt-latency.bad  { color: #d33a2c; border-color: rgba(211, 58, 44, 0.3);  background: rgba(211, 58, 44, 0.07); }
+
+/* ---- 分时/日K 视图切换（分段控件） ---- */
+.rt-view-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 2px;
+}
+.rt-view-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.28rem 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+  font-family: inherit;
+}
+.rt-view-tab:hover { color: var(--ink); }
+.rt-view-tab.active {
+  color: var(--bg);
+  background: var(--accent);
+}
+.rt-view-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---- 图表高度拖拽手柄 ---- */
+.rt-chart-resize {
+  height: 14px;
+  margin: 2px auto 0;
+  width: 72%;
+  max-width: 260px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;   /* pointer 拖拽需禁用默认触摸滚动 */
+  position: relative;
+}
+.rt-chart-resize::before {
+  content: '';
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--rule);
+  transition: background 0.18s ease, height 0.18s ease, width 0.18s ease;
+}
+.rt-chart-resize:hover::before,
+.rt-chart-resize.dragging::before {
+  background: var(--accent);
+  height: 5px;
+  width: 100%;
+}
+.rt-chart-resize.dragging { width: 100%; max-width: none; }
+body.rt-resizing {
+  cursor: ns-resize;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---- 关键点位面板（压力/现价/支撑 行） ---- */
+.rt-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.6rem;
+}
+.rt-lvl {
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.62rem;
+  padding: 0.24rem 0.35rem;
+  border-radius: 4px;
+  line-height: 1.3;
+}
+.rt-lvl-tag {
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 0.14rem 0;
+  border-radius: 3px;
+  background: var(--bg4);
+  color: var(--muted);
+}
+.rt-lvl-name { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rt-lvl-val  { font-family: var(--font-mono); font-weight: 700; color: var(--ink); }
+.rt-lvl-dist { font-family: var(--font-mono); font-size: 0.56rem; color: var(--muted); min-width: 3.6em; text-align: right; }
+/* 压力位：红系 */
+.rt-lvl.res .rt-lvl-tag { background: rgba(232, 76, 61, 0.16); color: var(--neon-red); }
+.rt-lvl.res .rt-lvl-val { color: var(--neon-red); }
+.rt-lvl.res .rt-lvl-dist { color: var(--neon-red); opacity: 0.75; }
+/* 支撑位：绿系 */
+.rt-lvl.sup .rt-lvl-tag { background: rgba(46, 204, 113, 0.14); color: var(--neon-green); }
+.rt-lvl.sup .rt-lvl-val { color: var(--neon-green); }
+.rt-lvl.sup .rt-lvl-dist { color: var(--neon-green); opacity: 0.75; }
+/* 现价行：中性高亮 + 当前趋势通道 */
+.rt-lvl.cur {
+  background: var(--bg4);
+  border: 1px solid var(--rule);
+  margin: 0.12rem 0;
+}
+.rt-lvl.cur .rt-lvl-tag { background: var(--accent); color: var(--bg); }
+.rt-lvl.cur .rt-lvl-val { color: var(--accent); font-size: 0.7rem; }
+
+/* ---- 图例 B/S 买卖点标记 ---- */
+.rt-lg-bs { gap: 0.3rem; }
+.rt-lg-bs b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 0.54rem;
+  font-weight: 800;
+  line-height: 1;
+  font-family: var(--font-mono);
+}
+.rt-lg-bs b.b { color: var(--bg); background: var(--neon-red); }
+.rt-lg-bs b.s { color: var(--bg); background: var(--neon-green); }
+
+/* ---- AI 解读 v3：点位段 / 触发条件段 ---- */
+.rt-ai-levels {
+  margin-top: 0.45rem;
+  font-size: 0.64rem;
+  line-height: 1.6;
+  color: var(--accent2);
+  background: var(--neon-cyan-bg);
+  border: 1px solid rgba(0, 168, 232, 0.22);
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+}
+.rt-ai-triggers {
+  margin-top: 0.45rem;
+  font-size: 0.62rem;
+  line-height: 1.7;
+  color: var(--ink);
+  border-left: 3px solid var(--accent2);
+  background: var(--bg4);
+  border-radius: 0 4px 4px 0;
+  padding: 0.35rem 0.55rem;
+}
+
+/* ---- 全屏盯盘模式 ---- */
+.rt-panel.rt-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.9rem clamp(0.8rem, 3vw, 2.2rem) 1.6rem;
+  background: var(--bg);
+  box-shadow: none;
+  animation: rtFsIn 0.22s ease;
+}
+@keyframes rtFsIn {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+body.rt-fs-open { overflow: hidden; }
+/* 全屏：状态条吸顶，随时可见会话/延迟/时钟 */
+.rt-panel.rt-fullscreen .rt-status-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg2);
+  padding: 0.45rem 0.2rem 0.55rem;
+  border-bottom: 1px solid var(--rule);
+  backdrop-filter: blur(4px);
+}
+/* 全屏：图表列更宽，AI 栏保持可读 */
+.rt-panel.rt-fullscreen .rt-main {
+  grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+  gap: 0.9rem;
+}
+/* 全屏：未自定义高度时图表显著放大（内联高度优先，用户拖拽过则沿用） */
+.rt-panel.rt-fullscreen .rt-canvas { height: min(58vh, 620px); }
+.rt-panel.rt-fullscreen .rt-ai-text { max-height: 46vh; overflow-y: auto; }
+.rt-panel.rt-fullscreen .rt-signal-feed { max-height: 34vh; }
+.rt-panel.rt-fullscreen .rt-foot-note { display: none; }
+.rt-panel.rt-fullscreen::-webkit-scrollbar { width: 10px; }
+
+@media (max-width: 900px) {
+  .rt-panel.rt-fullscreen .rt-main { grid-template-columns: 1fr; }
+  .rt-panel.rt-fullscreen .rt-canvas { height: min(48vh, 480px); }
+  .rt-panel.rt-fullscreen .rt-ai-text,
+  .rt-panel.rt-fullscreen .rt-signal-feed { max-height: none; }
+}

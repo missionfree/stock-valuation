@@ -51,7 +51,7 @@
 <link rel="preconnect" href="https://ifzq.gtimg.cn" crossorigin>
 <link rel="preconnect" href="https://web.ifzq.gtimg.cn" crossorigin>
 
-<link rel="stylesheet" href="css/styles.css?v=20260907a">
+<link rel="stylesheet" href="css/styles.css?v=20260911a">
 <link rel="stylesheet" href="css/fund.css?v=20260907a">
 <!-- 统一设计系统层：设计令牌单一来源 + 组件精修（必须最后加载） -->
 <link rel="stylesheet" href="css/pro-ui.css?v=20260907a">
@@ -206,12 +206,14 @@
         <div class="rt-status-left">
           <span class="rt-live-dot live" id="rtLiveDot"></span>
           <span class="rt-status-text" id="rtStatus">● 正在连接行情…</span>
+          <span class="rt-latency" id="rtLatency"></span>
         </div>
         <div class="rt-status-right">
           <span class="rt-clock" id="rtClock">--:--:--</span>
           <span class="rt-next" id="rtNext"></span>
           <button class="rt-btn" id="rtPauseBtn" title="暂停/恢复盯盘轮询">⏸ 暂停</button>
           <button class="rt-btn rt-btn-primary" id="rtRefreshBtn" title="立即刷新行情">⟳ 刷新</button>
+          <button class="rt-btn" id="rtFsBtn" title="进入全屏盯盘模式（Esc 退出）">⛶ 全屏</button>
         </div>
       </div>
 
@@ -223,18 +225,27 @@
         <div class="rt-idx-card" id="rtIdx-sz399006"><div class="rt-idx-head"><span class="rt-idx-name">创业板指</span><span class="rt-idx-code">CYB</span></div><div class="rt-idx-price">—</div><div class="rt-idx-chg">—</div></div>
       </div>
 
-      <!-- 主区：分时图 + AI解读 -->
+      <!-- 主区：图表 + AI解读 -->
       <div class="rt-main">
         <div class="rt-chart-col">
-          <div class="rt-col-title">分时走势 · 上证指数<span class="rt-col-sub">自打开本页起逐笔累积 · 悬停查看</span></div>
+          <div class="rt-col-title">
+            <span class="rt-view-tabs" role="tablist" aria-label="图表视图">
+              <button class="rt-view-tab active" id="rtViewMin" role="tab" aria-selected="true">分时</button>
+              <button class="rt-view-tab" id="rtViewDay" role="tab" aria-selected="false">日K</button>
+            </span>
+            <span class="rt-col-sub" id="rtColSub">左轴涨跌幅 · 右轴价格 · 底部量能 · 悬停查看明细</span>
+          </div>
           <div class="rt-chart-wrap">
             <canvas id="rtChartCanvas" class="rt-canvas" aria-label="上证指数实时分时走势图"></canvas>
           </div>
+          <div class="rt-chart-resize" id="rtChartResize" title="拖动调整图表高度" role="separator" aria-orientation="horizontal"></div>
           <div class="rt-chart-legend" id="rtChartLegend"></div>
         </div>
         <div class="rt-ai-col">
-          <div class="rt-col-title rt-ai-title">✦ AI 智能解读<span class="rt-col-sub">每tick自动重组</span></div>
+          <div class="rt-col-title rt-ai-title">✦ AI 智能解读<span class="rt-col-sub">每tick自动重组 · 含关键点位与操作建议</span></div>
           <div class="rt-ai-text" id="rtAiText"><div class="rt-ai-wait">AI 解读引擎等待行情数据…</div></div>
+          <div class="rt-col-title">关键点位<span class="rt-col-sub">支撑/压力 · 实时距离</span></div>
+          <div class="rt-levels" id="rtLevels"><div class="rt-factor-empty">点位引擎启动中…</div></div>
           <div class="rt-col-title">量化因子<span class="rt-col-sub">五因子实时评分</span></div>
           <div class="rt-factors" id="rtFactors"><div class="rt-factor-empty">量化引擎启动中…</div></div>
         </div>
@@ -242,13 +253,13 @@
 
       <!-- 量化信号流 -->
       <div class="rt-signal-section">
-        <div class="rt-col-title">⚡ 量化信号流<span class="rt-col-sub">自动检测 · 实时滚动 · 同类10分钟去重</span></div>
+        <div class="rt-col-title">⚡ 量化信号流<span class="rt-col-sub">自动检测 · 实时滚动 · 同类10分钟去重 · 图上B/S标记联动</span></div>
         <div class="rt-signal-feed" id="rtSignalFeed"><div class="rt-sig-empty">盯盘引擎启动中…</div></div>
       </div>
 
       <div class="rt-foot-note">
-        <span>盯盘节奏：盘中20秒 / 午休60秒 / 休市5分钟自适应轮询；标签页隐藏自动暂停，切回即补拉</span>
-        <span>信号类型：急拉急跌·新高新低·均价线穿越·量能异动·风格切换·超买超卖 | 规则化量化引擎，非投资建议</span>
+        <span>盯盘节奏：盘中10秒 / 午休60秒 / 休市5分钟自适应轮询；标签页隐藏自动暂停，切回即补拉</span>
+        <span>信号类型：急拉急跌·新高新低·均价线穿越·量能异动·关键位触达·买卖点·风格切换·超买超卖 | 规则化量化引擎，非投资建议</span>
       </div>
     </div>
     </div></div><!-- /fold-inner /fold-body -->
@@ -1427,7 +1438,7 @@
 <script defer src="js/screener.js?v=20260819a"></script>
 <script defer src="js/pattern-analysis.js?v=20260824a"></script>
 <script defer src="js/ta-interactive.js?v=20260824a"></script>
-<script defer src="js/rt-watch.js?v=20260827b"></script>
+<script defer src="js/rt-watch.js?v=20260911b"></script>
 <script defer src="js/ftf-engine.js?v=20260818a"></script>
 <script defer src="js/stf-engine.js?v=20260818a"></script>
 <script defer src="js/bs-engine.js?v=20260819a"></script>
