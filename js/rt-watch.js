@@ -209,10 +209,12 @@ var RTWatch = (function() {
         /* 全部完成：重建均价线、重算因子并重绘 */
         _st._avgDirty = true;
         if (_st.quotes[MAIN_CODE]) { computeFactors(); buildVerdict(); }
+        replaySignals();   // v3.1：历史信号回放（每交易日一次）
         renderIndexCards();
         renderChart();
         renderFactors();
         renderVerdict();
+        renderSignals();
         return;
       }
       var c = CODES[idx++];
@@ -325,7 +327,45 @@ var RTWatch = (function() {
     computeTrendChannel();
     if (s.session === 'trading') detectSignals(m); // 信号仅交易时段检测
     buildVerdict(s);
+    updateBreath();   // v3.1：红绿呼吸灯随tick同步
     renderAll();
+  }
+
+  /* ---------- v3.1 红绿呼吸灯引擎 ----------
+     A股惯例：涨=红、跌=绿。三层反馈与实时数据逐tick同步：
+     ① LIVE灯：按主指数涨跌方向红/绿呼吸，每笔tick方向脉冲爆发
+     ② 指数卡：各自按涨跌方向呼吸辉光（::after层，不与闪动动画冲突）
+     ③ 面板顶部光条：环境氛围灯，随主指数方向呼吸 */
+  var _breathPulseTimer = null;
+  function updateBreath() {
+    var mq = _st.quotes[MAIN_CODE];
+    var panel = _id('rtPanel');
+    var dot = _id('rtLiveDot');
+    var chg = (mq && typeof mq.changePercent === 'number') ? mq.changePercent : null;
+    var dir = chg === null ? '' : (chg > 0 ? 'up' : (chg < 0 ? 'down' : 'flat'));
+
+    /* ③ 面板环境光条 */
+    if (panel) {
+      panel.classList.toggle('dir-up', dir === 'up');
+      panel.classList.toggle('dir-down', dir === 'down');
+    }
+    /* ① LIVE灯呼吸（renderStatusBar每秒也会重设，需保持一致） */
+    if (dot) {
+      dot.classList.toggle('breath-up', dir === 'up');
+      dot.classList.toggle('breath-down', dir === 'down');
+    }
+    /* ① tick方向脉冲：本tick涨→红色爆发，跌→绿色爆发 */
+    var prev = _st.prevQuotes[MAIN_CODE];
+    if (dot && mq && prev && prev.price > 0 && mq.price !== prev.price) {
+      var cls = mq.price > prev.price ? 'tick-up' : 'tick-down';
+      dot.classList.remove('tick-up', 'tick-down');
+      void dot.offsetWidth;   // 强制重排以重启动画
+      dot.classList.add(cls);
+      if (_breathPulseTimer) Perf.clearTimeout(_breathPulseTimer);
+      _breathPulseTimer = Perf.trackedSetTimeout(function() {
+        dot.classList.remove('tick-up', 'tick-down');
+      }, 900);
+    }
   }
 
   /* ---------- 均价线（增量维护 O(n)） ---------- */
@@ -436,7 +476,11 @@ var RTWatch = (function() {
     buyPt:    { icon: '🅑', label: '买点触发' },
     sellPt:   { icon: '🅢', label: '卖点触发' },
     breakout: { icon: '🚀', label: '突破压力' },
-    breakdown:{ icon: '🕳️', label: '跌破支撑' }
+    breakdown:{ icon: '🕳️', label: '跌破支撑' },
+    crossUp:  { icon: '⤴', label: '收复昨收' },
+    crossDown:{ icon: '⤵', label: '跌破昨收' },
+    streak:   { icon: '📶', label: '连续动能' },
+    trendFlip:{ icon: '🔀', label: '趋势转向' }
   };
 
   function pushSignal(type, code, dir, text, strength) {
@@ -573,6 +617,47 @@ var RTWatch = (function() {
           '压力位 ' + _f(lv.r1.value) + '（' + lv.r1.label + '）附近遇阻回落，关注能否放量突破', 2);
       }
     }
+
+    /* 8. 昨收穿越：翻红/翻绿是重要情绪分水岭（v3.1 新增） */
+    if (mq && prevQ && mq.yesterdayClose > 0 && prevQ.price > 0) {
+      if (prevQ.price < mq.yesterdayClose && mq.price >= mq.yesterdayClose) {
+        pushSignal('crossUp', MAIN_CODE, 'bull',
+          META[MAIN_CODE].name + ' 收复昨收 ' + _f(mq.yesterdayClose) + '，翻绿转红，情绪修复', 2);
+      } else if (prevQ.price > mq.yesterdayClose && mq.price <= mq.yesterdayClose) {
+        pushSignal('crossDown', MAIN_CODE, 'bear',
+          META[MAIN_CODE].name + ' 跌破昨收 ' + _f(mq.yesterdayClose) + '，翻红转绿，情绪转弱', 2);
+      }
+    }
+
+    /* 9. 趋势通道转向：线性回归通道类型切换（v3.1 新增） */
+    var chNow = _st.channel;
+    if (chNow && _st._chPrevType && chNow.type !== _st._chPrevType) {
+      var dirTxt = chNow.type === 'up' ? '转入上升通道' : (chNow.type === 'down' ? '转入下降通道' : '转入箱体震荡');
+      var dirCls = chNow.type === 'up' ? 'bull' : (chNow.type === 'down' ? 'bear' : 'neutral');
+      pushSignal('trendFlip', MAIN_CODE, dirCls,
+        META[MAIN_CODE].name + ' 趋势转向：' + dirTxt + '（斜率 ' + _sign(chNow.slopePctH, 2) + '%/小时）', 2);
+    }
+    if (chNow) _st._chPrevType = chNow.type;
+
+    /* 10. 连续tick动能：≥4个同向tick且累计位移达标（v3.1 新增，提升平淡行情触发率） */
+    if (mq && prevQ && prevQ.price > 0) {
+      var dp = mq.price - prevQ.price;
+      var stk = _st._streak || (_st._streak = { dir: 0, n: 0, base: mq.price });
+      var d10 = dp > 0 ? 1 : (dp < 0 ? -1 : 0);
+      if (d10 !== 0) {
+        if (d10 === stk.dir) { stk.n++; }
+        else { stk.dir = d10; stk.n = 1; stk.base = prevQ.price; }
+      }
+      if (stk.n >= 4) {
+        var cum = (mq.price - stk.base) / stk.base * 100;
+        if (Math.abs(cum) >= 0.06) {
+          pushSignal('streak', MAIN_CODE, stk.dir > 0 ? 'bull' : 'bear',
+            META[MAIN_CODE].name + ' 连续 ' + stk.n + ' 笔' + (stk.dir > 0 ? '上行' : '下行') +
+            '（累计 ' + _sign(cum, 2) + '%），短线动能' + (stk.dir > 0 ? '增强' : '宣泄'), 1);
+          stk.n = 0; stk.base = mq.price;   // 触发后重置，配合10分钟去重防刷屏
+        }
+      }
+    }
   }
 
   /** 简易RSI（直接吃序列，避免每次建新数组） */
@@ -587,6 +672,132 @@ var RTWatch = (function() {
     }
     if (l === 0) return g === 0 ? 50 : 100;
     return 100 - 100 / (1 + g / l);
+  }
+
+  /* ---------- v3.1 历史信号回放引擎 ----------
+     扫描全天分钟底稿，回补今日已发生的信号（新高新低/均价线穿越/昨收穿越/
+     RSI反转/分钟量能突增），带历史时间戳。
+     修复：盘中/午休/盘后打开页面时信号流恒为空的问题——
+     实时检测只能捕获"打开页面之后"的事件，回放补齐之前的 */
+  function replaySignals() {
+    var ms = _st.series[MAIN_CODE];
+    var mq = _st.quotes[MAIN_CODE];
+    if (!ms || ms.length < 10 || !mq || !mq.yesterdayClose) return;
+    if (_st._replayDate === _st.seriesDate) return;   // 每交易日只回放一次
+    _st._replayDate = _st.seriesDate;
+
+    var prevClose = mq.yesterdayClose;
+    var found = [];
+    var hi = ms[0].p, lo = ms[0].p;
+    var sum = 0;
+    var cooldown = {};
+
+    function fire(type, m, dir, text, strength) {
+      if (cooldown[type] !== undefined && m - cooldown[type] < 12) return; // 同类12交易分钟冷却
+      cooldown[type] = m;
+      found.push({ type: type, m: m, dir: dir, text: text, strength: strength || 1 });
+    }
+
+    var rsiWin = [];
+    for (var i = 0; i < ms.length; i++) {
+      var p = ms[i].p, m = ms[i].m;
+      sum += p;
+      var avg = sum / (i + 1);
+      var pPrev = i > 0 ? ms[i - 1].p : p;
+      var aPrev = i > 0 ? (sum - p) / i : avg;
+      var chgPct = (p - prevClose) / prevClose * 100;
+
+      /* 日内新高/新低（严格突破前极值） */
+      if (i > 0 && p > hi + 0.01 && chgPct > 0.2) {
+        fire('newHigh', m, 'bull', META[MAIN_CODE].name + ' 冲高突破日内新高 ' + _f(p), 2);
+      }
+      if (i > 0 && p < lo - 0.01 && chgPct < -0.2) {
+        fire('newLow', m, 'bear', META[MAIN_CODE].name + ' 下探刷新日内新低 ' + _f(p), 2);
+      }
+      if (p > hi) hi = p;
+      if (p < lo) lo = p;
+
+      /* 均价线穿越 */
+      if (i >= 5) {
+        if (pPrev <= aPrev && p > avg) {
+          fire('avgUp', m, 'bull', META[MAIN_CODE].name + ' 上穿分时均价线（' + _f(avg) + '），短线转强', 2);
+        } else if (pPrev >= aPrev && p < avg) {
+          fire('avgDown', m, 'bear', META[MAIN_CODE].name + ' 跌破分时均价线（' + _f(avg) + '），短线转弱', 2);
+        }
+      }
+
+      /* 昨收穿越（翻红/翻绿） */
+      if (i >= 3) {
+        if (pPrev < prevClose && p >= prevClose) {
+          fire('crossUp', m, 'bull', META[MAIN_CODE].name + ' 收复昨收 ' + _f(prevClose) + '，翻绿转红', 2);
+        } else if (pPrev > prevClose && p <= prevClose) {
+          fire('crossDown', m, 'bear', META[MAIN_CODE].name + ' 跌破昨收 ' + _f(prevClose) + '，翻红转绿', 2);
+        }
+      }
+
+      /* RSI 反转（超卖回升 / 超买回落） */
+      rsiWin.push({ p: p });
+      if (rsiWin.length > 30) rsiWin.shift();
+      if (i >= 16) {
+        var rsi = quickRSI(rsiWin, 14);
+        var rPrev = quickRSI(rsiWin.slice(0, rsiWin.length - 1), 14);
+        if (rsi !== null && rPrev !== null) {
+          if (rPrev < 30 && rsi >= 30) {
+            fire('buyPt', m, 'bull', '买点信号：RSI 超卖区回升上穿30（' + _f(rsi, 0) + '），技术性反弹', 2);
+          } else if (rPrev > 70 && rsi <= 70) {
+            fire('sellPt', m, 'bear', '卖点信号：RSI 超买区回落跌破70（' + _f(rsi, 0) + '），动能衰减', 2);
+          }
+        }
+      }
+
+      /* 分钟量能突增：当分钟增量 > 近10分钟均值3倍 */
+      if (i >= 12 && ms[i].v != null && ms[i - 1].v != null) {
+        var dv = ms[i].v - ms[i - 1].v;
+        var dsum = 0, dn = 0;
+        for (var k = Math.max(1, i - 10); k < i; k++) {
+          if (ms[k].v != null && ms[k - 1].v != null) { dsum += ms[k].v - ms[k - 1].v; dn++; }
+        }
+        if (dn > 0 && dv > 0 && dv > (dsum / dn) * 3) {
+          fire('volSpike', m, chgPct >= 0 ? 'bull' : 'bear',
+            '分钟量能突增：' + mToHHMM(m) + ' 成交量达近期均值 ' + _f(dv / (dsum / dn), 1) + ' 倍', 2);
+        }
+      }
+    }
+
+    if (found.length === 0) return;
+
+    /* 转为信号条目（最新在前）并入信号流，标记 replay */
+    var entries = found.map(function(x) {
+      return {
+        t: 0, time: mToHHMM(x.m), type: x.type, code: MAIN_CODE,
+        dir: x.dir, text: x.text, strength: x.strength, replay: true
+      };
+    }).reverse();
+    _st.signals = entries.concat(_st.signals);
+    if (_st.signals.length > MAX_SIGNALS) _st.signals.length = MAX_SIGNALS;
+    _st._sigRendered = -1;   // 强制重绘信号流
+
+    /* 回放信号若发生在去重窗口内 → 同步 lastSignalAt，防实时检测立即重复触发 */
+    var today = _now();
+    var todayStr = '' + today.getFullYear() + _pad(today.getMonth() + 1) + _pad(today.getDate());
+    if (_st.seriesDate === todayStr) {
+      var nowMs = Date.now();
+      found.forEach(function(x) {
+        var key = x.type + '|' + MAIN_CODE;
+        var absMin = x.m <= 120 ? 570 + x.m : 780 + (x.m - 120);
+        var ep = new Date(today.getFullYear(), today.getMonth(), today.getDate(),
+          Math.floor(absMin / 60), absMin % 60, 0).getTime();
+        if (nowMs - ep < DEDUP_MS && (!_st.lastSignalAt[key] || ep > _st.lastSignalAt[key])) {
+          _st.lastSignalAt[key] = ep;
+        }
+      });
+    }
+  }
+
+  /** 交易分钟(0-240) → 'HH:MM'（北京时间） */
+  function mToHHMM(m) {
+    var mins = m <= 120 ? 570 + m : 780 + (m - 120);
+    return _pad(Math.floor(mins / 60)) + ':' + _pad(mins % 60);
   }
 
   /* ---------- v3 关键点位引擎 ----------
@@ -819,7 +1030,15 @@ var RTWatch = (function() {
     var badge = _id('rtHeadMini');
     if (clock) clock.textContent = _hhmmss(_now());
     if (dot) {
-      dot.className = 'rt-live-dot ' + (s.session === 'trading' ? 'live' : (s.session === 'lunch' ? 'lunch' : 'off'));
+      /* v3.1：每秒重设时保留呼吸灯/脉冲类，避免闪烁丢失 */
+      var base = 'rt-live-dot ' + (s.session === 'trading' ? 'live' : (s.session === 'lunch' ? 'lunch' : 'off'));
+      var mqB = _st.quotes[MAIN_CODE];
+      if (mqB && typeof mqB.changePercent === 'number') {
+        base += mqB.changePercent > 0 ? ' breath-up' : (mqB.changePercent < 0 ? ' breath-down' : '');
+      }
+      if (dot.classList.contains('tick-up')) base += ' tick-up';
+      if (dot.classList.contains('tick-down')) base += ' tick-down';
+      dot.className = base;
     }
     if (badge) {
       badge.textContent = s.session === 'trading' ? 'LIVE' : (s.session === 'lunch' ? '午休' : 'CLOSE');
@@ -881,7 +1100,10 @@ var RTWatch = (function() {
       }
       _lastRendered[c] = q.price;
       var up = (q.changePercent || 0) >= 0;
-      el.className = 'rt-idx-card ' + (up ? 'up' : 'down') + flash + (c === MAIN_CODE ? ' main' : '');
+      /* v3.1：呼吸辉光类（涨红跌绿，::after层动画，与flash背景闪动并存） */
+      var chgP = q.changePercent || 0;
+      var breath = chgP > 0 ? ' breath-up' : (chgP < 0 ? ' breath-down' : '');
+      el.className = 'rt-idx-card ' + (up ? 'up' : 'down') + breath + flash + (c === MAIN_CODE ? ' main' : '');
       if (flash) {
         var snap = q.price;
         Perf.trackedSetTimeout(function() {
@@ -1458,7 +1680,9 @@ var RTWatch = (function() {
       '<div class="rt-ai-meta">分析时点 ' + v.time + ' · ' + v.sessionLabel + ' · 规则化量化引擎（非投资建议）</div>';
   }
 
-  /* 信号流（指纹比对，仅变化时重建DOM） */
+  /* 信号流（指纹比对，仅变化时重建DOM）
+     v3.1 修复：指纹原仅用长度，信号达上限(30)后新信号不再重绘；
+     改为 长度+首条时间戳+首条文本 复合指纹 */
   function renderSignals() {
     var box = _id('rtSignalFeed');
     if (!box) return;
@@ -1469,8 +1693,10 @@ var RTWatch = (function() {
       }
       return;
     }
-    if (_st._sigRendered === _st.signals.length) return;
-    _st._sigRendered = _st.signals.length;
+    var head = _st.signals[0];
+    var fp = _st.signals.length + ':' + (head.t || 0) + ':' + head.time + ':' + head.type;
+    if (_st._sigRendered === fp) return;
+    _st._sigRendered = fp;
     var stars = function(n) {
       var s = '';
       for (var i = 0; i < n; i++) s += '★';
@@ -1479,7 +1705,7 @@ var RTWatch = (function() {
     box.innerHTML = _st.signals.map(function(sg) {
       var meta = SIG_META[sg.type] || { icon: '•', label: sg.type };
       return '<div class="rt-sig ' + sg.dir + '">' +
-        '<span class="rt-sig-time">' + sg.time + '</span>' +
+        '<span class="rt-sig-time">' + sg.time + (sg.replay ? '<i class="rt-sig-replay">回放</i>' : '') + '</span>' +
         '<span class="rt-sig-ico">' + meta.icon + '</span>' +
         '<span class="rt-sig-text">' + sg.text + '</span>' +
         '<span class="rt-sig-star">' + stars(sg.strength) + '</span>' +

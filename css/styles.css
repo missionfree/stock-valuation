@@ -14047,3 +14047,123 @@ body.rt-fs-open { overflow: hidden; }
   .rt-panel.rt-fullscreen .rt-ai-text,
   .rt-panel.rt-fullscreen .rt-signal-feed { max-height: none; }
 }
+
+/* ============================================================
+   —— 47.6 实时盯盘 v3.1 红绿呼吸灯层 ——
+   A股惯例：涨=红、跌=绿。三层灯效与实时数据逐tick同步：
+   ① LIVE灯呼吸+tick脉冲 ② 指数卡辉光呼吸 ③ 面板顶部氛围光条
+   ============================================================ */
+
+/* ---- ① LIVE灯：方向呼吸（声明于 .live/.lunch 之后以覆盖其动画） ---- */
+@keyframes rtBreathRedDot {
+  0%, 100% { box-shadow: 0 0 3px 1px rgba(240, 86, 92, 0.30); transform: scale(1); }
+  50%      { box-shadow: 0 0 12px 4px rgba(240, 86, 92, 0.90); transform: scale(1.28); }
+}
+@keyframes rtBreathGreenDot {
+  0%, 100% { box-shadow: 0 0 3px 1px rgba(34, 181, 115, 0.30); transform: scale(1); }
+  50%      { box-shadow: 0 0 12px 4px rgba(34, 181, 115, 0.90); transform: scale(1.28); }
+}
+.rt-live-dot.breath-up {
+  background: var(--neon-red);
+  animation: rtBreathRedDot 1.8s ease-in-out infinite;
+}
+.rt-live-dot.breath-down {
+  background: var(--neon-green);
+  animation: rtBreathGreenDot 1.8s ease-in-out infinite;
+}
+/* tick方向脉冲：本tick涨→红圈爆发 / 跌→绿圈爆发（与呼吸动画叠加） */
+@keyframes rtTickBurstRed {
+  0%   { box-shadow: 0 0 0 0 rgba(240, 86, 92, 0.85); }
+  100% { box-shadow: 0 0 0 11px rgba(240, 86, 92, 0); }
+}
+@keyframes rtTickBurstGreen {
+  0%   { box-shadow: 0 0 0 0 rgba(34, 181, 115, 0.85); }
+  100% { box-shadow: 0 0 0 11px rgba(34, 181, 115, 0); }
+}
+.rt-live-dot.tick-up {
+  animation: rtBreathRedDot 1.8s ease-in-out infinite, rtTickBurstRed 0.9s ease-out;
+}
+.rt-live-dot.tick-down {
+  animation: rtBreathGreenDot 1.8s ease-in-out infinite, rtTickBurstGreen 0.9s ease-out;
+}
+
+/* ---- ② 指数卡：辉光呼吸（::after层，与元素自身flash背景闪动互不冲突） ---- */
+.rt-idx-card { position: relative; }
+.rt-idx-card.breath-up::after,
+.rt-idx-card.breath-down::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+@keyframes rtGlowRed {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 86, 92, 0); }
+  50%      { box-shadow: 0 0 16px 2px rgba(240, 86, 92, 0.42); }
+}
+@keyframes rtGlowGreen {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 181, 115, 0); }
+  50%      { box-shadow: 0 0 16px 2px rgba(34, 181, 115, 0.42); }
+}
+.rt-idx-card.breath-up::after   { animation: rtGlowRed 2.4s ease-in-out infinite; }
+.rt-idx-card.breath-down::after { animation: rtGlowGreen 2.4s ease-in-out infinite; }
+/* 主卡（上证指数）呼吸更强 */
+.rt-idx-card.main.breath-up::after   { animation-duration: 1.8s; }
+.rt-idx-card.main.breath-down::after { animation-duration: 1.8s; }
+
+/* ---- ③ 面板顶部氛围光条：随主指数方向呼吸 ---- */
+.rt-panel { position: relative; }
+.rt-panel.dir-up::before,
+.rt-panel.dir-down::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes rtStripBreath {
+  0%, 100% { opacity: 0.30; }
+  50%      { opacity: 1; }
+}
+.rt-panel.dir-up::before {
+  background: linear-gradient(90deg, transparent, var(--neon-red) 30%, var(--neon-red) 70%, transparent);
+  box-shadow: 0 0 10px 1px rgba(240, 86, 92, 0.5);
+  animation: rtStripBreath 2s ease-in-out infinite;
+}
+.rt-panel.dir-down::before {
+  background: linear-gradient(90deg, transparent, var(--neon-green) 30%, var(--neon-green) 70%, transparent);
+  box-shadow: 0 0 10px 1px rgba(34, 181, 115, 0.5);
+  animation: rtStripBreath 2s ease-in-out infinite;
+}
+/* 全屏时顶部光条吸顶跟随（粘在滚动容器顶缘） */
+.rt-panel.rt-fullscreen.dir-up::before,
+.rt-panel.rt-fullscreen.dir-down::before { top: 0; }
+
+/* ---- 信号流"回放"徽标（历史回补信号） ---- */
+.rt-sig-replay {
+  display: inline-block;
+  font-style: normal;
+  font-size: 0.5rem;
+  line-height: 1;
+  color: var(--muted);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 1px 3px;
+  margin-left: 0.3rem;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+/* ---- 无障碍：偏好减弱动效时停用呼吸/脉冲 ---- */
+@media (prefers-reduced-motion: reduce) {
+  .rt-live-dot.breath-up, .rt-live-dot.breath-down,
+  .rt-live-dot.tick-up, .rt-live-dot.tick-down,
+  .rt-idx-card.breath-up::after, .rt-idx-card.breath-down::after,
+  .rt-panel.dir-up::before, .rt-panel.dir-down::before {
+    animation: none;
+  }
+}
